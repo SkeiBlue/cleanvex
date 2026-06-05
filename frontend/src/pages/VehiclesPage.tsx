@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Car, FileLock2, Gauge, Pencil, Trash2, Upload, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import type { DocumentItem, VehicleDetail, VehicleItem } from '../types'
+import type { DocumentItem, VehicleDetail, VehicleItem, VehiclePart } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
-type Tab = 'resume' | 'interventions' | 'alertes' | 'budget' | 'documents' | 'historique'
+type Tab = 'resume' | 'pieces' | 'interventions' | 'alertes' | 'budget' | 'documents' | 'historique'
 
 /* ─── constantes ─── */
 const STATUS_COLORS: Record<string, { color: string; label: string }> = {
@@ -90,15 +90,22 @@ export function VehiclesPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [intervStatusFilter, setIntervStatusFilter] = useState('all')
   const [budgetTarget, setBudgetTarget] = useState(0)
+  const [parts, setParts] = useState<VehiclePart[]>([])
+  const [partFilter, setPartFilter] = useState('all')
+  const [editingPart, setEditingPart] = useState<VehiclePart | null>(null)
 
   const loadVehicleDetail = useCallback(async (id: string) => {
-    const r = await authedFetch(`/vehicles/${id}`)
-    if (r.ok) {
-      const data = await r.json()
+    const [vr, pr] = await Promise.all([
+      authedFetch(`/vehicles/${id}`),
+      authedFetch(`/vehicles/${id}/parts`),
+    ])
+    if (vr.ok) {
+      const data = await vr.json()
       setSelectedVehicle(data)
       const stored = localStorage.getItem(`vehicle-budget-${id}`)
       setBudgetTarget(stored ? Number(stored) : 0)
     }
+    if (pr.ok) setParts(await pr.json())
   }, [authedFetch])
 
   const reload = useCallback(async () => {
@@ -203,6 +210,72 @@ export function VehiclesPage() {
     await loadVehicleDetail(selectedVehicle.id)
   }
 
+  async function handleAddPart(event: FormEv) {
+    event.preventDefault(); if (!selectedVehicle) return
+    const form = event.currentTarget; const data = new FormData(form)
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.get('name'),
+        quantity: data.get('quantity') ? Number(data.get('quantity')) : 1,
+        category: data.get('category') || 'autre',
+        status: data.get('status') || 'a-acheter',
+        urgency: data.get('urgency') || 'normal',
+        priority: data.get('priority') || 'fiabilite',
+        reference: data.get('reference') || undefined,
+        dimension: data.get('dimension') || undefined,
+        estimatedPrice: data.get('estimatedPrice') ? Number(data.get('estimatedPrice')) : undefined,
+        realPrice: data.get('realPrice') ? Number(data.get('realPrice')) : undefined,
+        link: data.get('link') || undefined,
+        comment: data.get('comment') || undefined,
+      }),
+    })
+    if (r.ok) { form.reset(); const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`); if (pr.ok) setParts(await pr.json()) }
+  }
+
+  async function handleUpdatePart(event: FormEv, partId: string) {
+    event.preventDefault(); if (!selectedVehicle) return
+    const form = event.currentTarget; const data = new FormData(form)
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: data.get('name') || undefined,
+        quantity: data.get('quantity') ? Number(data.get('quantity')) : undefined,
+        category: data.get('category') || undefined,
+        status: data.get('status') || undefined,
+        urgency: data.get('urgency') || undefined,
+        priority: data.get('priority') || undefined,
+        reference: data.get('reference') || undefined,
+        dimension: data.get('dimension') || undefined,
+        estimatedPrice: data.get('estimatedPrice') ? Number(data.get('estimatedPrice')) : undefined,
+        realPrice: data.get('realPrice') ? Number(data.get('realPrice')) : undefined,
+        link: data.get('link') || undefined,
+        comment: data.get('comment') || undefined,
+      }),
+    })
+    if (r.ok) {
+      setEditingPart(null)
+      const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`)
+      if (pr.ok) setParts(await pr.json())
+    }
+  }
+
+  async function handlePartStatus(partId: string, status: string) {
+    if (!selectedVehicle) return
+    await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`)
+    if (pr.ok) setParts(await pr.json())
+  }
+
+  async function handleDeletePart(partId: string) {
+    if (!selectedVehicle) return
+    await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, { method: 'DELETE' })
+    setParts(p => p.filter(x => x.id !== partId))
+  }
+
   async function handleAddAlert(event: FormEv) {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget; const data = new FormData(form)
@@ -267,6 +340,16 @@ export function VehiclesPage() {
 
   /* ── calculs stats ── */
   const sv = selectedVehicle
+  // stats pièces
+  const toOrder = parts.filter(p => p.status === 'a-acheter').length
+  const ordered = parts.filter(p => p.status === 'commande').length
+  const received = parts.filter(p => p.status === 'recu').length
+  const mounted = parts.filter(p => p.status === 'monte').length
+  const blocking = parts.filter(p => p.urgency === 'bloquant' && p.status !== 'monte').length
+  const estimatedPartsCost = parts.reduce((s, p) => s + Number(p.estimatedPrice ?? 0) * p.quantity, 0)
+  const realPartsCost = parts.reduce((s, p) => s + Number(p.realPrice ?? 0) * p.quantity, 0)
+  const filteredParts = partFilter === 'all' ? parts : parts.filter(p => p.status === partFilter)
+
   const totalInterv = sv?.interventions.length ?? 0
   const doneInterv = sv?.interventions.filter(i => isDone(i.status)).length ?? 0
   const blockedInterv = sv?.interventions.filter(i => i.status === 'bloque').length ?? 0
@@ -423,6 +506,9 @@ export function VehiclesPage() {
             {/* ── onglets ── */}
             <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', paddingLeft: '12px', overflowX: 'auto' }}>
               <button style={tabStyle('resume')} onClick={() => setActiveTab('resume')}>Résumé</button>
+              <button style={tabStyle('pieces')} onClick={() => setActiveTab('pieces')}>
+                Pièces ({parts.length}){blocking > 0 ? ' ⚠' : ''}
+              </button>
               <button style={tabStyle('interventions')} onClick={() => setActiveTab('interventions')}>
                 Travaux ({totalInterv}){blockedInterv > 0 ? ` ⚠` : ''}
               </button>
@@ -524,6 +610,200 @@ export function VehiclesPage() {
                       <button className="primary-action" type="submit">Enregistrer</button>
                     </form>
                   </div>
+                </div>
+              )}
+
+              {/* ══ PIÈCES ══ */}
+              {activeTab === 'pieces' && (
+                <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                  {/* Stats */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+                    {[
+                      { label: 'À acheter', value: toOrder, color: '#f87171' },
+                      { label: 'Commandé', value: ordered, color: '#fbbf24' },
+                      { label: 'Reçu', value: received, color: '#67e8f9' },
+                      { label: 'Monté', value: mounted, color: '#4ade80' },
+                      { label: 'Bloquant', value: blocking, color: blocking > 0 ? '#f43f5e' : 'var(--text3)' },
+                    ].map(s => (
+                      <div key={s.label} style={{ textAlign: 'center', padding: '8px 4px', background: `${s.color}10`, borderRadius: '8px', border: `1px solid ${s.color}20` }}>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: '9px', color: 'var(--text3)', marginTop: '2px', fontFamily: 'var(--mono)' }}>{s.label.toUpperCase()}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Budget pièces */}
+                  {parts.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                      <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ color: 'var(--text3)', fontSize: '10px', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ESTIMÉ</div>
+                        <div style={{ fontWeight: 700, color: '#fbbf24', fontSize: '16px' }}>{estimatedPartsCost.toLocaleString('fr-FR')} €</div>
+                      </div>
+                      <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <div style={{ color: 'var(--text3)', fontSize: '10px', fontFamily: 'var(--mono)', marginBottom: '4px' }}>RÉEL (facturé)</div>
+                        <div style={{ fontWeight: 700, color: '#4ade80', fontSize: '16px' }}>{realPartsCost.toLocaleString('fr-FR')} €</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Formulaire ajout */}
+                  <details style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <summary style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', userSelect: 'none' }}>
+                      + Ajouter une pièce
+                    </summary>
+                    <form onSubmit={handleAddPart} style={{ padding: '12px 14px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      <input name="name" placeholder="Nom *" required style={{ flex: '2', minWidth: '160px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="quantity" type="number" min="1" defaultValue="1" placeholder="Qté" style={{ width: '60px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <select name="category" defaultValue="autre" style={SELECT_STYLE}>
+                        <option value="moteur">Moteur</option>
+                        <option value="freinage">Freinage</option>
+                        <option value="carrosserie">Carrosserie</option>
+                        <option value="interieur">Intérieur</option>
+                        <option value="electricite">Électricité</option>
+                        <option value="train-roulant">Train roulant</option>
+                        <option value="stock">Stock</option>
+                        <option value="outillage">Outillage</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                      <select name="status" defaultValue="a-acheter" style={SELECT_STYLE}>
+                        <option value="a-acheter">À acheter</option>
+                        <option value="commande">Commandé</option>
+                        <option value="recu">Reçu</option>
+                        <option value="monte">Monté</option>
+                        <option value="a-verifier">À vérifier</option>
+                      </select>
+                      <select name="urgency" defaultValue="normal" style={SELECT_STYLE}>
+                        <option value="bloquant">🔴 Bloquant</option>
+                        <option value="important">🟡 Important</option>
+                        <option value="normal">⚪ Normal</option>
+                        <option value="optionnel">💤 Optionnel</option>
+                      </select>
+                      <select name="priority" defaultValue="fiabilite" style={SELECT_STYLE}>
+                        <option value="securite">Sécurité</option>
+                        <option value="controle-technique">Contrôle technique</option>
+                        <option value="fiabilite">Fiabilité</option>
+                        <option value="confort">Confort</option>
+                        <option value="esthetique">Esthétique</option>
+                        <option value="optionnel">Optionnel</option>
+                      </select>
+                      <input name="reference" placeholder="Référence" style={{ flex: 1, minWidth: '100px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="dimension" placeholder="Dimension" style={{ flex: 1, minWidth: '80px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="estimatedPrice" type="number" step="0.01" min="0" placeholder="Prix estimé €" style={{ width: '110px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="realPrice" type="number" step="0.01" min="0" placeholder="Prix réel €" style={{ width: '110px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="link" placeholder="Lien achat (URL)" style={{ flex: 2, minWidth: '160px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <input name="comment" placeholder="Commentaire" style={{ flex: 2, minWidth: '160px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 10px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                      <button className="primary-action" type="submit">Ajouter</button>
+                    </form>
+                  </details>
+
+                  {/* Filtres statut */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[
+                      ['all', 'Toutes', 'var(--text2)'],
+                      ['a-acheter', 'À acheter', '#f87171'],
+                      ['commande', 'Commandé', '#fbbf24'],
+                      ['recu', 'Reçu', '#67e8f9'],
+                      ['monte', 'Monté', '#4ade80'],
+                      ['a-verifier', 'À vérifier', '#a78bfa'],
+                    ].map(([val, label, color]) => (
+                      <button key={val} onClick={() => setPartFilter(val)} style={{
+                        padding: '4px 10px', borderRadius: '20px', border: `1px solid ${partFilter === val ? color : 'var(--border)'}`,
+                        background: partFilter === val ? `${color}20` : 'none', color: partFilter === val ? color : 'var(--text3)',
+                        fontSize: '11px', fontFamily: 'var(--mono)', cursor: 'pointer', fontWeight: 600,
+                      }}>
+                        {label}
+                        {val !== 'all' && <span style={{ marginLeft: '4px' }}>({parts.filter(p => p.status === val).length})</span>}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Liste pièces */}
+                  {filteredParts.length === 0 ? (
+                    <p className="muted">Aucune pièce{partFilter !== 'all' ? ' dans cette catégorie' : ' — ajoute-en une ci-dessus'}.</p>
+                  ) : (
+                    filteredParts.map((part) => {
+                      const urgencyColors: Record<string, string> = { bloquant: '#f43f5e', important: '#fbbf24', normal: 'var(--border)', optionnel: 'var(--border)' }
+                      const statusColors: Record<string, string> = { 'a-acheter': '#f87171', commande: '#fbbf24', recu: '#67e8f9', monte: '#4ade80', 'a-verifier': '#a78bfa' }
+                      const statusLabels: Record<string, string> = { 'a-acheter': 'À acheter', commande: 'Commandé', recu: 'Reçu', monte: 'Monté', 'a-verifier': 'À vérifier' }
+                      const isEditing = editingPart?.id === part.id
+
+                      return (
+                        <div key={part.id} style={{
+                          background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)',
+                          borderRadius: '10px', padding: '12px 14px',
+                          borderLeft: `3px solid ${urgencyColors[part.urgency] ?? 'var(--border)'}`,
+                        }}>
+                          {isEditing ? (
+                            <form onSubmit={e => { e.preventDefault(); handleUpdatePart(e as unknown as FormEv, part.id) }} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              <input name="name" defaultValue={part.name} style={{ flex: 2, minWidth: '140px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <input name="quantity" type="number" min="1" defaultValue={part.quantity} style={{ width: '55px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <select name="status" defaultValue={part.status} style={{ ...SELECT_STYLE, fontSize: '11px', padding: '6px 8px' }}>
+                                <option value="a-acheter">À acheter</option>
+                                <option value="commande">Commandé</option>
+                                <option value="recu">Reçu</option>
+                                <option value="monte">Monté</option>
+                                <option value="a-verifier">À vérifier</option>
+                              </select>
+                              <select name="urgency" defaultValue={part.urgency} style={{ ...SELECT_STYLE, fontSize: '11px', padding: '6px 8px' }}>
+                                <option value="bloquant">🔴 Bloquant</option>
+                                <option value="important">🟡 Important</option>
+                                <option value="normal">⚪ Normal</option>
+                                <option value="optionnel">💤 Optionnel</option>
+                              </select>
+                              <input name="reference" defaultValue={part.reference ?? ''} placeholder="Référence" style={{ flex: 1, minWidth: '80px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <input name="estimatedPrice" type="number" step="0.01" defaultValue={part.estimatedPrice ?? ''} placeholder="Estimé €" style={{ width: '90px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <input name="realPrice" type="number" step="0.01" defaultValue={part.realPrice ?? ''} placeholder="Réel €" style={{ width: '90px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <input name="comment" defaultValue={part.comment ?? ''} placeholder="Commentaire" style={{ flex: 2, minWidth: '120px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <input name="link" defaultValue={part.link ?? ''} placeholder="Lien" style={{ flex: 2, minWidth: '120px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 8px', color: 'var(--text)', fontSize: '12px', fontFamily: 'var(--font)', outline: 'none' }} />
+                              <button className="primary-action" type="submit" style={{ padding: '6px 12px' }}>✓</button>
+                              <button className="btn-ghost" type="button" onClick={() => setEditingPart(null)} style={{ padding: '6px 10px' }}><X size={12} /></button>
+                            </form>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{part.name}</span>
+                                  {part.quantity > 1 && <span style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)' }}>×{part.quantity}</span>}
+                                  <span style={{ fontSize: '9px', fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', background: `${statusColors[part.status] ?? '#7b82a8'}20`, color: statusColors[part.status] ?? '#7b82a8', border: `1px solid ${statusColors[part.status] ?? '#7b82a8'}40` }}>
+                                    {statusLabels[part.status] ?? part.status}
+                                  </span>
+                                  <span style={{ fontSize: '9px', fontFamily: 'var(--mono)', color: 'var(--text3)' }}>{part.category}</span>
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                                  {part.reference && <span>Réf: <strong style={{ color: 'var(--text2)' }}>{part.reference}</strong></span>}
+                                  {part.dimension && <span>Dim: {part.dimension}</span>}
+                                  {part.estimatedPrice && <span>Estimé: <strong style={{ color: '#fbbf24' }}>{Number(part.estimatedPrice).toFixed(2)} €</strong></span>}
+                                  {part.realPrice && <span>Réel: <strong style={{ color: '#4ade80' }}>{Number(part.realPrice).toFixed(2)} €</strong></span>}
+                                </div>
+                                {part.comment && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', fontStyle: 'italic' }}>{part.comment}</div>}
+                                {part.link && (
+                                  <a href={part.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10px', color: '#a78bfa', marginTop: '4px', display: 'block' }}>
+                                    🔗 Lien achat
+                                  </a>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end', flexShrink: 0 }}>
+                                {/* Selector statut rapide */}
+                                <select value={part.status} onChange={e => handlePartStatus(part.id, e.target.value)}
+                                  style={{ ...SELECT_STYLE, fontSize: '10px', padding: '3px 6px', border: `1px solid ${statusColors[part.status] ?? 'var(--border)'}40` }}>
+                                  <option value="a-acheter">À acheter</option>
+                                  <option value="commande">Commandé</option>
+                                  <option value="recu">Reçu</option>
+                                  <option value="monte">Monté</option>
+                                  <option value="a-verifier">À vérifier</option>
+                                </select>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button className="btn-ghost" style={{ fontSize: '11px', padding: '3px 6px' }} onClick={() => setEditingPart(part)} title="Modifier"><Pencil size={11} /></button>
+                                  <button className="btn-ghost" style={{ fontSize: '11px', padding: '3px 6px', color: '#f87171' }} onClick={() => handleDeletePart(part.id)} title="Supprimer">✕</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               )}
 

@@ -88,6 +88,25 @@ export type VehicleItem = {
   _count?: { interventions: number; alerts: number }
 }
 
+export type VehiclePart = {
+  id: string
+  vehicleId: string
+  name: string
+  quantity: number
+  category: string
+  status: string
+  urgency: string
+  priority: string
+  reference: string | null
+  dimension: string | null
+  estimatedPrice: string | null
+  realPrice: string | null
+  link: string | null
+  comment: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export type VehicleDetail = VehicleItem & {
   mileageLogs: Array<{ id: string; mileage: number; date: string }>
   interventions: Array<{

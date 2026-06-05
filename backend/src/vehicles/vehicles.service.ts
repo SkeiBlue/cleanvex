@@ -4,7 +4,9 @@ import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
 import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { CreateVehiclePartDto } from './dto/create-vehicle-part.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { UpdateVehiclePartDto } from './dto/update-vehicle-part.dto';
 
 @Injectable()
 export class VehiclesService {
@@ -189,6 +191,65 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.prisma.vehicleAlert.delete({ where: { id: alertId } });
+  }
+
+  async listParts(ownerId: string, vehicleId: string) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    return this.prisma.vehiclePart.findMany({
+      where: { vehicleId },
+      orderBy: [{ status: 'asc' }, { urgency: 'asc' }, { name: 'asc' }],
+    });
+  }
+
+  async addPart(ownerId: string, vehicleId: string, dto: CreateVehiclePartDto) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    return this.prisma.vehiclePart.create({
+      data: {
+        vehicleId,
+        name: dto.name,
+        quantity: dto.quantity ?? 1,
+        category: dto.category ?? 'autre',
+        status: dto.status ?? 'a-acheter',
+        urgency: dto.urgency ?? 'normal',
+        priority: dto.priority ?? 'fiabilite',
+        reference: dto.reference,
+        dimension: dto.dimension,
+        estimatedPrice: dto.estimatedPrice,
+        realPrice: dto.realPrice,
+        link: dto.link,
+        comment: dto.comment,
+      },
+    });
+  }
+
+  async updatePart(ownerId: string, vehicleId: string, partId: string, dto: UpdateVehiclePartDto) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    return this.prisma.vehiclePart.update({
+      where: { id: partId },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.quantity !== undefined && { quantity: dto.quantity }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.status !== undefined && { status: dto.status }),
+        ...(dto.urgency !== undefined && { urgency: dto.urgency }),
+        ...(dto.priority !== undefined && { priority: dto.priority }),
+        ...(dto.reference !== undefined && { reference: dto.reference }),
+        ...(dto.dimension !== undefined && { dimension: dto.dimension }),
+        ...(dto.estimatedPrice !== undefined && { estimatedPrice: dto.estimatedPrice }),
+        ...(dto.realPrice !== undefined && { realPrice: dto.realPrice }),
+        ...(dto.link !== undefined && { link: dto.link }),
+        ...(dto.comment !== undefined && { comment: dto.comment }),
+      },
+    });
+  }
+
+  async deletePart(ownerId: string, vehicleId: string, partId: string) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.prisma.vehiclePart.delete({ where: { id: partId } });
   }
 
   async deleteVehicle(ownerId: string, id: string) {

@@ -16,8 +16,10 @@ import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
 import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { CreateVehiclePartDto } from './dto/create-vehicle-part.dto';
 import { LinkVehicleDocumentDto } from './dto/link-vehicle-document.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { UpdateVehiclePartDto } from './dto/update-vehicle-part.dto';
 import { VehiclesService } from './vehicles.service';
 
 type AuthenticatedRequest = Request & {
@@ -107,6 +109,36 @@ export class VehiclesController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.vehicles.deleteAlert(req.user.id, id, alertId);
+  }
+
+  @Get(':id/parts')
+  listParts(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.listParts(req.user.id, id);
+  }
+
+  @Post(':id/parts')
+  addPart(@Param('id') id: string, @Body() dto: CreateVehiclePartDto, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.addPart(req.user.id, id, dto);
+  }
+
+  @Patch(':id/parts/:partId')
+  updatePart(
+    @Param('id') id: string,
+    @Param('partId') partId: string,
+    @Body() dto: UpdateVehiclePartDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.updatePart(req.user.id, id, partId, dto);
+  }
+
+  @Delete(':id/parts/:partId')
+  @HttpCode(204)
+  deletePart(
+    @Param('id') id: string,
+    @Param('partId') partId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.deletePart(req.user.id, id, partId);
   }
 
   @Delete(':id')
