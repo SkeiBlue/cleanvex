@@ -1,0 +1,137 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import type { Request } from 'express';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CreateInterventionDto } from './dto/create-intervention.dto';
+import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
+import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
+import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { LinkVehicleDocumentDto } from './dto/link-vehicle-document.dto';
+import { UpdateVehicleDto } from './dto/update-vehicle.dto';
+import { VehiclesService } from './vehicles.service';
+
+type AuthenticatedRequest = Request & {
+  user: { id: string; email: string; role: string };
+};
+
+@UseGuards(JwtAuthGuard)
+@Controller('vehicles')
+export class VehiclesController {
+  constructor(private readonly vehicles: VehiclesService) {}
+
+  @Get()
+  list(@Req() req: AuthenticatedRequest) {
+    return this.vehicles.list(req.user.id);
+  }
+
+  @Post()
+  create(@Body() dto: CreateVehicleDto, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.create(req.user.id, dto);
+  }
+
+  @Get(':id')
+  get(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.get(req.user.id, id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateVehicleDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.update(req.user.id, id, dto);
+  }
+
+  @Post(':id/mileage')
+  addMileageLog(
+    @Param('id') id: string,
+    @Body() dto: CreateMileageLogDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.addMileageLog(req.user.id, id, dto);
+  }
+
+  @Post(':id/interventions')
+  addIntervention(
+    @Param('id') id: string,
+    @Body() dto: CreateInterventionDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.addIntervention(req.user.id, id, dto);
+  }
+
+  @Post(':id/alerts')
+  addAlert(
+    @Param('id') id: string,
+    @Body() dto: CreateVehicleAlertDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.addAlert(req.user.id, id, dto);
+  }
+
+  @Post(':id/documents')
+  linkDocument(
+    @Param('id') id: string,
+    @Body() dto: LinkVehicleDocumentDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.linkDocument(req.user.id, id, dto.documentId, dto.context);
+  }
+
+  @Patch(':id/alerts/:alertId')
+  updateAlert(
+    @Param('id') id: string,
+    @Param('alertId') alertId: string,
+    @Body('status') status: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.updateAlert(req.user.id, id, alertId, status);
+  }
+
+  @Delete(':id/alerts/:alertId')
+  @HttpCode(204)
+  deleteAlert(
+    @Param('id') id: string,
+    @Param('alertId') alertId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.deleteAlert(req.user.id, id, alertId);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  deleteVehicle(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.deleteVehicle(req.user.id, id);
+  }
+
+  @Patch(':id/interventions/:interventionId')
+  updateIntervention(
+    @Param('id') id: string,
+    @Param('interventionId') interventionId: string,
+    @Body('status') status: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.updateIntervention(req.user.id, id, interventionId, status);
+  }
+
+  @Delete(':id/interventions/:interventionId')
+  @HttpCode(204)
+  deleteIntervention(
+    @Param('id') id: string,
+    @Param('interventionId') interventionId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.deleteIntervention(req.user.id, id, interventionId);
+  }
+}

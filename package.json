@@ -1,0 +1,19 @@
+{
+  "name": "personal-platform",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run start:dev --prefix backend",
+    "build": "npm run build --prefix frontend && npm run build --prefix backend",
+    "validate": "npm run build && npm run test:e2e --prefix backend",
+    "test:e2e": "npm run test:e2e --prefix backend",
+    "diagnose": "powershell -ExecutionPolicy Bypass -File scripts/diagnose-local.ps1",
+    "backup:db": "powershell -ExecutionPolicy Bypass -File scripts/backup-db.ps1",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "prisma:generate": "npm run prisma:generate --prefix backend",
+    "prisma:migrate": "npm run prisma:migrate --prefix backend",
+    "seed": "npm run seed --prefix backend"
+  }
+}

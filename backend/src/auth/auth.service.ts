@@ -1,0 +1,353 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import type { JwtSignOptions } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
+import { CoreService } from '../core/core.service';
+import { MailService } from '../mail/mail.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+
+const REFRESH_COOKIE_NAME = 'refresh_token';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
+    private readonly config: ConfigService,
+    private readonly core: CoreService,
+    private readonly mail: MailService,
+  ) {}
+
+  get refreshCookieName() {
+    return REFRESH_COOKIE_NAME;
+  }
+
+  async register(dto: RegisterDto, meta: { ip?: string; userAgent?: string }) {
+    this.assertInviteCode(dto.inviteCode);
+    const email = dto.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('Email already registered');
+    }
+
+    const user = await this.prisma.user.create({
+      data: {
+        email,
+        username: dto.username,
+        passwordHash: await bcrypt.hash(dto.password, 12),
+        role: 'user',
+        isActive: true,
+        emailVerified: false,
+      },
+    });
+
+    const verification = await this.createEmailVerificationToken(user.id);
+    const emailDelivery = await this.mail.sendVerificationEmail(
+      user.email,
+      verification.raw,
+    );
+    await this.core.logAudit(user.id, 'auth.register', meta);
+    await this.core.logActivity(user.id, 'auth.register', 'core', 'user', user.id);
+
+    return {
+      user: this.publicUser(user),
+      emailDelivery,
+      verification: this.publicVerificationToken(verification.raw),
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto, meta: { ip?: string; userAgent?: string }) {
+    const candidates = await this.prisma.emailVerificationToken.findMany({
+      where: {
+        consumedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    const current = candidates.find((token) =>
+      bcrypt.compareSync(dto.token, token.tokenHash),
+    );
+
+    if (!current) {
+      throw new BadRequestException('Invalid verification token');
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id: current.userId },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+
+    await this.prisma.emailVerificationToken.update({
+      where: { id: current.id },
+      data: { consumedAt: new Date() },
+    });
+    await this.core.logAudit(user.id, 'auth.email_verified', meta);
+    await this.core.logActivity(user.id, 'auth.email_verified', 'core', 'user', user.id);
+
+    return { user: this.publicUser(user) };
+  }
+
+  async resendVerification(
+    dto: ResendVerificationDto,
+    meta: { ip?: string; userAgent?: string },
+  ) {
+    this.assertInviteCode(dto.inviteCode);
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (!user || user.emailVerified) {
+      return { sent: true };
+    }
+
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    const verification = await this.createEmailVerificationToken(user.id);
+    const emailDelivery = await this.mail.sendVerificationEmail(
+      user.email,
+      verification.raw,
+    );
+    await this.core.logAudit(user.id, 'auth.email_verification_resent', meta);
+
+    return {
+      sent: true,
+      emailDelivery,
+      verification: this.publicVerificationToken(verification.raw),
+    };
+  }
+
+  async login(dto: LoginDto, meta: { ip?: string; userAgent?: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase() },
+    });
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (!user.emailVerified) {
+      throw new ForbiddenException('Email is not verified');
+    }
+
+    const validPassword = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!validPassword) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
+    const refresh = await this.createRefreshToken(user.id, meta);
+    await this.core.logAudit(user.id, 'auth.login', meta);
+    await this.core.logActivity(user.id, 'auth.login', 'core', 'user', user.id);
+    return {
+      accessToken: await this.signAccessToken(user),
+      refreshToken: refresh.raw,
+      user: this.publicUser(user),
+    };
+  }
+
+  async refresh(rawToken: string | undefined, meta: { ip?: string; userAgent?: string }) {
+    if (!rawToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const candidates = await this.prisma.refreshToken.findMany({
+      where: {
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+
+    const current = candidates.find((token) =>
+      bcrypt.compareSync(rawToken, token.tokenHash),
+    );
+
+    if (!current || !current.user.isActive) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    const next = await this.createRefreshToken(current.userId, meta);
+    await this.prisma.refreshToken.update({
+      where: { id: current.id },
+      data: {
+        revokedAt: new Date(),
+        lastUsedAt: new Date(),
+        replacedByTokenId: next.id,
+      },
+    });
+    await this.core.logAudit(current.userId, 'auth.refresh', meta);
+
+    return {
+      accessToken: await this.signAccessToken(current.user),
+      refreshToken: next.raw,
+      user: this.publicUser(current.user),
+    };
+  }
+
+  async logout(rawToken: string | undefined) {
+    if (!rawToken) {
+      return;
+    }
+
+    const tokens = await this.prisma.refreshToken.findMany({
+      where: { revokedAt: null },
+    });
+
+    const current = tokens.find((token) =>
+      bcrypt.compareSync(rawToken, token.tokenHash),
+    );
+
+    if (current) {
+      await this.prisma.refreshToken.update({
+        where: { id: current.id },
+        data: { revokedAt: new Date() },
+      });
+      await this.core.logAudit(current.userId, 'auth.logout');
+      await this.core.logActivity(current.userId, 'auth.logout', 'core', 'user', current.userId);
+    }
+  }
+
+  async logoutAll(userId: string) {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.core.logAudit(userId, 'auth.logout_all');
+    await this.core.logActivity(userId, 'auth.logout_all', 'core', 'user', userId);
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('Utilisateur introuvable');
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Mot de passe actuel incorrect');
+    const hash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } });
+    await this.core.logAudit(userId, 'auth.password_changed');
+    await this.core.logActivity(userId, 'auth.password_changed', 'core', 'user', userId);
+    return { success: true };
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    const session = await this.prisma.refreshToken.findFirst({
+      where: { id: sessionId, userId },
+    });
+    if (!session) throw new UnauthorizedException('Session introuvable');
+    await this.prisma.refreshToken.update({
+      where: { id: sessionId },
+      data: { revokedAt: new Date() },
+    });
+    await this.core.logAudit(userId, 'auth.session_revoked', { targetId: sessionId });
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    return this.publicUser(user);
+  }
+
+  private async signAccessToken(user: { id: string; email: string; role: string }) {
+    const options: JwtSignOptions = {
+      secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
+      expiresIn: this.config.get<string>(
+        'JWT_ACCESS_EXPIRES_IN',
+        '15m',
+      ) as JwtSignOptions['expiresIn'],
+    };
+
+    return this.jwt.signAsync(
+      { sub: user.id, email: user.email, role: user.role },
+      options,
+    );
+  }
+
+  private async createRefreshToken(
+    userId: string,
+    meta: { ip?: string; userAgent?: string },
+  ) {
+    const raw = randomBytes(48).toString('base64url');
+    const tokenHash = await bcrypt.hash(raw, 12);
+    const days = Number(this.config.get<string>('JWT_REFRESH_DAYS', '14'));
+    const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+    const token = await this.prisma.refreshToken.create({
+      data: {
+        userId,
+        tokenHash,
+        ipAddress: meta.ip,
+        userAgent: meta.userAgent,
+        expiresAt,
+      },
+    });
+
+    return { ...token, raw };
+  }
+
+  private async createEmailVerificationToken(userId: string) {
+    const raw = randomBytes(32).toString('base64url');
+    const tokenHash = await bcrypt.hash(raw, 12);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const token = await this.prisma.emailVerificationToken.create({
+      data: {
+        userId,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    return { ...token, raw };
+  }
+
+  private assertInviteCode(inviteCode?: string) {
+    const expected = this.config.get<string>('SIGNUP_INVITE_CODE');
+    if (expected && inviteCode !== expected) {
+      throw new ForbiddenException('Invalid invite code');
+    }
+  }
+
+  private publicVerificationToken(raw: string) {
+    if (this.config.get<string>('NODE_ENV') === 'production') {
+      return undefined;
+    }
+    return { token: raw };
+  }
+
+  private publicUser(user: {
+    id: string;
+    email: string;
+    username: string | null;
+    role: string;
+    emailVerified: boolean;
+  }) {
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      role: user.role,
+      emailVerified: user.emailVerified,
+    };
+  }
+}
