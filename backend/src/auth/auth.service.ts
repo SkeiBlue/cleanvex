@@ -263,6 +263,55 @@ export class AuthService {
     return { success: true };
   }
 
+  async forgotPassword(email: string) {
+    // Réponse identique que l'email existe ou non (anti-énumération)
+    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user || !user.isActive || !user.emailVerified) return { sent: true };
+
+    // Invalider les anciens tokens
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+
+    const raw = randomBytes(32).toString('base64url');
+    const tokenHash = await bcrypt.hash(raw, 12);
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1h
+      },
+    });
+
+    await this.mail.sendPasswordResetEmail(user.email, raw);
+    await this.core.logAudit(user.id, 'auth.forgot_password');
+    return { sent: true };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const candidates = await this.prisma.passwordResetToken.findMany({
+      where: { consumedAt: null, expiresAt: { gt: new Date() } },
+    });
+
+    const current = candidates.find(t => bcrypt.compareSync(token, t.tokenHash));
+    if (!current) throw new BadRequestException('Token invalide ou expiré.');
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: current.userId }, data: { passwordHash: hash } });
+    await this.prisma.passwordResetToken.update({
+      where: { id: current.id },
+      data: { consumedAt: new Date() },
+    });
+    // Révoquer toutes les sessions actives par sécurité
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: current.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.core.logAudit(current.userId, 'auth.password_reset');
+    return { success: true };
+  }
+
   async revokeSession(userId: string, sessionId: string) {
     const session = await this.prisma.refreshToken.findFirst({
       where: { id: sessionId, userId },

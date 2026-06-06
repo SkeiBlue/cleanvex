@@ -12,6 +12,25 @@ export class RemindersService {
     private readonly mail: MailService,
   ) {}
 
+  /** Tous les jours à 03h00 — nettoyage tokens expirés */
+  @Cron('0 3 * * *')
+  async cleanupExpiredTokens() {
+    const now = new Date();
+
+    const [refreshTokens, verificationTokens] = await Promise.all([
+      this.prisma.refreshToken.deleteMany({
+        where: { expiresAt: { lt: now } },
+      }),
+      this.prisma.emailVerificationToken.deleteMany({
+        where: { expiresAt: { lt: now } },
+      }),
+    ]);
+
+    this.logger.log(
+      `Nettoyage tokens — refresh: ${refreshTokens.count} · vérification: ${verificationTokens.count}`,
+    );
+  }
+
   /** Tous les jours à 08h00 */
   @Cron('0 8 * * *')
   async dailyReminders() {

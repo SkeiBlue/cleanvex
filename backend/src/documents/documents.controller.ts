@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -14,8 +15,33 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
+import type { FileFilterCallback } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DocumentsService } from './documents.service';
+
+const MAX_SIZE = 20 * 1024 * 1024; // 20 Mo
+
+const ALLOWED_MIMES = new Set([
+  // Images
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  // Documents
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv',
+  // Archives
+  'application/zip', 'application/x-zip-compressed',
+]);
+
+function mimeFilter(_req: Request, file: Express.Multer.File, cb: FileFilterCallback) {
+  if (ALLOWED_MIMES.has(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new BadRequestException(`Type de fichier non autorisé : ${file.mimetype}`));
+  }
+}
 
 type AuthenticatedRequest = Request & {
   user: { id: string; email: string; role: string };
@@ -32,7 +58,7 @@ export class DocumentsController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_SIZE }, fileFilter: mimeFilter }))
   upload(
     @UploadedFile() file: Express.Multer.File,
     @Body('expiresAt') expiresAt: string | undefined,

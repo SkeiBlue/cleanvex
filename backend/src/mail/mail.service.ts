@@ -134,6 +134,43 @@ export class MailService {
     }
   }
 
+  async sendPasswordResetEmail(email: string, token: string) {
+    if (!this.isEnabled) {
+      this.logger.debug('SMTP disabled, password reset email not sent.');
+      return { sent: false };
+    }
+
+    const frontendUrl = this.config.get<string>('APP_PUBLIC_URL', 'http://localhost:5173');
+    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const transporter = nodemailer.createTransport({
+      host: this.config.getOrThrow<string>('SMTP_HOST'),
+      port: Number(this.config.get<string>('SMTP_PORT', '587')),
+      secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
+      auth: this.smtpAuth(),
+    });
+
+    try {
+      await transporter.sendMail({
+        from: this.config.get<string>('MAIL_FROM', 'Personal Platform <no-reply@example.local>'),
+        to: email,
+        subject: '🔑 Réinitialisation de ton mot de passe',
+        text: `Clique sur ce lien pour réinitialiser ton mot de passe (valable 1h) :\n\n${resetUrl}\n\nSi tu n'es pas à l'origine de cette demande, ignore cet email.`,
+        html: `
+          <div style="background:#0c1029;color:#c9d1e0;font-family:system-ui,sans-serif;padding:32px;max-width:520px;margin:0 auto;border-radius:12px">
+            <h2 style="color:#a78bfa;margin:0 0 16px">Réinitialisation du mot de passe</h2>
+            <p>Clique sur le bouton ci-dessous pour définir un nouveau mot de passe. Ce lien est valable <strong>1 heure</strong>.</p>
+            <a href="${resetUrl}" style="display:inline-block;margin:16px 0;padding:12px 24px;background:#7c3aed;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Réinitialiser mon mot de passe</a>
+            <p style="color:#475569;font-size:13px">Si tu n'as pas demandé cette réinitialisation, ignore cet email. Ton mot de passe ne sera pas modifié.</p>
+          </div>`,
+      });
+      return { sent: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Email delivery failed';
+      this.logger.warn(`Password reset email failed: ${message}`);
+      return { sent: false, error: message };
+    }
+  }
+
   private smtpAuth() {
     const user = this.config.get<string>('SMTP_USER');
     const pass = this.config.get<string>('SMTP_PASS');
