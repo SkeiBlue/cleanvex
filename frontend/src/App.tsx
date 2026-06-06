@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -6,19 +6,23 @@ import { Sidebar } from './components/Sidebar'
 import { TopHeader } from './components/TopHeader'
 import { LoginScreen } from './components/LoginScreen'
 import { CommandPalette } from './components/CommandPalette'
-import { DashboardPage } from './pages/DashboardPage'
-import { VehiclesPage } from './pages/VehiclesPage'
-import { FinancesPage } from './pages/FinancesPage'
-import { StockPage } from './pages/StockPage'
-import { AgendaPage } from './pages/AgendaPage'
-import { RealEstatePage } from './pages/RealEstatePage'
-import { DocumentsPage } from './pages/DocumentsPage'
-import { ContactsPage } from './pages/ContactsPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { ReportsPage } from './pages/ReportsPage'
-import { BackupsPage } from './pages/BackupsPage'
 import { ModuleGuard } from './components/ModuleGuard'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { PageLoader } from './components/PageLoader'
 import type { SearchResult } from './types'
+
+/* ── Lazy loading des pages (code splitting par route) ── */
+const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const VehiclesPage   = lazy(() => import('./pages/VehiclesPage').then(m => ({ default: m.VehiclesPage })))
+const FinancesPage   = lazy(() => import('./pages/FinancesPage').then(m => ({ default: m.FinancesPage })))
+const StockPage      = lazy(() => import('./pages/StockPage').then(m => ({ default: m.StockPage })))
+const AgendaPage     = lazy(() => import('./pages/AgendaPage').then(m => ({ default: m.AgendaPage })))
+const RealEstatePage = lazy(() => import('./pages/RealEstatePage').then(m => ({ default: m.RealEstatePage })))
+const DocumentsPage  = lazy(() => import('./pages/DocumentsPage').then(m => ({ default: m.DocumentsPage })))
+const ContactsPage   = lazy(() => import('./pages/ContactsPage').then(m => ({ default: m.ContactsPage })))
+const SettingsPage   = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const ReportsPage    = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
+const BackupsPage    = lazy(() => import('./pages/BackupsPage').then(m => ({ default: m.BackupsPage })))
 
 type FormEv = { preventDefault(): void }
 
@@ -111,7 +115,11 @@ function AppLayout() {
         />
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
         <div className="content">
-          <Outlet />
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </div>
       </main>
     </div>

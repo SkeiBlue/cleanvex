@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 import type { ReactNode } from 'react'
 import type { ModuleItem, User } from '../types'
 import { identifyUser, initAnalytics, resetAnalytics, trackEvent } from '../analytics'
+import { parseApiError } from '../hooks/useApiError'
 
 export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api'
 
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify({ email, password }),
     })
-    if (!r.ok) return 'Connexion refusee.'
+    if (!r.ok) return parseApiError(r, 'Connexion refusée.')
     const d = await r.json()
     setAccessToken(d.accessToken)
     setUser(d.user)
@@ -99,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify({ email, password, username, inviteCode }),
     })
-    if (!r.ok) return 'Inscription refusee.'
+    if (!r.ok) return parseApiError(r, 'Inscription refusée.')
     trackEvent('signup_created')
     return 'Compte cree. Verifie email avant connexion.'
   }
@@ -109,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       credentials: 'include', body: JSON.stringify({ token }),
     })
-    if (!r.ok) return 'Verification email refusee.'
+    if (!r.ok) return parseApiError(r, 'Vérification email refusée.')
     trackEvent('email_verified')
     return 'Email verifie. Connexion disponible.'
   }

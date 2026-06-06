@@ -53,7 +53,7 @@ export function DocumentsPage() {
 
   const reload = useCallback(async () => {
     const r = await authedFetch('/documents')
-    if (r.ok) setDocuments(await r.json())
+    if (r.ok) { const d = await r.json(); setDocuments(d.data ?? d) }
     setIsLoading(false)
   }, [authedFetch])
 

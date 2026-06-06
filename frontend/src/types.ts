@@ -1,3 +1,12 @@
+/** Réponse paginée standard du backend */
+export type Paginated<T> = {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+}
+
 export type User = {
   id: string
   email: string

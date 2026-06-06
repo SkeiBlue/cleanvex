@@ -51,7 +51,7 @@ export function StockPage() {
       authedFetch('/stock/loans'),
     ])
     if (si.ok) setStockItems(await si.json())
-    if (sm.ok) setMovements(await sm.json())
+    if (sm.ok) { const d = await sm.json(); setMovements(d.data ?? d) }
     if (sl.ok) setToolLoans(await sl.json())
   }, [authedFetch])
 

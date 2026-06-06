@@ -63,7 +63,7 @@ export function FinancesPage() {
     if (s.ok) setFinanceSummary(await s.json())
     if (a.ok) setFinancialAccounts(await a.json())
     if (c.ok) setFinancialCategories(await c.json())
-    if (t.ok) setFinancialTransactions(await t.json())
+    if (t.ok) { const d = await t.json(); setFinancialTransactions(d.data ?? d) }
   }, [authedFetch])
 
   useEffect(() => {

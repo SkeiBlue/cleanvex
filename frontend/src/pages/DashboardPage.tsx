@@ -104,8 +104,8 @@ export function DashboardPage() {
       if (vr.ok) setVehicles(await vr.json())
       if (sr.ok) { const d = await sr.json(); setStockCount(d.length) }
       if (rr.ok) setReport(await rr.json())
-      if (dr.ok) setDocuments(await dr.json())
-      if (tr.ok) setTransactions(await tr.json())
+      if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
+      if (tr.ok) { const d = await tr.json(); setTransactions(d.data ?? d) }
       setIsLoading(false)
     }
     load()
