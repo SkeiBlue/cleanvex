@@ -194,7 +194,12 @@ function AuthPage() {
 
 function ProtectedRoute() {
   const { user, isLoading } = useAuth()
-  if (isLoading) return <div className="loading-screen">Chargement...</div>
+  if (isLoading) return (
+    <div className="loading-screen">
+      <div className="loading-screen-spinner" />
+      <div className="loading-screen-logo">Mon<span>Espace</span></div>
+    </div>
+  )
   if (!user) return <Navigate to="/login" replace />
   return <Outlet />
 }

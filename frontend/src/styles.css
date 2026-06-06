@@ -63,14 +63,31 @@ body::after {
 /* LOADING */
 .loading-screen {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100vh;
   background: var(--bg);
+  gap: 20px;
+}
+.loading-screen-spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(124,58,237,0.2);
+  border-top-color: var(--p1);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.loading-screen-logo {
+  font-size: 22px;
+  font-weight: 700;
   color: var(--text2);
-  font-family: var(--mono);
-  font-size: 14px;
-  letter-spacing: 2px;
+  letter-spacing: -0.3px;
+}
+.loading-screen-logo span {
+  background: linear-gradient(90deg, var(--p1), var(--p3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 /* ─── SIDEBAR ─── */
