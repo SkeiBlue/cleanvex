@@ -141,14 +141,14 @@ export function VehiclesPage() {
   const reload = useCallback(async () => {
     const [vr, dr] = await Promise.all([authedFetch('/vehicles'), authedFetch('/documents')])
     if (vr.ok) setVehicles(await vr.json())
-    if (dr.ok) setDocuments(await dr.json())
+    if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
   }, [authedFetch])
 
   useEffect(() => {
     async function load() {
       const [vr, dr] = await Promise.all([authedFetch('/vehicles'), authedFetch('/documents')])
       if (vr.ok) setVehicles(await vr.json())
-      if (dr.ok) setDocuments(await dr.json())
+      if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
     }
     load()
   }, [authedFetch])
