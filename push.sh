@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────
 #  push.sh — Publier les mises à jour sur GitHub
-#  Usage : ./push.sh [message de commit optionnel]
+#  Usage :
+#    ./push.sh                       → interactif (demande message)
+#    ./push.sh "message de commit"   → message direct
+#    ./push.sh --auto "message"      → silencieux (pas de prompt, pour scripts)
 # ─────────────────────────────────────────────
 
 set -e
 cd "$(dirname "$0")"
 
-# ── Couleurs ──────────────────────────────────
 BOLD="\033[1m"
 GREEN="\033[32m"
 CYAN="\033[36m"
@@ -22,34 +24,36 @@ warn() { echo -e "${YELLOW}⚠${RESET}  $*"; }
 err()  { echo -e "${RED}✗${RESET}  $*"; exit 1; }
 sep()  { echo -e "${GREY}──────────────────────────────────────────${RESET}"; }
 
+# ── Mode auto (appelé par les scripts) ────────
+AUTO=false
+if [ "$1" = "--auto" ]; then
+  AUTO=true
+  shift
+fi
+
+COMMIT_MSG="${1:-}"
+
 echo ""
 echo -e "${BOLD}  🚀  Dashboard Personnel — Push GitHub${RESET}"
 sep
 
-# ── 1. Vérifier que git est initialisé ────────
-if [ ! -d ".git" ]; then
-  err "Pas de dépôt git trouvé. Lance 'git init' d'abord."
-fi
-
-# ── 2. Remote GitHub ───────────────────────────
+# ── 1. Remote ─────────────────────────────────
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-
 if [ -z "$REMOTE_URL" ]; then
-  warn "Aucun remote 'origin' configuré."
-  echo ""
-  echo -e "  ${BOLD}URL GitHub${RESET} (ex: https://github.com/tonpseudo/pj.git) :"
-  read -r -p "  → " GITHUB_URL
-  echo ""
-  if [ -z "$GITHUB_URL" ]; then
-    err "URL vide. Annulé."
+  if [ "$AUTO" = true ]; then
+    err "Aucun remote configuré. Lance './push.sh' manuellement une première fois."
   fi
+  warn "Aucun remote 'origin' configuré."
+  echo -e "  ${BOLD}URL GitHub${RESET} (ex: https://github.com/user/repo.git) :"
+  read -r -p "  → " GITHUB_URL
+  [ -z "$GITHUB_URL" ] && err "URL vide. Annulé."
   git remote add origin "$GITHUB_URL"
   ok "Remote ajouté : $GITHUB_URL"
 else
   ok "Remote : $REMOTE_URL"
 fi
 
-# ── 3. Statut du dépôt ────────────────────────
+# ── 2. Statut ─────────────────────────────────
 sep
 log "Analyse des changements…"
 echo ""
@@ -64,75 +68,56 @@ UNTRACKED=$(git ls-files --others --exclude-standard \
   || true)
 
 if [ -z "$CHANGED" ] && [ -z "$STAGED" ] && [ -z "$UNTRACKED" ]; then
-  ok "Rien à committer. Tentative de push…"
-  echo ""
+  ok "Rien à committer. Push en cours…"
 else
-  # Afficher les fichiers modifiés
-  if [ -n "$STAGED" ]; then
-    echo -e "${GREEN}  Déjà stagés :${RESET}"
-    echo "$STAGED" | sed 's/^/    ✓ /'
-  fi
-  if [ -n "$CHANGED" ]; then
-    echo -e "${YELLOW}  Modifiés :${RESET}"
-    echo "$CHANGED" | sed 's/^/    ~ /'
-  fi
-  if [ -n "$UNTRACKED" ]; then
-    echo -e "${CYAN}  Nouveaux fichiers :${RESET}"
-    echo "$UNTRACKED" | sed 's/^/    + /'
-  fi
+  [ -n "$STAGED"    ] && echo -e "${GREEN}  Stagés :${RESET}"    && echo "$STAGED"    | sed 's/^/    ✓ /'
+  [ -n "$CHANGED"   ] && echo -e "${YELLOW}  Modifiés :${RESET}"  && echo "$CHANGED"   | sed 's/^/    ~ /'
+  [ -n "$UNTRACKED" ] && echo -e "${CYAN}  Nouveaux :${RESET}"   && echo "$UNTRACKED" | sed 's/^/    + /'
   echo ""
 
-  # ── 4. Message de commit ──────────────────
-  if [ -n "$1" ]; then
-    COMMIT_MSG="$1"
-    ok "Message : $COMMIT_MSG"
-  else
-    echo -e "  ${BOLD}Message de commit${RESET} (Entrée = message auto) :"
-    read -r -p "  → " COMMIT_MSG
-    if [ -z "$COMMIT_MSG" ]; then
+  # Message de commit
+  if [ -z "$COMMIT_MSG" ]; then
+    if [ "$AUTO" = true ]; then
       COMMIT_MSG="chore: update $(date '+%d/%m/%Y %H:%M')"
+    else
+      echo -e "  ${BOLD}Message de commit${RESET} (Entrée = auto) :"
+      read -r -p "  → " COMMIT_MSG
+      [ -z "$COMMIT_MSG" ] && COMMIT_MSG="chore: update $(date '+%d/%m/%Y %H:%M')"
     fi
   fi
+  ok "Message : $COMMIT_MSG"
   echo ""
 
-  # ── 5. Stage + commit ─────────────────────
+  # Stage + commit
   log "Stage des fichiers…"
-  # Stager les modifiés + nouveaux (en excluant les artefacts)
   git add -A
-  git reset HEAD ".claude/" 2>/dev/null || true
-  git reset HEAD "*.zip" 2>/dev/null || true
+  git reset HEAD ".claude/"        2>/dev/null || true
+  git reset HEAD "*.zip"           2>/dev/null || true
   git reset HEAD "frontend/dev-dist/" 2>/dev/null || true
   git reset HEAD "frontend/package-lock 2.json" 2>/dev/null || true
 
   STAGED_FINAL=$(git diff --cached --name-only)
-  if [ -z "$STAGED_FINAL" ]; then
-    ok "Rien de nouveau à committer."
-  else
+  if [ -n "$STAGED_FINAL" ]; then
     git commit -m "$COMMIT_MSG"
-    ok "Commit créé : '$COMMIT_MSG'"
+    ok "Commit créé."
   fi
 fi
 
-# ── 6. Push ───────────────────────────────────
+# ── 3. Push ───────────────────────────────────
 sep
 log "Push vers GitHub…"
 echo ""
-
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 if git push -u origin "$BRANCH" 2>&1; then
   echo ""
   sep
   echo -e "${GREEN}${BOLD}  ✅  Push réussi !${RESET}"
-  echo ""
-  REMOTE_URL=$(git remote get-url origin)
-  REPO_URL=$(echo "$REMOTE_URL" | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
+  REPO_URL=$(git remote get-url origin | sed 's/\.git$//' | sed 's|git@github.com:|https://github.com/|')
   echo -e "  ${GREY}Branche :${RESET} $BRANCH"
   echo -e "  ${GREY}Repo    :${RESET} $REPO_URL"
-  echo -e "  ${GREY}Commits :${RESET} $(git rev-list --count origin/$BRANCH 2>/dev/null || git rev-list --count HEAD) au total"
   sep
 else
-  echo ""
-  err "Push échoué. Vérifie tes droits GitHub ou l'URL du remote."
+  err "Push échoué. Vérifie tes droits GitHub."
 fi
 echo ""

@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { ModuleCacheService } from '../core/module-cache.service';
 import { paginate, PaginationDto } from '../core/pagination.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
@@ -8,7 +9,10 @@ import { UpdateFinancialTransactionDto } from './dto/update-financial-transactio
 
 @Injectable()
 export class FinancesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly moduleCache: ModuleCacheService,
+  ) {}
 
   async summary(ownerId: string) {
     await this.ensureFinancesEnabled();
@@ -186,13 +190,7 @@ export class FinancesService {
     return { deleted: true };
   }
 
-  private async ensureFinancesEnabled() {
-    const module = await this.prisma.module.findUnique({
-      where: { key: 'finances' },
-    });
-
-    if (module && !module.isEnabled) {
-      throw new ForbiddenException('Finances module is disabled');
-    }
+  private ensureFinancesEnabled(): Promise<void> {
+    return this.moduleCache.assertEnabled('finances');
   }
 }

@@ -63,6 +63,7 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tokenHash])
   @@map("refresh_tokens")
 }
 
@@ -231,6 +232,7 @@ model VehicleMileageLog {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@index([vehicleId])
   @@map("vehicle_mileage_logs")
 }
 
@@ -247,6 +249,7 @@ model VehicleIntervention {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@index([vehicleId])
   @@map("vehicle_interventions")
 }
 
@@ -260,6 +263,7 @@ model VehicleAlert {
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@index([vehicleId])
   @@map("vehicle_alerts")
 }
 
@@ -399,6 +403,7 @@ model FinancialTransaction {
   category FinancialCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
+  @@index([ownerId, operationDate(sort: Desc)])
   @@index([sourceModule, sourceType, sourceId])
   @@map("financial_transactions")
 }
@@ -501,6 +506,7 @@ model Subtask {
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
+  @@index([taskId])
   @@map("subtasks")
 }
 
@@ -520,6 +526,7 @@ model Notification {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([ownerId])
+  @@index([ownerId, isRead])
   @@index([targetType, targetId])
   @@map("notifications")
 }
@@ -537,6 +544,8 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -551,6 +560,8 @@ model ActivityLog {
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  @@index([userId])
+  @@index([moduleKey])
   @@map("activity_logs")
 }
 

@@ -1,9 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ModuleCacheService } from '../core/module-cache.service';
 import { paginate, PaginationDto } from '../core/pagination.helper';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'crypto';
@@ -18,6 +18,7 @@ export class DocumentsService {
 
   constructor(
     private readonly prisma: PrismaService,
+    private readonly moduleCache: ModuleCacheService,
     config: ConfigService,
   ) {
     this.storageRoot = resolve(config.get<string>('PRIVATE_FILES_DIR', 'private-files'));
@@ -120,14 +121,8 @@ export class DocumentsService {
     unlink(filePath, () => {});
   }
 
-  private async ensureDocumentsEnabled() {
-    const module = await this.prisma.module.findUnique({
-      where: { key: 'documents' },
-    });
-
-    if (module && !module.isEnabled) {
-      throw new ForbiddenException('Documents module is disabled');
-    }
+  private ensureDocumentsEnabled(): Promise<void> {
+    return this.moduleCache.assertEnabled('documents');
   }
 
   private parseExpirationDate(expiresAt?: string) {

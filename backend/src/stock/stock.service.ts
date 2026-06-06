@@ -1,9 +1,9 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ModuleCacheService } from '../core/module-cache.service';
 import { paginate, PaginationDto } from '../core/pagination.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConsumeStockDto } from './dto/consume-stock.dto';
@@ -14,7 +14,10 @@ import { UpdateStockItemDto } from './dto/update-stock-item.dto';
 
 @Injectable()
 export class StockService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly moduleCache: ModuleCacheService,
+  ) {}
 
   async items(ownerId: string) {
     await this.ensureStockEnabled();
@@ -252,12 +255,7 @@ export class StockService {
     return item;
   }
 
-  private async ensureStockEnabled() {
-    const module = await this.prisma.module.findUnique({
-      where: { key: 'stock' },
-    });
-    if (module && !module.isEnabled) {
-      throw new ForbiddenException('Stock module is disabled');
-    }
+  private ensureStockEnabled(): Promise<void> {
+    return this.moduleCache.assertEnabled('stock');
   }
 }
