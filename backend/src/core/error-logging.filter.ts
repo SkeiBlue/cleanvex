@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Injectable,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -17,6 +17,7 @@ export class ErrorLoggingFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
     const status =
       exception instanceof HttpException
         ? exception.getStatus()
@@ -37,7 +38,10 @@ export class ErrorLoggingFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
+      error: HttpStatus[status] ?? 'UNKNOWN',
       message,
+      timestamp: new Date().toISOString(),
+      path: request.url,
     });
   }
 

@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { paginate, PaginationDto } from '../core/pagination.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConsumeStockDto } from './dto/consume-stock.dto';
 import { CreateStockItemDto } from './dto/create-stock-item.dto';
@@ -26,13 +27,20 @@ export class StockService {
     });
   }
 
-  async movements(ownerId: string) {
+  async movements(ownerId: string, { page = 1, limit = 20 }: PaginationDto = {}) {
     await this.ensureStockEnabled();
-    return this.prisma.stockMovement.findMany({
-      where: { ownerId },
-      include: { stockItem: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const where = { ownerId };
+    const [data, total] = await Promise.all([
+      this.prisma.stockMovement.findMany({
+        where,
+        include: { stockItem: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.stockMovement.count({ where }),
+    ]);
+    return paginate(data, total, page, limit);
   }
 
   async createItem(ownerId: string, dto: CreateStockItemDto) {

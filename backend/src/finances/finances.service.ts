@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { paginate, PaginationDto } from '../core/pagination.helper';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
 import { CreateFinancialCategoryDto } from './dto/create-financial-category.dto';
@@ -11,32 +12,27 @@ export class FinancesService {
 
   async summary(ownerId: string) {
     await this.ensureFinancesEnabled();
-    const [accounts, transactions] = await Promise.all([
+    // Agrégation directe en DB — pas de chargement en mémoire
+    const [accounts, aggregate, transactionCount] = await Promise.all([
       this.accounts(ownerId),
-      this.transactions(ownerId),
+      this.prisma.financialTransaction.groupBy({
+        by: ['type'],
+        where: { ownerId },
+        _sum: { amount: true },
+      }),
+      this.prisma.financialTransaction.count({ where: { ownerId } }),
     ]);
 
-    const totals = transactions.reduce(
-      (acc, transaction) => {
-        const amount = Number(transaction.amount);
-        if (transaction.type === 'income') acc.income += amount;
-        if (transaction.type === 'expense') acc.expense += amount;
-        return acc;
-      },
-      { income: 0, expense: 0 },
-    );
-
-    const initialBalance = accounts.reduce(
-      (sum, account) => sum + Number(account.initialBalance),
-      0,
-    );
+    const income  = Number(aggregate.find(r => r.type === 'income')?._sum.amount  ?? 0);
+    const expense = Number(aggregate.find(r => r.type === 'expense')?._sum.amount ?? 0);
+    const initialBalance = accounts.reduce((sum, a) => sum + Number(a.initialBalance), 0);
 
     return {
       accountCount: accounts.length,
-      transactionCount: transactions.length,
-      income: totals.income,
-      expense: totals.expense,
-      balance: initialBalance + totals.income - totals.expense,
+      transactionCount,
+      income,
+      expense,
+      balance: initialBalance + income - expense,
     };
   }
 
@@ -81,16 +77,20 @@ export class FinancesService {
     });
   }
 
-  async transactions(ownerId: string) {
+  async transactions(ownerId: string, { page = 1, limit = 20 }: PaginationDto = {}) {
     await this.ensureFinancesEnabled();
-    return this.prisma.financialTransaction.findMany({
-      where: { ownerId },
-      include: {
-        account: true,
-        category: true,
-      },
-      orderBy: { operationDate: 'desc' },
-    });
+    const where = { ownerId };
+    const [data, total] = await Promise.all([
+      this.prisma.financialTransaction.findMany({
+        where,
+        include: { account: true, category: true },
+        orderBy: { operationDate: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.financialTransaction.count({ where }),
+    ]);
+    return paginate(data, total, page, limit);
   }
 
   async createTransaction(ownerId: string, dto: CreateFinancialTransactionDto) {

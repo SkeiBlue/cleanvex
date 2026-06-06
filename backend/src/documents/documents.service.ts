@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { paginate, PaginationDto } from '../core/pagination.helper';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'crypto';
 import { mkdirSync, unlink } from 'fs';
@@ -23,22 +24,21 @@ export class DocumentsService {
     mkdirSync(this.storageRoot, { recursive: true });
   }
 
-  async list(ownerId: string) {
+  async list(ownerId: string, { page = 1, limit = 50 }: PaginationDto = {}) {
     await this.ensureDocumentsEnabled();
-    return this.prisma.document.findMany({
-      where: { ownerId },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        visibility: true,
-        mimeType: true,
-        size: true,
-        expiresAt: true,
-        createdAt: true,
-      },
-    });
+    const where = { ownerId };
+    const select = { id: true, name: true, type: true, visibility: true, mimeType: true, size: true, expiresAt: true, createdAt: true };
+    const [data, total] = await Promise.all([
+      this.prisma.document.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.document.count({ where }),
+    ]);
+    return paginate(data, total, page, limit);
   }
 
   async store(

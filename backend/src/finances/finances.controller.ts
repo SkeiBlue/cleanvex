@@ -1,8 +1,9 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { toCsv } from '../core/csv.helper';
+import { PaginationDto } from '../core/pagination.helper';
 import { CreateFinancialAccountDto } from './dto/create-financial-account.dto';
 import { CreateFinancialCategoryDto } from './dto/create-financial-category.dto';
 import { CreateFinancialTransactionDto } from './dto/create-financial-transaction.dto';
@@ -95,8 +96,9 @@ export class FinancesController {
 
   @Get('transactions/export.csv')
   async exportCsv(@Req() req: AuthenticatedRequest, @Res() res: Response) {
-    const txs = await this.finances.transactions(req.user.id) as Record<string, unknown>[];
-    const rows = txs.map(t => ({
+    const { data: txs } = await this.finances.transactions(req.user.id, { page: 1, limit: 10_000 });
+    const txsTyped = txs as Record<string, unknown>[];
+    const rows = txsTyped.map(t => ({
       date: t['operationDate'], type: t['type'], label: t['label'], amount: t['amount'],
       category: (t['category'] as Record<string, unknown> | null)?.['name'] ?? '',
       account:  (t['account']  as Record<string, unknown>)?.['name'] ?? '',
@@ -108,8 +110,8 @@ export class FinancesController {
   }
 
   @Get('transactions')
-  transactions(@Req() req: AuthenticatedRequest) {
-    return this.finances.transactions(req.user.id);
+  transactions(@Req() req: AuthenticatedRequest, @Query() pagination: PaginationDto) {
+    return this.finances.transactions(req.user.id, pagination);
   }
 
   @Post('transactions')

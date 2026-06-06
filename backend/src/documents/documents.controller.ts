@@ -7,6 +7,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UploadedFile,
@@ -16,6 +17,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import type { FileFilterCallback } from 'multer';
+import { PaginationDto } from '../core/pagination.helper';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { DocumentsService } from './documents.service';
 
@@ -53,8 +55,8 @@ export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
 
   @Get()
-  list(@Req() req: AuthenticatedRequest) {
-    return this.documents.list(req.user.id);
+  list(@Req() req: AuthenticatedRequest, @Query() pagination: PaginationDto) {
+    return this.documents.list(req.user.id, pagination);
   }
 
   @Post()
