@@ -33,6 +33,11 @@ export function SettingsPage() {
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [settings, setSettings] = useState<UserSetting[]>([])
   const [modules, setModules] = useState<ModuleItem[]>([])
+  const [totpQr, setTotpQr] = useState<string | null>(null)
+  const [totpSecret, setTotpSecret] = useState<string | null>(null)
+  const [totpEnabled, setTotpEnabled] = useState(false)
+  const [totpCode, setTotpCode] = useState('')
+  const [totpMsg, setTotpMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([])
@@ -43,6 +48,25 @@ export function SettingsPage() {
 
   function setOk(msg: string) { setMessage(msg); setMessageType('ok') }
   function setErr(msg: string) { setMessage(msg); setMessageType('err') }
+
+  async function handle2faSetup() {
+    const r = await authedFetch('/auth/2fa/setup', { method: 'POST' })
+    if (!r.ok) { setTotpMsg({ text: 'Erreur lors de la génération.', ok: false }); return }
+    const d = await r.json()
+    setTotpQr(d.qrDataUrl); setTotpSecret(d.secret); setTotpCode(''); setTotpMsg(null)
+  }
+
+  async function handle2faEnable() {
+    const r = await authedFetch('/auth/2fa/enable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: totpCode }) })
+    if (!r.ok) { setTotpMsg({ text: 'Code invalide, réessaye.', ok: false }); return }
+    setTotpEnabled(true); setTotpQr(null); setTotpSecret(null); setTotpMsg({ text: '2FA activé avec succès !', ok: true })
+  }
+
+  async function handle2faDisable() {
+    const r = await authedFetch('/auth/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: totpCode }) })
+    if (!r.ok) { setTotpMsg({ text: 'Code invalide.', ok: false }); return }
+    setTotpEnabled(false); setTotpCode(''); setTotpMsg({ text: '2FA désactivé.', ok: true })
+  }
 
   async function load() {
     const [p, s, m, act, aud, err] = await Promise.all([
@@ -250,6 +274,79 @@ export function SettingsPage() {
                 <Shield size={16} />Changer le mot de passe
               </button>
             </form>
+          </article>
+
+          {/* 2FA */}
+          <article className="panel">
+            <div className="panel-header">
+              <div><span className="panel-kicker">Sécurité</span><h2>Authentification à deux facteurs</h2></div>
+              <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '20px', background: totpEnabled ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)', color: totpEnabled ? '#4ade80' : '#f87171', border: `1px solid ${totpEnabled ? '#4ade80' : '#f87171'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                {totpEnabled ? '✓ ACTIVÉ' : '✗ DÉSACTIVÉ'}
+              </span>
+            </div>
+            <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {totpMsg && (
+                <div style={{ fontSize: '12px', padding: '8px 12px', borderRadius: '8px', background: totpMsg.ok ? 'rgba(74,222,128,0.08)' : 'rgba(248,113,113,0.08)', color: totpMsg.ok ? '#4ade80' : '#f87171', border: `1px solid ${totpMsg.ok ? '#4ade8040' : '#f8717140'}` }}>
+                  {totpMsg.text}
+                </div>
+              )}
+              {!totpEnabled && !totpQr && (
+                <div>
+                  <p style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '12px' }}>
+                    Protège ton compte avec une application TOTP (Authy, Google Authenticator, etc.).
+                    Le code change toutes les 30 secondes.
+                  </p>
+                  <button className="primary-action" onClick={handle2faSetup} style={{ width: 'auto' }}>
+                    <ShieldCheck size={15} /> Configurer le 2FA
+                  </button>
+                </div>
+              )}
+              {!totpEnabled && totpQr && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text2)' }}>
+                    1. Scanne ce QR code avec ton application TOTP<br />
+                    2. Entre le code à 6 chiffres pour confirmer
+                  </p>
+                  <img src={totpQr} alt="QR Code 2FA" style={{ width: '200px', height: '200px', borderRadius: '12px', alignSelf: 'center' }} />
+                  {totpSecret && (
+                    <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', textAlign: 'center', wordBreak: 'break-all' }}>
+                      Secret: {totpSecret}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Code à 6 chiffres" maxLength={6}
+                      style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '14px', fontFamily: 'var(--mono)', textAlign: 'center', outline: 'none', letterSpacing: '0.2em' }}
+                    />
+                    <button className="primary-action" onClick={handle2faEnable} style={{ width: 'auto' }} disabled={totpCode.length !== 6}>
+                      Activer
+                    </button>
+                  </div>
+                </div>
+              )}
+              {totpEnabled && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--text3)' }}>
+                    Pour désactiver le 2FA, entre ton code actuel.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="Code à 6 chiffres" maxLength={6}
+                      style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '14px', fontFamily: 'var(--mono)', textAlign: 'center', outline: 'none', letterSpacing: '0.2em' }}
+                    />
+                    <button
+                      onClick={handle2faDisable}
+                      style={{ padding: '8px 16px', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font)' }}
+                      disabled={totpCode.length !== 6}
+                    >
+                      Désactiver
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </article>
 
           {/* Sessions */}

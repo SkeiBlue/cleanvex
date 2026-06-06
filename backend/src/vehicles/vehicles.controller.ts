@@ -8,10 +8,12 @@ import {
   Patch,
   Post,
   Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { toCsv } from '../core/csv.helper';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
 import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
@@ -30,6 +32,21 @@ type AuthenticatedRequest = Request & {
 @Controller('vehicles')
 export class VehiclesController {
   constructor(private readonly vehicles: VehiclesService) {}
+
+  @Get('export.csv')
+  async exportCsv(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    const vehicles = await this.vehicles.list(req.user.id);
+    const rows = vehicles.flatMap((v: Record<string, unknown> & { interventions?: unknown[] }) => {
+      const base = { id: v['id'], name: v['name'], type: v['type'], status: v['status'], brand: v['brand'] ?? '', model: v['model'] ?? '', year: v['year'] ?? '', mileage: v['mileage'], registration: v['registration'] ?? '' };
+      if (!Array.isArray(v['interventions']) || v['interventions'].length === 0) return [base];
+      return (v['interventions'] as Record<string, unknown>[]).map(i => ({
+        ...base, interv_title: i['title'], interv_date: i['date'], interv_status: i['status'], interv_cost: i['costAmount'] ?? '',
+      }));
+    });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="vehicules_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send('﻿' + toCsv(rows));
+  }
 
   @Get()
   list(@Req() req: AuthenticatedRequest) {

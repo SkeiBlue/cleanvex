@@ -136,6 +136,16 @@ export class ContactsService {
     await this.prisma.contact.delete({ where: { id } });
   }
 
+  async deleteInteraction(ownerId: string, contactId: string, interactionId: string) {
+    await this.ensureContactsEnabled();
+    await this.ensureOwnedContact(ownerId, contactId);
+    const interaction = await this.prisma.contactInteraction.findFirst({
+      where: { id: interactionId, contactId },
+    });
+    if (!interaction) throw new NotFoundException('Interaction not found');
+    await this.prisma.contactInteraction.delete({ where: { id: interactionId } });
+  }
+
   private async ensureOwnedContact(ownerId: string, id: string) {
     const contact = await this.prisma.contact.findFirst({
       where: { id, ownerId },

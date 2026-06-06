@@ -7,6 +7,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { ConsumeStockDto } from './dto/consume-stock.dto';
 import { CreateStockItemDto } from './dto/create-stock-item.dto';
+import { CreateToolLoanDto } from './dto/create-tool-loan.dto';
 import { PurchaseStockDto } from './dto/purchase-stock.dto';
 import { UpdateStockItemDto } from './dto/update-stock-item.dto';
 
@@ -47,6 +48,9 @@ export class StockService {
         threshold: dto.threshold,
         location: dto.location,
         valueAmount: dto.valueAmount,
+        reference: dto.reference,
+        supplier: dto.supplier,
+        notes: dto.notes,
       },
     });
   }
@@ -173,6 +177,9 @@ export class StockService {
         ...(dto.thresholdEnabled !== undefined && { thresholdEnabled: dto.thresholdEnabled }),
         ...(dto.threshold !== undefined && { threshold: dto.threshold }),
         ...(dto.valueAmount !== undefined && { valueAmount: dto.valueAmount }),
+        ...(dto.reference !== undefined && { reference: dto.reference }),
+        ...(dto.supplier !== undefined && { supplier: dto.supplier }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
       },
     });
   }
@@ -181,6 +188,52 @@ export class StockService {
     await this.ensureStockEnabled();
     await this.ensureOwnedItem(ownerId, itemId);
     await this.prisma.stockItem.delete({ where: { id: itemId } });
+  }
+
+  // ── ToolLoan ──────────────────────────────────────────────────────────────
+
+  async loans(ownerId: string) {
+    await this.ensureStockEnabled();
+    return this.prisma.toolLoan.findMany({
+      where: { ownerId },
+      include: { stockItem: { select: { id: true, name: true, unit: true } } },
+      orderBy: { loanDate: 'desc' },
+    });
+  }
+
+  async createLoan(ownerId: string, dto: CreateToolLoanDto) {
+    await this.ensureStockEnabled();
+    const item = await this.ensureOwnedItem(ownerId, dto.stockItemId);
+    return this.prisma.toolLoan.create({
+      data: {
+        ownerId,
+        stockItemId: item.id,
+        borrowerName: dto.borrowerName,
+        loanDate: dto.loanDate ? new Date(dto.loanDate) : new Date(),
+        expectedReturnDate: dto.expectedReturnDate ? new Date(dto.expectedReturnDate) : undefined,
+        notes: dto.notes,
+      },
+      include: { stockItem: { select: { id: true, name: true, unit: true } } },
+    });
+  }
+
+  async returnLoan(ownerId: string, loanId: string) {
+    await this.ensureStockEnabled();
+    const loan = await this.prisma.toolLoan.findFirst({ where: { id: loanId, ownerId } });
+    if (!loan) throw new NotFoundException('Loan not found');
+    if (loan.returnedAt) throw new BadRequestException('Already returned');
+    return this.prisma.toolLoan.update({
+      where: { id: loanId },
+      data: { returnedAt: new Date() },
+      include: { stockItem: { select: { id: true, name: true, unit: true } } },
+    });
+  }
+
+  async deleteLoan(ownerId: string, loanId: string) {
+    await this.ensureStockEnabled();
+    const loan = await this.prisma.toolLoan.findFirst({ where: { id: loanId, ownerId } });
+    if (!loan) throw new NotFoundException('Loan not found');
+    await this.prisma.toolLoan.delete({ where: { id: loanId } });
   }
 
   private async ensureOwnedItem(ownerId: string, itemId: string) {

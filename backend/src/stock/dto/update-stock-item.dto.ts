@@ -8,4 +8,7 @@ export class UpdateStockItemDto {
   @IsOptional() @IsBoolean() thresholdEnabled?: boolean;
   @IsOptional() @IsNumber() @Min(0) threshold?: number;
   @IsOptional() @IsNumber() @Min(0) valueAmount?: number;
+  @IsOptional() @IsString() reference?: string;
+  @IsOptional() @IsString() supplier?: string;
+  @IsOptional() @IsString() notes?: string;
 }

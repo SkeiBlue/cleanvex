@@ -1,17 +1,50 @@
 {
-  "name": "Personal Platform",
-  "short_name": "Platform",
-  "description": "Plateforme personnelle de gestion modulaire.",
+  "name": "Plateforme Personnelle",
+  "short_name": "PJ",
+  "description": "Gestion personnelle — véhicules, finances, contacts, immobilier, stock, agenda.",
+  "lang": "fr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#0f766e",
+  "orientation": "any",
+  "background_color": "#0c1029",
+  "theme_color": "#7c3aed",
+  "categories": ["productivity", "utilities"],
   "icons": [
     {
       "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "description": "Tâches et notifications",
+      "url": "/agenda",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Véhicules",
+      "short_name": "Garage",
+      "description": "Gestion des véhicules",
+      "url": "/vehicles",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "Finances",
+      "short_name": "Finances",
+      "description": "Comptes et transactions",
+      "url": "/finances",
+      "icons": [{ "src": "/favicon.svg", "sizes": "any" }]
     }
   ]
 }

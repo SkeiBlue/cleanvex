@@ -102,6 +102,27 @@ export class AuthController {
     return this.auth.revokeSession(req.user.id, id);
   }
 
+  /* ── 2FA ── */
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/setup')
+  setup2fa(@Req() req: AuthenticatedRequest) {
+    return this.auth.setup2fa(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/enable')
+  @HttpCode(200)
+  enable2fa(@Req() req: AuthenticatedRequest, @Body('code') code: string) {
+    return this.auth.enable2fa(req.user.id, code);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/disable')
+  @HttpCode(200)
+  disable2fa(@Req() req: AuthenticatedRequest, @Body('code') code: string) {
+    return this.auth.disable2fa(req.user.id, code);
+  }
+
   private meta(req: Request) {
     return {
       ip: req.ip,

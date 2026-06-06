@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AgendaService } from './agenda.service';
@@ -60,6 +60,18 @@ export class AgendaController {
     @Body() dto: CreateNotificationDto,
   ) {
     return this.agenda.createNotification(req.user.id, dto);
+  }
+
+  @Delete('tasks/:id')
+  @HttpCode(204)
+  deleteTask(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.agenda.deleteTask(req.user.id, id);
+  }
+
+  @Delete('notifications/:id')
+  @HttpCode(204)
+  deleteNotification(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    return this.agenda.deleteNotification(req.user.id, id);
   }
 
   @Patch('notifications/:id/read')

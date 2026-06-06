@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Put, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
+import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CoreService } from './core.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -48,6 +49,7 @@ export class CoreController {
     return this.core.audit(req.user.id);
   }
 
+  @UseGuards(AdminGuard)
   @Get('errors')
   errors() {
     return this.core.errors();

@@ -10,26 +10,27 @@ export class CreateStockItemDto {
   @IsString()
   unit!: string;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
+  @IsOptional() @IsNumber() @Min(0)
   quantity?: number;
 
-  @IsOptional()
-  @IsBoolean()
+  @IsOptional() @IsBoolean()
   thresholdEnabled?: boolean;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
+  @IsOptional() @IsNumber() @Min(0)
   threshold?: number;
 
-  @IsOptional()
-  @IsString()
+  @IsOptional() @IsString()
   location?: string;
 
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
+  @IsOptional() @IsNumber() @Min(0)
   valueAmount?: number;
+
+  @IsOptional() @IsString()
+  reference?: string;
+
+  @IsOptional() @IsString()
+  supplier?: string;
+
+  @IsOptional() @IsString()
+  notes?: string;
 }

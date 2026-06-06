@@ -144,6 +144,16 @@ export class RealEstateService {
     await this.prisma.property.delete({ where: { id } });
   }
 
+  async deleteEvent(ownerId: string, propertyId: string, eventId: string) {
+    await this.ensureRealEstateEnabled();
+    await this.ensureOwnedProperty(ownerId, propertyId);
+    const event = await this.prisma.propertyEvent.findFirst({
+      where: { id: eventId, propertyId },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+    await this.prisma.propertyEvent.delete({ where: { id: eventId } });
+  }
+
   private async ensureOwnedProperty(ownerId: string, id: string) {
     const property = await this.prisma.property.findFirst({
       where: { id, ownerId },

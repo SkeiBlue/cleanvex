@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AgendaModule } from './agenda/agenda.module';
@@ -14,6 +15,7 @@ import { FinancesModule } from './finances/finances.module';
 import { ModulesModule } from './modules/modules.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RealEstateModule } from './real-estate/real-estate.module';
+import { RemindersModule } from './reminders/reminders.module';
 import { ReportsModule } from './reports/reports.module';
 import { SearchModule } from './search/search.module';
 import { StockModule } from './stock/stock.module';
@@ -22,6 +24,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
@@ -41,6 +44,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     RealEstateModule,
     SearchModule,
     ReportsModule,
+    RemindersModule,
     BackupsModule,
   ],
   controllers: [AppController],

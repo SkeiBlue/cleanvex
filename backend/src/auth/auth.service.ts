@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -10,6 +11,8 @@ import { JwtService } from '@nestjs/jwt';
 import type { JwtSignOptions } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
+import * as OTPAuth from 'otpauth';
+import * as QRCode from 'qrcode';
 import { CoreService } from '../core/core.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -326,6 +329,59 @@ export class AuthService {
     if (expected && inviteCode !== expected) {
       throw new ForbiddenException('Invalid invite code');
     }
+  }
+
+  /* ── 2FA TOTP ────────────────────────────────────────────────── */
+  async setup2fa(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const secret = new OTPAuth.Secret({ size: 20 });
+    const totp = new OTPAuth.TOTP({
+      issuer: 'Plateforme Personnelle',
+      label: user.email,
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret,
+    });
+
+    // Persist secret (not yet enabled)
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpSecret: secret.base32 },
+    });
+
+    const uri = totp.toString();
+    const qrDataUrl = await QRCode.toDataURL(uri, { width: 256, margin: 2, color: { dark: '#a78bfa', light: '#0c1029' } });
+    return { secret: secret.base32, qrDataUrl, uri };
+  }
+
+  async enable2fa(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.totpSecret) throw new BadRequestException('Setup 2FA first.');
+    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const delta = totp.validate({ token: code, window: 1 });
+    if (delta === null) throw new BadRequestException('Code invalide.');
+    await this.prisma.user.update({ where: { id: userId }, data: { totpEnabled: true } });
+    return { enabled: true };
+  }
+
+  async disable2fa(userId: string, code: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.totpSecret) throw new BadRequestException('2FA non configuré.');
+    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const delta = totp.validate({ token: code, window: 1 });
+    if (delta === null) throw new BadRequestException('Code invalide.');
+    await this.prisma.user.update({ where: { id: userId }, data: { totpEnabled: false, totpSecret: null } });
+    return { enabled: false };
+  }
+
+  async verify2fa(userId: string, code: string): Promise<boolean> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.totpSecret || !user.totpEnabled) return true; // 2FA not active
+    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    return totp.validate({ token: code, window: 1 }) !== null;
   }
 
   private publicVerificationToken(raw: string) {

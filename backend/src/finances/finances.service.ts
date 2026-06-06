@@ -160,6 +160,30 @@ export class FinancesService {
     });
   }
 
+  async deleteAccount(ownerId: string, id: string) {
+    await this.ensureFinancesEnabled();
+    const account = await this.prisma.financialAccount.findFirst({ where: { id, ownerId } });
+    if (!account) throw new NotFoundException('Account not found');
+    await this.prisma.financialAccount.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async deleteCategory(id: string) {
+    await this.ensureFinancesEnabled();
+    const cat = await this.prisma.financialCategory.findUnique({ where: { id } });
+    if (!cat) throw new NotFoundException('Category not found');
+    await this.prisma.financialCategory.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async deleteTransaction(ownerId: string, id: string) {
+    await this.ensureFinancesEnabled();
+    const tx = await this.prisma.financialTransaction.findFirst({ where: { id, ownerId } });
+    if (!tx) throw new NotFoundException('Transaction not found');
+    await this.prisma.financialTransaction.delete({ where: { id } });
+    return { deleted: true };
+  }
+
   private async ensureFinancesEnabled() {
     const module = await this.prisma.module.findUnique({
       where: { key: 'finances' },

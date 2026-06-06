@@ -30,11 +30,15 @@ export class VehiclesService {
 
   async create(ownerId: string, dto: CreateVehicleDto) {
     await this.ensureVehiclesEnabled();
+    const { purchaseDate, insuranceExpiry, ctExpiry, ...rest } = dto;
     const vehicle = await this.prisma.vehicle.create({
       data: {
         ownerId,
-        ...dto,
+        ...rest,
         mileage: dto.mileage ?? 0,
+        purchaseDate:    purchaseDate    ? new Date(purchaseDate)    : undefined,
+        insuranceExpiry: insuranceExpiry ? new Date(insuranceExpiry) : undefined,
+        ctExpiry:        ctExpiry        ? new Date(ctExpiry)        : undefined,
       },
     });
 
@@ -49,6 +53,8 @@ export class VehiclesService {
         },
       });
     }
+
+    await this.autoCreateExpiryAlerts(vehicle.id, vehicle.insuranceExpiry, vehicle.ctExpiry);
 
     return vehicle;
   }
@@ -85,16 +91,37 @@ export class VehiclesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return { ...vehicle, documents };
+    // Sorties stock imputées à ce véhicule
+    const stockMovements = await this.prisma.stockMovement.findMany({
+      where: { targetType: 'vehicle', targetId: id },
+      include: { stockItem: { select: { name: true, unit: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { ...vehicle, documents, stockMovements };
   }
 
   async update(ownerId: string, id: string, dto: UpdateVehicleDto) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, id);
-    return this.prisma.vehicle.update({
+    const { purchaseDate, insuranceExpiry, ctExpiry, ...rest } = dto;
+
+    const insuranceDate = insuranceExpiry !== undefined ? (insuranceExpiry ? new Date(insuranceExpiry) : null) : undefined;
+    const ctDate        = ctExpiry        !== undefined ? (ctExpiry        ? new Date(ctExpiry)        : null) : undefined;
+
+    const vehicle = await this.prisma.vehicle.update({
       where: { id },
-      data: dto,
+      data: {
+        ...rest,
+        ...(purchaseDate    !== undefined && { purchaseDate:    purchaseDate    ? new Date(purchaseDate)    : null }),
+        ...(insuranceDate   !== undefined && { insuranceExpiry: insuranceDate }),
+        ...(ctDate          !== undefined && { ctExpiry:        ctDate }),
+      },
     });
+
+    await this.autoCreateExpiryAlerts(id, insuranceDate, ctDate);
+
+    return vehicle;
   }
 
   async addMileageLog(ownerId: string, vehicleId: string, dto: CreateMileageLogDto) {
@@ -271,6 +298,38 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.prisma.vehicleIntervention.delete({ where: { id: interventionId } });
+  }
+
+  /**
+   * Auto-create CT / assurance alerts if dates are provided and no open alert exists yet.
+   */
+  private async autoCreateExpiryAlerts(
+    vehicleId: string,
+    insuranceExpiry: Date | null | undefined,
+    ctExpiry: Date | null | undefined,
+  ) {
+    const pairs = [
+      { type: 'insurance_expiry', title: 'Renouvellement assurance', date: insuranceExpiry },
+      { type: 'ct_expiry',        title: 'Contrôle technique',        date: ctExpiry },
+    ] as const;
+
+    for (const { type, title, date } of pairs) {
+      if (!date) continue;
+      const exists = await this.prisma.vehicleAlert.findFirst({
+        where: { vehicleId, type, status: { not: 'resolved' } },
+      });
+      if (!exists) {
+        await this.prisma.vehicleAlert.create({
+          data: { vehicleId, type, title, dueDate: date, status: 'open' },
+        });
+      } else {
+        // Sync dueDate if date changed
+        await this.prisma.vehicleAlert.update({
+          where: { id: exists.id },
+          data: { dueDate: date },
+        });
+      }
+    }
   }
 
   private async ensureVehicleExists(ownerId: string, id: string) {

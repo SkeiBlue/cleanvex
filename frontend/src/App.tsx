@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ToastProvider } from './contexts/ToastContext'
 import { Sidebar } from './components/Sidebar'
 import { TopHeader } from './components/TopHeader'
 import { LoginScreen } from './components/LoginScreen'
+import { CommandPalette } from './components/CommandPalette'
 import { DashboardPage } from './pages/DashboardPage'
 import { VehiclesPage } from './pages/VehiclesPage'
 import { FinancesPage } from './pages/FinancesPage'
@@ -13,6 +15,8 @@ import { RealEstatePage } from './pages/RealEstatePage'
 import { DocumentsPage } from './pages/DocumentsPage'
 import { ContactsPage } from './pages/ContactsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { ReportsPage } from './pages/ReportsPage'
+import { BackupsPage } from './pages/BackupsPage'
 import { ModuleGuard } from './components/ModuleGuard'
 import type { SearchResult } from './types'
 
@@ -34,8 +38,21 @@ function AppLayout() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchOpen, setSearchOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [cmdOpen, setCmdOpen] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+
+  /* Cmd+K / Ctrl+K listener */
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setCmdOpen(o => !o)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const dateLabel = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
@@ -90,7 +107,9 @@ function AppLayout() {
           onSearchResultClick={handleResultClick}
           onSearchClose={() => setSearchOpen(false)}
           searchRef={searchRef}
+          onCmdOpen={() => setCmdOpen(true)}
         />
+        <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
         <div className="content">
           <Outlet />
         </div>
@@ -155,6 +174,7 @@ function ProtectedRoute() {
 
 export default function App() {
   return (
+    <ToastProvider>
     <AuthProvider>
       <BrowserRouter>
         <Routes>
@@ -170,11 +190,14 @@ export default function App() {
               <Route path="documents" element={<ModuleGuard moduleKey="documents"><DocumentsPage /></ModuleGuard>} />
               <Route path="contacts" element={<ModuleGuard moduleKey="contacts"><ContactsPage /></ModuleGuard>} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="backups" element={<BackupsPage />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ToastProvider>
   )
 }

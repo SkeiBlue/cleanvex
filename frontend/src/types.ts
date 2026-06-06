@@ -85,6 +85,14 @@ export type VehicleItem = {
   registration: string | null
   vin: string | null
   mileage: number
+  fuelType: string | null
+  color: string | null
+  power: number | null
+  purchaseDate: string | null
+  purchasePrice: string | null
+  insuranceExpiry: string | null
+  ctExpiry: string | null
+  notes: string | null
   _count?: { interventions: number; alerts: number }
 }
 
@@ -117,7 +125,12 @@ export type VehicleDetail = VehicleItem & {
   documents: Array<{
     id: string
     context: string | null
-    document: { id: string; name: string; mimeType: string; visibility: string; createdAt: string }
+    document: { id: string; name: string; mimeType: string; visibility: string; createdAt: string; expiresAt: string | null }
+  }>
+  stockMovements: Array<{
+    id: string; type: string; quantity: string; valueAmount: string | null
+    note: string | null; createdAt: string
+    stockItem: { name: string; unit: string }
   }>
 }
 
@@ -220,6 +233,9 @@ export type StockItem = {
   valueAmount: string | null
   thresholdEnabled: boolean
   threshold: string | null
+  reference: string | null
+  supplier: string | null
+  notes: string | null
 }
 
 export type StockMovement = {
@@ -229,8 +245,20 @@ export type StockMovement = {
   valueAmount: string | null
   targetType: string | null
   targetId: string | null
+  note: string | null
   createdAt: string
-  stockItem: StockItem
+  stockItem: { id: string; name: string; unit: string; category: string }
+}
+
+export type ToolLoan = {
+  id: string
+  borrowerName: string
+  loanDate: string
+  expectedReturnDate: string | null
+  returnedAt: string | null
+  notes: string | null
+  createdAt: string
+  stockItem: { id: string; name: string; unit: string }
 }
 
 export type AgendaDashboard = {

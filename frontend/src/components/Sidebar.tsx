@@ -1,15 +1,19 @@
 import { NavLink } from 'react-router-dom'
+import {
+  LayoutDashboard, Car, Home, Wallet, Package,
+  CalendarDays, Folder, Users, BarChart2, HardDrive, Settings, type LucideIcon,
+} from 'lucide-react'
 import type { ModuleItem, User } from '../types'
 
-const MODULE_ICONS: Record<string, string> = {
-  dashboard:    '🌌',
-  vehicles:     '🚗',
-  'real-estate':'🏠',
-  finances:     '💸',
-  stock:        '📦',
-  agenda:       '📅',
-  documents:    '📁',
-  contacts:     '👥',
+const MODULE_ICONS: Record<string, LucideIcon> = {
+  dashboard:    LayoutDashboard,
+  vehicles:     Car,
+  'real-estate':Home,
+  finances:     Wallet,
+  stock:        Package,
+  agenda:       CalendarDays,
+  documents:    Folder,
+  contacts:     Users,
 }
 
 const MODULE_ROUTES: Record<string, string> = {
@@ -42,7 +46,7 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           <div className="logo-gem" />
           <div>
             <div className="logo-text">Mon<span>Espace</span></div>
-            <div className="logo-badge">V0.1 · COSMIC UI</div>
+            <div className="logo-badge">V0.5 · COSMIC UI</div>
           </div>
         </div>
       </div>
@@ -55,42 +59,53 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
         >
-          <div className="nav-ico">🌌</div>
+          <div className="nav-ico"><LayoutDashboard size={15} /></div>
           <span className="nav-txt">Dashboard</span>
         </NavLink>
 
         <div className="nav-label">Modules</div>
-        {modules.map((module) => (
-          <NavLink
-            to={MODULE_ROUTES[module.key] ?? '/'}
-            key={module.key}
-            className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-            onClick={onClose}
-          >
-            <div className="nav-ico">{MODULE_ICONS[module.key] ?? '⚙️'}</div>
-            <span className="nav-txt">{module.title}</span>
-            {!module.isEnabled && (
-              <span className="nav-badge badge-purple">Off</span>
-            )}
-          </NavLink>
-        ))}
+        {modules.map((module) => {
+          const Icon = MODULE_ICONS[module.key] ?? Settings
+          return (
+            <NavLink
+              to={MODULE_ROUTES[module.key] ?? '/'}
+              key={module.key}
+              className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              onClick={onClose}
+            >
+              <div className="nav-ico"><Icon size={15} /></div>
+              <span className="nav-txt">{module.title}</span>
+              {!module.isEnabled && (
+                <span className="nav-badge badge-purple">Off</span>
+              )}
+            </NavLink>
+          )
+        })}
 
         <div className="nav-label">Système</div>
+        <NavLink
+          to="/reports"
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+          onClick={onClose}
+        >
+          <div className="nav-ico"><BarChart2 size={15} /></div>
+          <span className="nav-txt">Rapports</span>
+        </NavLink>
+        <NavLink
+          to="/backups"
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+          onClick={onClose}
+        >
+          <div className="nav-ico"><HardDrive size={15} /></div>
+          <span className="nav-txt">Sauvegarde</span>
+        </NavLink>
         <NavLink
           to="/settings"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
         >
-          <div className="nav-ico">⚙️</div>
+          <div className="nav-ico"><Settings size={15} /></div>
           <span className="nav-txt">Paramètres</span>
-        </NavLink>
-        <NavLink
-          to="/documents"
-          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
-          onClick={onClose}
-        >
-          <div className="nav-ico">💾</div>
-          <span className="nav-txt">Documents</span>
         </NavLink>
       </nav>
 
@@ -99,7 +114,7 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           <div className="user-avatar">{initial}</div>
           <div>
             <div className="user-name">{user.username ?? 'Clément'}</div>
-            <div className="user-role">{user.role.toUpperCase()} · V0.1</div>
+            <div className="user-role">{user.role.toUpperCase()} · V0.5</div>
           </div>
           <div className="user-dot" />
         </div>

@@ -66,6 +66,16 @@ export class RealEstateController {
     return this.realEstate.addEvent(req.user.id, id, dto);
   }
 
+  @Delete('properties/:id/events/:eventId')
+  @HttpCode(204)
+  deleteEvent(
+    @Param('id') id: string,
+    @Param('eventId') eventId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.realEstate.deleteEvent(req.user.id, id, eventId);
+  }
+
   @Post('properties/:id/documents')
   linkDocument(
     @Param('id') id: string,

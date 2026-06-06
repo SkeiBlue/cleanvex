@@ -66,6 +66,16 @@ export class ContactsController {
     return this.contacts.addInteraction(req.user.id, id, dto);
   }
 
+  @Delete(':id/interactions/:interactionId')
+  @HttpCode(204)
+  deleteInteraction(
+    @Param('id') id: string,
+    @Param('interactionId') interactionId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.contacts.deleteInteraction(req.user.id, id, interactionId);
+  }
+
   @Post(':id/documents')
   linkDocument(
     @Param('id') id: string,

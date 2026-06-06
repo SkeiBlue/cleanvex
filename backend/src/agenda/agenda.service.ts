@@ -132,6 +132,31 @@ export class AgendaService {
     });
   }
 
+  async deleteNotification(ownerId: string, id: string) {
+    await this.ensureAgendaEnabled();
+    const notification = await this.prisma.notification.findFirst({ where: { id, ownerId } });
+    if (!notification) throw new NotFoundException('Notification not found');
+    await this.prisma.notification.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async deleteTask(ownerId: string, id: string) {
+    await this.ensureAgendaEnabled();
+    await this.ensureOwnedTask(ownerId, id);
+    await this.prisma.task.delete({ where: { id } });
+    return { deleted: true };
+  }
+
+  async deleteInteractionByContact(ownerId: string, interactionId: string) {
+    // interactions n'ont pas d'ownerId direct, on vérifie via le contact
+    const interaction = await this.prisma.contactInteraction.findFirst({
+      where: { id: interactionId, contact: { ownerId } },
+    });
+    if (!interaction) throw new NotFoundException('Interaction not found');
+    await this.prisma.contactInteraction.delete({ where: { id: interactionId } });
+    return { deleted: true };
+  }
+
   private async ensureOwnedTask(ownerId: string, id: string) {
     const task = await this.prisma.task.findFirst({ where: { id, ownerId } });
     if (!task) throw new NotFoundException('Task not found');
