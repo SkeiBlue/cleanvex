@@ -154,6 +154,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // 2FA — vérifié après le mot de passe, avant l'émission du token
+    if (user.totpEnabled) {
+      if (!dto.totpCode) {
+        throw new UnauthorizedException('2FA code required');
+      }
+      const valid2fa = await this.verify2fa(user.id, dto.totpCode);
+      if (!valid2fa) {
+        throw new UnauthorizedException('Invalid 2FA code');
+      }
+    }
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: { lastLoginAt: new Date() },

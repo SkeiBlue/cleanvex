@@ -32,6 +32,7 @@ model User {
   auditLogs     AuditLog[]
   activityLogs  ActivityLog[]
   financialAccounts     FinancialAccount[]
+  financialCategories   FinancialCategory[]
   financialTransactions FinancialTransaction[]
   stockItems            StockItem[]
   stockMovements        StockMovement[]
@@ -348,13 +349,16 @@ model FinancialAccount {
 
 model FinancialCategory {
   id       String  @id @default(uuid())
+  ownerId  String  @map("owner_id")
   name     String
   type     String
   parentId String? @map("parent_id")
   color    String?
 
+  owner        User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   transactions FinancialTransaction[]
 
+  @@index([ownerId])
   @@map("financial_categories")
 }
 

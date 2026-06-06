@@ -37,13 +37,13 @@ export class FinancesController {
   }
 
   @Get('categories')
-  categories() {
-    return this.finances.categories();
+  categories(@Req() req: AuthenticatedRequest) {
+    return this.finances.categories(req.user.id);
   }
 
   @Post('categories')
-  createCategory(@Body() dto: CreateFinancialCategoryDto) {
-    return this.finances.createCategory(dto);
+  createCategory(@Req() req: AuthenticatedRequest, @Body() dto: CreateFinancialCategoryDto) {
+    return this.finances.createCategory(req.user.id, dto);
   }
 
   @Post('transactions/import.csv')
@@ -64,7 +64,7 @@ export class FinancesController {
     });
 
     const accounts = await this.finances.accounts(req.user.id);
-    const categories = await this.finances.categories();
+    const categories = await this.finances.categories(req.user.id);
 
     let created = 0; const errors: string[] = [];
     for (const row of rows) {
@@ -135,8 +135,8 @@ export class FinancesController {
   }
 
   @Delete('categories/:id')
-  deleteCategory(@Param('id') id: string) {
-    return this.finances.deleteCategory(id);
+  deleteCategory(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.finances.deleteCategory(req.user.id, id);
   }
 
   @Delete('transactions/:id')

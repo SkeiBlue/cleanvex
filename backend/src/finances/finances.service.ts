@@ -61,17 +61,19 @@ export class FinancesService {
     });
   }
 
-  async categories() {
+  async categories(ownerId: string) {
     await this.ensureFinancesEnabled();
     return this.prisma.financialCategory.findMany({
+      where: { ownerId },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     });
   }
 
-  async createCategory(dto: CreateFinancialCategoryDto) {
+  async createCategory(ownerId: string, dto: CreateFinancialCategoryDto) {
     await this.ensureFinancesEnabled();
     return this.prisma.financialCategory.create({
       data: {
+        ownerId,
         name: dto.name,
         type: dto.type,
         color: dto.color,
@@ -168,9 +170,9 @@ export class FinancesService {
     return { deleted: true };
   }
 
-  async deleteCategory(id: string) {
+  async deleteCategory(ownerId: string, id: string) {
     await this.ensureFinancesEnabled();
-    const cat = await this.prisma.financialCategory.findUnique({ where: { id } });
+    const cat = await this.prisma.financialCategory.findFirst({ where: { id, ownerId } });
     if (!cat) throw new NotFoundException('Category not found');
     await this.prisma.financialCategory.delete({ where: { id } });
     return { deleted: true };
