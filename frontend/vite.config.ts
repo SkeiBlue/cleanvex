@@ -28,8 +28,7 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true, // active le service worker en développement
-        type: 'module',
+        enabled: false, // SW désactivé en dev (cause des ralentissements majeurs)
       },
     }),
   ],
