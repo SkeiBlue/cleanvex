@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Car, Home, Wallet, Package,
-  CalendarDays, Folder, Users, BarChart2, HardDrive, Settings, type LucideIcon,
+  CalendarDays, Folder, Users, BarChart2, HardDrive, Settings,
+  ChevronLeft, ChevronRight,
+  type LucideIcon,
 } from 'lucide-react'
 import type { ModuleItem, User } from '../types'
 
@@ -30,10 +32,18 @@ type Props = {
   user: User
   modules: ModuleItem[]
   sidebarOpen?: boolean
+  collapsed?: boolean
   onClose?: () => void
+  onToggleCollapse?: () => void
 }
 
-export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) {
+export function Sidebar({
+  user, modules,
+  sidebarOpen = false,
+  collapsed = false,
+  onClose,
+  onToggleCollapse,
+}: Props) {
   const initial = (user.username ?? user.email).charAt(0).toUpperCase()
 
   return (
@@ -41,6 +51,19 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
       className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}
       aria-label="Navigation principale"
     >
+      {/* Bouton rétractable — desktop uniquement (caché via CSS sur mobile) */}
+      <button
+        className="sidebar-toggle"
+        onClick={onToggleCollapse}
+        aria-label={collapsed ? 'Déplier la sidebar' : 'Réduire la sidebar'}
+        title={collapsed ? 'Déplier' : 'Réduire'}
+      >
+        {collapsed
+          ? <ChevronRight size={13} />
+          : <ChevronLeft size={13} />
+        }
+      </button>
+
       <div className="sidebar-top">
         <div className="logo-row">
           <div className="logo-gem" />
@@ -58,6 +81,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           end
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
+          data-label="Dashboard"
+          aria-label="Dashboard"
         >
           <div className="nav-ico"><LayoutDashboard size={15} /></div>
           <span className="nav-txt">Dashboard</span>
@@ -72,6 +97,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
               key={module.key}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               onClick={onClose}
+              data-label={module.title}
+              aria-label={module.title}
             >
               <div className="nav-ico"><Icon size={15} /></div>
               <span className="nav-txt">{module.title}</span>
@@ -87,6 +114,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           to="/reports"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
+          data-label="Rapports"
+          aria-label="Rapports"
         >
           <div className="nav-ico"><BarChart2 size={15} /></div>
           <span className="nav-txt">Rapports</span>
@@ -95,6 +124,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           to="/backups"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
+          data-label="Sauvegarde"
+          aria-label="Sauvegarde"
         >
           <div className="nav-ico"><HardDrive size={15} /></div>
           <span className="nav-txt">Sauvegarde</span>
@@ -103,6 +134,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
           to="/settings"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
+          data-label="Paramètres"
+          aria-label="Paramètres"
         >
           <div className="nav-ico"><Settings size={15} /></div>
           <span className="nav-txt">Paramètres</span>
@@ -110,7 +143,10 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
       </nav>
 
       <div className="sidebar-footer">
-        <div className="user-card">
+        <div
+          className="user-card"
+          title={collapsed ? `${user.username ?? user.email} · ${user.role}` : undefined}
+        >
           <div className="user-avatar">{initial}</div>
           <div>
             <div className="user-name">{user.username ?? 'Clément'}</div>

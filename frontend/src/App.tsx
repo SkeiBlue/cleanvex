@@ -42,7 +42,18 @@ function AppLayout() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchOpen, setSearchOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    localStorage.getItem('sidebar-collapsed') === 'true'
+  )
   const [cmdOpen, setCmdOpen] = useState(false)
+
+  function toggleCollapse() {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      localStorage.setItem('sidebar-collapsed', String(next))
+      return next
+    })
+  }
   const searchRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
 
@@ -85,7 +96,7 @@ function AppLayout() {
   if (!user) return <Navigate to="/login" replace />
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <a href="#main-content" className="skip-link">Aller au contenu</a>
       {/* Overlay mobile pour fermer la sidebar */}
       {sidebarOpen && (
@@ -95,7 +106,14 @@ function AppLayout() {
         />
       )}
 
-      <Sidebar user={user} modules={modules} sidebarOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        user={user}
+        modules={modules}
+        sidebarOpen={sidebarOpen}
+        collapsed={sidebarCollapsed}
+        onClose={() => setSidebarOpen(false)}
+        onToggleCollapse={toggleCollapse}
+      />
 
       <main className="main">
         <TopHeader
