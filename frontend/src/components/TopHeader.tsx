@@ -95,6 +95,7 @@ export function TopHeader({
         <button
           className="hdr-btn mobile-only"
           onClick={onMenuToggle}
+          aria-label="Ouvrir le menu"
           style={{ marginRight: '8px' }}
         >
           <Menu size={18} />
@@ -203,7 +204,8 @@ export function TopHeader({
           <button
             className="hdr-btn"
             onClick={() => setNotifOpen(o => !o)}
-            title="Notifications"
+            aria-label={`Notifications${unreadNotifications > 0 ? ` (${unreadNotifications} non lues)` : ''}`}
+            aria-expanded={notifOpen}
             style={{ position: 'relative' }}
           >
             <Bell size={16} />
@@ -269,9 +271,9 @@ export function TopHeader({
           )}
         </div>
 
-        <div className="hdr-btn" style={{ cursor: 'pointer' }} onClick={onLogout} title="Déconnexion">
+        <button className="hdr-btn" onClick={onLogout} aria-label="Déconnexion">
           <LogOut size={16} />
-        </div>
+        </button>
       </div>
     </header>
   )

@@ -86,6 +86,7 @@ function AppLayout() {
 
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-link">Aller au contenu</a>
       {/* Overlay mobile pour fermer la sidebar */}
       {sidebarOpen && (
         <div
@@ -114,7 +115,7 @@ function AppLayout() {
           onCmdOpen={() => setCmdOpen(true)}
         />
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
-        <div className="content">
+        <div className="content" id="main-content">
           <ErrorBoundary>
             <Suspense fallback={<PageLoader />}>
               <Outlet />

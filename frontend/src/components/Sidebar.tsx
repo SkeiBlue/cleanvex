@@ -38,8 +38,8 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
 
   return (
     <aside
-      className="sidebar"
-      style={{ transform: sidebarOpen ? 'translateX(0)' : undefined }}
+      className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}
+      aria-label="Navigation principale"
     >
       <div className="sidebar-top">
         <div className="logo-row">
@@ -51,7 +51,7 @@ export function Sidebar({ user, modules, sidebarOpen = false, onClose }: Props) 
         </div>
       </div>
 
-      <nav className="nav-section">
+      <nav className="nav-section" aria-label="Menu principal">
         <div className="nav-label">Principal</div>
         <NavLink
           to="/"

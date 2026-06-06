@@ -146,7 +146,7 @@ export function DashboardPage() {
       </div>
 
       {/* Corps 2 colonnes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      <div className="grid-2">
 
         {/* Tâches à venir */}
         <article className="panel">
@@ -257,7 +257,7 @@ export function DashboardPage() {
 
       {/* ── Graphiques financiers ─────────────────────────────────────── */}
       {transactions.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div className="charts-grid">
           <ChartPanel title="Revenus / Dépenses" kicker="Finances · 6 mois">
             <MonthlyBarChart transactions={transactions} months={6} />
           </ChartPanel>
