@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Activity, CheckCircle2, Copy, FileText, KeyRound, RefreshCw, Search,
-  ShieldCheck, UserCog, Users, XCircle,
+  Activity, CheckCircle2, Copy, FileText, KeyRound, MailCheck, Pencil, RefreshCw, Search,
+  ShieldCheck, ShieldOff, UserCog, Users, X, XCircle,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
@@ -68,6 +68,248 @@ function StatCard({ icon, label, value, hint, color }: {
   )
 }
 
+/* ── Modal édition utilisateur ────────────────────────────────── */
+type EditUserModalProps = {
+  user: AdminUser
+  onClose: () => void
+  onUpdated: (u: Partial<AdminUser> & { id: string }) => void
+  authedFetch: (input: string, init?: RequestInit) => Promise<Response>
+}
+function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalProps) {
+  const [email, setEmail] = useState(user.email)
+  const [username, setUsername] = useState(user.username ?? '')
+  const [newPwd, setNewPwd] = useState('')
+  const [confirmPwd, setConfirmPwd] = useState('')
+  const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+
+  async function saveProfile() {
+    setBusy('profile'); setMsg(null)
+    try {
+      const body: Record<string, string> = {}
+      if (email !== user.email) body.email = email
+      if ((username || null) !== (user.username || null)) body.username = username
+      if (Object.keys(body).length === 0) { setMsg({ text: 'Aucun changement.', ok: false }); return }
+      const r = await authedFetch(`/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (r.ok) {
+        const d = await r.json()
+        onUpdated({ id: user.id, email: d.email, username: d.username })
+        setMsg({ text: 'Profil mis à jour.', ok: true })
+      } else {
+        const e = await r.json().catch(() => ({}))
+        setMsg({ text: e.message ?? 'Erreur lors de la mise à jour.', ok: false })
+      }
+    } finally { setBusy(null) }
+  }
+
+  async function verifyEmail() {
+    setBusy('verify'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/verify-email`, { method: 'POST' })
+      if (r.ok) {
+        onUpdated({ id: user.id, emailVerified: true })
+        setMsg({ text: 'Email vérifié manuellement.', ok: true })
+      } else setMsg({ text: 'Erreur.', ok: false })
+    } finally { setBusy(null) }
+  }
+
+  async function disable2fa() {
+    if (!confirm('Désactiver le 2FA de cet utilisateur ?')) return
+    setBusy('2fa'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/disable-2fa`, { method: 'POST' })
+      if (r.ok) {
+        onUpdated({ id: user.id, totpEnabled: false })
+        setMsg({ text: '2FA désactivé.', ok: true })
+      } else setMsg({ text: 'Erreur.', ok: false })
+    } finally { setBusy(null) }
+  }
+
+  async function resetPassword() {
+    if (newPwd.length < 8) { setMsg({ text: 'Mot de passe trop court (8 min).', ok: false }); return }
+    if (newPwd !== confirmPwd) { setMsg({ text: 'Les mots de passe ne correspondent pas.', ok: false }); return }
+    if (!confirm('Réinitialiser le mot de passe ? Toutes les sessions de l\'utilisateur seront révoquées.')) return
+    setBusy('pwd'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newPwd }),
+      })
+      if (r.ok) {
+        setNewPwd(''); setConfirmPwd('')
+        setMsg({ text: 'Mot de passe réinitialisé. Sessions révoquées.', ok: true })
+      } else {
+        const e = await r.json().catch(() => ({}))
+        setMsg({ text: e.message ?? 'Erreur.', ok: false })
+      }
+    } finally { setBusy(null) }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+    borderRadius: 8, padding: '9px 12px', fontSize: 13, color: 'var(--text)',
+    fontFamily: 'var(--font)', outline: 'none', width: '100%',
+  }
+  const labelStyle: React.CSSProperties = {
+    display: 'flex', flexDirection: 'column', gap: 5,
+    fontSize: 10.5, color: 'var(--text3)',
+    fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase',
+  }
+
+  return (
+    <div role="dialog" aria-modal="true"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(6,8,24,0.7)', backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div style={{
+        background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 16,
+        width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '18px 20px', borderBottom: '1px solid var(--border)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+            background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
+            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700,
+          }}>{(user.username ?? user.email).charAt(0).toUpperCase()}</div>
+          <div style={{ flex: 1 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>
+              Modifier le profil
+            </h3>
+            <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+              ID : {user.id.slice(0, 8)}…
+            </p>
+          </div>
+          <button onClick={onClose} aria-label="Fermer"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', padding: 4, display: 'flex' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Message */}
+        {msg && (
+          <div style={{
+            margin: '12px 20px 0', padding: '8px 12px', borderRadius: 8, fontSize: 12,
+            color: msg.ok ? '#4ade80' : '#f87171',
+            background: msg.ok ? 'rgba(74,222,128,0.08)' : 'rgba(244,63,94,0.08)',
+            border: `1px solid ${msg.ok ? 'rgba(74,222,128,0.25)' : 'rgba(244,63,94,0.25)'}`,
+          }}>{msg.text}</div>
+        )}
+
+        {/* Section 1: infos */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Informations
+          </h4>
+          <label style={labelStyle}>
+            Email
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} />
+          </label>
+          <label style={labelStyle}>
+            Nom d'utilisateur
+            <input value={username} onChange={e => setUsername(e.target.value)} style={inputStyle} placeholder="(facultatif)" />
+          </label>
+          <button onClick={saveProfile} disabled={busy === 'profile'}
+            style={{
+              background: 'linear-gradient(135deg, #7c3aed, #2563eb)', border: 'none', borderRadius: 10,
+              padding: '9px 16px', fontSize: 13, fontWeight: 600, color: 'white',
+              cursor: busy ? 'wait' : 'pointer', alignSelf: 'flex-start',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+            <Pencil size={13} />{busy === 'profile' ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+
+        {/* Section 2: vérif email + 2FA */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Sécurité
+          </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+            <MailCheck size={14} style={{ color: user.emailVerified ? '#4ade80' : '#f59e0b' }} />
+            <span style={{ flex: 1 }}>
+              Email : {user.emailVerified ? <span style={{ color: '#4ade80' }}>vérifié ✓</span> : <span style={{ color: '#f59e0b' }}>non vérifié</span>}
+            </span>
+            {!user.emailVerified && (
+              <button onClick={verifyEmail} disabled={busy === 'verify'}
+                style={{
+                  background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)',
+                  borderRadius: 6, padding: '5px 10px', fontSize: 11.5, color: '#4ade80',
+                  cursor: busy ? 'wait' : 'pointer',
+                }}>
+                {busy === 'verify' ? '…' : 'Marquer vérifié'}
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+            <ShieldCheck size={14} style={{ color: user.totpEnabled ? '#4ade80' : 'var(--text3)' }} />
+            <span style={{ flex: 1 }}>
+              2FA : {user.totpEnabled ? <span style={{ color: '#4ade80' }}>actif</span> : <span>désactivé</span>}
+            </span>
+            {user.totpEnabled && (
+              <button onClick={disable2fa} disabled={busy === '2fa'}
+                style={{
+                  background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.25)',
+                  borderRadius: 6, padding: '5px 10px', fontSize: 11.5, color: '#f87171',
+                  cursor: busy ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                <ShieldOff size={12} />{busy === '2fa' ? '…' : 'Désactiver'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+
+        {/* Section 3: reset password */}
+        <div style={{ padding: '16px 20px 22px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Réinitialiser le mot de passe
+          </h4>
+          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text3)' }}>
+            Définit un nouveau mot de passe. Toutes les sessions actives seront révoquées.
+          </p>
+          <label style={labelStyle}>
+            Nouveau mot de passe
+            <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)}
+              placeholder="8 caractères minimum" style={inputStyle} />
+          </label>
+          <label style={labelStyle}>
+            Confirmer
+            <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)}
+              placeholder="Retape le nouveau mot de passe" style={inputStyle} />
+          </label>
+          <button onClick={resetPassword} disabled={busy === 'pwd'}
+            style={{
+              background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)',
+              borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#f87171',
+              cursor: busy ? 'wait' : 'pointer', alignSelf: 'flex-start',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+            <KeyRound size={13} />{busy === 'pwd' ? 'Reset en cours…' : 'Réinitialiser'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Page ────────────────────────────────────────────────────── */
 export function AdminDashboardPage() {
   const { authedFetch, user: currentUser } = useAuth()
@@ -79,6 +321,7 @@ export function AdminDashboardPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -269,6 +512,14 @@ export function AdminDashboardPage() {
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', gap: 6 }}>
+                            <button onClick={() => setEditingUser(u)} title="Éditer le profil"
+                              style={{
+                                background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+                                borderRadius: 6, padding: '4px 8px', fontSize: 11, color: 'var(--text2)',
+                                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
+                              }}>
+                              <Pencil size={11} /> Éditer
+                            </button>
                             {u.role === 'admin'
                               ? <button disabled={isMe || busy} onClick={() => setRole(u, 'user')}
                                   title={isMe ? 'Tu ne peux pas te retirer tes droits' : 'Rétrograder en user'}
@@ -359,6 +610,19 @@ export function AdminDashboardPage() {
           </section>
         </div>
       </div>
+
+      {/* Modal d'édition utilisateur */}
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          authedFetch={authedFetch}
+          onUpdated={patch => {
+            setUsers(prev => prev.map(x => x.id === patch.id ? { ...x, ...patch } : x))
+            setEditingUser(curr => curr ? { ...curr, ...patch } : curr)
+          }}
+        />
+      )}
 
       {/* Audit logs */}
       <section className="panel" style={{ padding: 0 }}>

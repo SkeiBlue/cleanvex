@@ -1,7 +1,8 @@
 import {
-  BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Query, Req, UseGuards,
+  BadRequestException, Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcrypt';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from '../auth/admin.guard';
@@ -115,6 +116,96 @@ export class AdminUsersController {
       ip: req.ip,
     });
     return updated;
+  }
+
+  /** Édite les infos d'un utilisateur (email, username) */
+  @Patch('users/:id')
+  async updateProfile(
+    @Param('id') id: string,
+    @Body() body: { email?: string; username?: string },
+    @Req() req: AuthRequest,
+  ) {
+    const data: { email?: string; username?: string | null } = {};
+    if (typeof body.email === 'string') {
+      const email = body.email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new BadRequestException('Email invalide');
+      }
+      // Vérifie unicité
+      const dup = await this.prisma.user.findFirst({
+        where: { email, id: { not: id } },
+        select: { id: true },
+      });
+      if (dup) throw new BadRequestException('Email déjà utilisé par un autre compte');
+      data.email = email;
+    }
+    if (typeof body.username === 'string') {
+      data.username = body.username.trim() || null;
+    }
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('Rien à modifier');
+    }
+    const updated = await this.prisma.user.update({
+      where: { id }, data,
+      select: { id: true, email: true, username: true, role: true, isActive: true },
+    });
+    await this.core.logAudit(req.user.id, 'admin.user.updated', {
+      ip: req.ip, targetType: 'user', targetId: id,
+    });
+    return updated;
+  }
+
+  /** Force la vérification de l'email */
+  @Post('users/:id/verify-email')
+  async verifyEmail(@Param('id') id: string, @Req() req: AuthRequest) {
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { emailVerified: true, emailVerifiedAt: new Date() },
+      select: { id: true, email: true, emailVerified: true },
+    });
+    await this.core.logAudit(req.user.id, 'admin.user.email_verified', {
+      ip: req.ip, targetType: 'user', targetId: id,
+    });
+    return updated;
+  }
+
+  /** Désactive le 2FA (TOTP) de force */
+  @Post('users/:id/disable-2fa')
+  async disable2fa(@Param('id') id: string, @Req() req: AuthRequest) {
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { totpEnabled: false, totpSecret: null },
+      select: { id: true, email: true, totpEnabled: true },
+    });
+    await this.core.logAudit(req.user.id, 'admin.user.2fa_disabled', {
+      ip: req.ip, targetType: 'user', targetId: id,
+    });
+    return updated;
+  }
+
+  /** Réinitialise le mot de passe (admin choisit le nouveau) */
+  @Post('users/:id/reset-password')
+  async resetPassword(
+    @Param('id') id: string,
+    @Body() body: { newPassword: string },
+    @Req() req: AuthRequest,
+  ) {
+    if (!body.newPassword || body.newPassword.length < 8) {
+      throw new BadRequestException('Le mot de passe doit faire au moins 8 caractères');
+    }
+    const hash = await bcrypt.hash(body.newPassword, 12);
+    await this.prisma.user.update({
+      where: { id }, data: { passwordHash: hash },
+    });
+    // Révoque tous les refresh tokens actifs pour forcer le user à se reconnecter
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await this.core.logAudit(req.user.id, 'admin.user.password_reset', {
+      ip: req.ip, targetType: 'user', targetId: id,
+    });
+    return { ok: true };
   }
 
   /** Active/désactive un compte */
