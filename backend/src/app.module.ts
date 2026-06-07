@@ -4,6 +4,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SlowRequestInterceptor } from './core/slow-request.interceptor';
+import { AdminModule } from './admin/admin.module';
 import { AgendaModule } from './agenda/agenda.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -33,6 +34,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
       },
     ]),
     PrismaModule,
+    AdminModule,
     AuthModule,
     ModulesModule,
     CoreModule,
