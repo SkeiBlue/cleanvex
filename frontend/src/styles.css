@@ -906,6 +906,17 @@ body::after {
   border: 1px solid rgba(244,63,94,0.2); border-radius: 6px;
 }
 
+/* Grille login : 2 colonnes desktop, 1 colonne mobile */
+@media (min-width: 880px) {
+  .login-grid {
+    grid-template-columns: 1.1fr 0.9fr !important;
+    gap: 64px !important;
+  }
+}
+@media (max-width: 879px) {
+  .login-hero { display: none !important; }
+}
+
 /* ─── MODULE DISABLED ─── */
 .module-disabled {
   display: flex;
