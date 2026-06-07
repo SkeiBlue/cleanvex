@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Bell, LogOut, Settings, Shield, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { SystemPanel } from '../components/SystemPanel'
 import type { ActivityLog, AuditLog, ErrorLog, ModuleItem, ProfileInfo, UserSetting } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
-type Tab = 'profil' | 'securite' | 'modules' | 'logs'
+type Tab = 'profil' | 'securite' | 'modules' | 'logs' | 'systeme'
 
 const MODULE_ICONS: Record<string, string> = {
   vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
@@ -29,7 +30,8 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 }
 
 export function SettingsPage() {
-  const { authedFetch, refreshModules, logout } = useAuth()
+  const { authedFetch, refreshModules, logout, user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [settings, setSettings] = useState<UserSetting[]>([])
   const [modules, setModules] = useState<ModuleItem[]>([])
@@ -174,6 +176,7 @@ export function SettingsPage() {
         <TabBtn label="Sécurité" active={activeTab === 'securite'} onClick={() => setActiveTab('securite')} />
         <TabBtn label="Modules" active={activeTab === 'modules'} onClick={() => setActiveTab('modules')} />
         <TabBtn label="Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
+        {isAdmin && <TabBtn label="Système" active={activeTab === 'systeme'} onClick={() => setActiveTab('systeme')} />}
       </div>
 
       {message && (
@@ -465,6 +468,12 @@ export function SettingsPage() {
       )}
 
       {/* ══ ONGLET LOGS ══ */}
+      {activeTab === 'systeme' && isAdmin && (
+        <div style={{ marginTop: '16px' }}>
+          <SystemPanel />
+        </div>
+      )}
+
       {activeTab === 'logs' && (
         <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
