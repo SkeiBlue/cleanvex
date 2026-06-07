@@ -132,9 +132,11 @@ cmd_start() {
   log "Préparation du backend..."
   cd "$BACKEND"
   [[ -f .env ]] || err "backend/.env manquant — crée-le avec DATABASE_URL, JWT_ACCESS_SECRET, JWT_REFRESH_SECRET"
-  if [[ ! -d node_modules ]]; then
-    warn "node_modules absent — npm ci..."
-    npm ci --omit=optional
+  # Même chose côté backend : Nest CLI, ts-node, typescript sont en devDeps
+  if [[ ! -d node_modules ]] || [[ ! -x node_modules/.bin/nest ]]; then
+    warn "node_modules incomplet — réinstallation avec devDeps..."
+    rm -rf node_modules
+    NODE_ENV= npm install --include=dev --no-audit --no-fund
   fi
   npx prisma generate
   npx prisma migrate deploy || warn "Migrations déjà à jour"
@@ -144,9 +146,12 @@ cmd_start() {
   # 4. Frontend (build de prod)
   log "Préparation du frontend (build pour $SERVER_HOST)..."
   cd "$FRONTEND"
-  if [[ ! -d node_modules ]]; then
-    warn "node_modules absent — npm ci..."
-    npm ci --omit=optional
+  # On force --include=dev car typescript/vite sont en devDependencies
+  # et sont indispensables au build, même en mode prod.
+  if [[ ! -d node_modules ]] || [[ ! -x node_modules/.bin/tsc ]]; then
+    warn "node_modules incomplet — réinstallation avec devDeps..."
+    rm -rf node_modules
+    NODE_ENV= npm install --include=dev --no-audit --no-fund
   fi
   # API URL vue depuis le navigateur du client
   VITE_API_URL="http://$SERVER_HOST:$BACKEND_PORT/api" npm run build
