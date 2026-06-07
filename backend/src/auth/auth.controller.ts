@@ -147,11 +147,18 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
+    // `secure` est lu depuis l'env (COOKIE_SECURE). Par défaut OFF, car beaucoup
+    // d'installs tournent encore en HTTP (LAN/intranet). Active à `true` dès que
+    // le site est servi en HTTPS — sinon le cookie ne sera jamais transmis.
+    const secure = (process.env.COOKIE_SECURE ?? 'false') === 'true';
+    const days = Number(process.env.JWT_REFRESH_DAYS ?? '14');
     res.cookie(this.auth.refreshCookieName, token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure,
       sameSite: 'lax',
       path: '/api/auth',
+      // `maxAge` rend le cookie persistant : il survit à la fermeture du navigateur.
+      maxAge: days * 24 * 60 * 60 * 1000,
     });
   }
 

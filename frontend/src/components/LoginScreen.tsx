@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowRight, CalendarCheck, Car, Eye, EyeOff, FolderOpen,
   KeyRound, Lock, LogIn, Mail, Package, ShieldCheck, Sparkles,
@@ -239,6 +239,8 @@ const FEATURES = [
 ]
 
 /* ───────────── Composant principal ───────────── */
+const REMEMBER_KEY = 'auth.rememberEmail'
+
 export function LoginScreen({
   email, password, signupEmail, signupPassword, signupUsername, signupInviteCode,
   verificationToken, message,
@@ -249,6 +251,35 @@ export function LoginScreen({
   const [tab, setTab] = useState<'login' | 'signup'>('login')
   const [showForgot, setShowForgot] = useState(false)
   const [showVerify, setShowVerify] = useState(false)
+  // Garde-fou : certains environnements (tests, SSR) n'exposent pas localStorage
+  function safeStorage() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) return window.localStorage
+    } catch { /* ignore */ }
+    return null
+  }
+  const [remember, setRemember] = useState(() => {
+    const ls = safeStorage()
+    return ls ? ls.getItem(REMEMBER_KEY) !== null : false
+  })
+
+  // Pré-remplit l'email si "Rester connecté" a été coché précédemment.
+  useEffect(() => {
+    const ls = safeStorage()
+    const saved = ls?.getItem(REMEMBER_KEY)
+    if (saved && !email) onEmailChange(saved)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Wrap onLogin pour persister l'email si "Rester connecté" est coché.
+  function handleLoginSubmit(e: FormEv) {
+    const ls = safeStorage()
+    if (ls) {
+      if (remember && email) ls.setItem(REMEMBER_KEY, email)
+      else ls.removeItem(REMEMBER_KEY)
+    }
+    onLogin(e)
+  }
 
   return (
     <main className="login-screen" style={{
@@ -381,7 +412,7 @@ export function LoginScreen({
 
           {/* ── Connexion ── */}
           {tab === 'login' && (
-            <form className="login-form" onSubmit={onLogin}
+            <form className="login-form" onSubmit={handleLoginSubmit}
               style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 0, background: 'none', border: 'none' }}>
               <div>
                 <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.4px' }}>
@@ -398,7 +429,20 @@ export function LoginScreen({
               <PasswordField label="Mot de passe" value={password} onChange={onPasswordChange}
                 placeholder="••••••••" autoComplete="current-password" />
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <label style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontSize: 12, color: 'var(--text2)', cursor: 'pointer',
+                  userSelect: 'none',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={remember}
+                    onChange={e => setRemember(e.target.checked)}
+                    style={{ accentColor: '#7c3aed', width: 14, height: 14 }}
+                  />
+                  Rester connecté
+                </label>
                 <button type="button" onClick={() => setShowForgot(s => !s)}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
