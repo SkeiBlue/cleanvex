@@ -53,9 +53,19 @@ git reset --hard "origin/$BRANCH" || err "git reset a échoué"
 AFTER_SHA="$(git rev-parse HEAD)"
 ok "Checkout ${BEFORE_SHA:0:7} → ${AFTER_SHA:0:7}"
 
+# Détecte l'URL publique pour le build frontend (VITE_API_URL).
+# Si l'admin a positionné SERVER_HOST en env (ou que server-start.sh tourne déjà),
+# on s'aligne dessus pour ne pas casser le login après MAJ.
+SERVER_HOST="${SERVER_HOST:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
+SERVER_HOST="${SERVER_HOST:-localhost}"
+BACKEND_PORT="${BACKEND_PORT:-3000}"
+VITE_API_URL_VAL="http://${SERVER_HOST}:${BACKEND_PORT}/api"
+log "Build frontend ciblera : $VITE_API_URL_VAL"
+
 # ── 3. Backend ────────────────────────────────────────────────
-log "Backend : npm ci…"
-(cd backend && npm ci --omit=dev=false) || err "npm ci backend a échoué"
+log "Backend : install (include dev)…"
+(cd backend && NODE_ENV= npm install --include=dev --no-audit --no-fund) \
+  || err "npm install backend a échoué"
 log "Backend : prisma generate…"
 (cd backend && npx prisma generate) || err "prisma generate a échoué"
 log "Backend : prisma migrate deploy…"
@@ -65,20 +75,27 @@ log "Backend : build…"
 ok "Backend prêt"
 
 # ── 4. Frontend ───────────────────────────────────────────────
-log "Frontend : npm ci…"
-(cd frontend && npm ci) || err "npm ci frontend a échoué"
-log "Frontend : build…"
-(cd frontend && npm run build) || err "build frontend a échoué"
+log "Frontend : install (include dev)…"
+(cd frontend && NODE_ENV= npm install --include=dev --no-audit --no-fund) \
+  || err "npm install frontend a échoué"
+log "Frontend : build ($VITE_API_URL_VAL)…"
+(cd frontend && VITE_API_URL="$VITE_API_URL_VAL" npm run build) \
+  || err "build frontend a échoué"
 ok "Frontend prêt"
 
 # ── 5. Restart (best effort) ──────────────────────────────────
 log "Restart application…"
-if command -v pm2 >/dev/null 2>&1; then
-  pm2 restart all && ok "pm2 restart OK"
-elif command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet monespace 2>/dev/null; then
+if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet monespace 2>/dev/null; then
   systemctl restart monespace && ok "systemd restart OK"
+elif command -v pm2 >/dev/null 2>&1; then
+  pm2 restart all && ok "pm2 restart OK"
+elif [ -x ./server-start.sh ]; then
+  # Stratégie pour install nohup-based (server-start.sh) :
+  # on relance via le script qui gère les PIDs et le rebuild.
+  SERVER_HOST="$SERVER_HOST" BACKEND_PORT="$BACKEND_PORT" \
+    bash ./server-start.sh restart && ok "server-start.sh restart OK"
 else
-  echo "⚠  Aucun gestionnaire détecté (pm2/systemd). Restart manuel requis."
+  echo "⚠  Aucun gestionnaire détecté. Restart manuel requis."
 fi
 
 ok "Mise à jour terminée — ${AFTER_SHA:0:7}"
