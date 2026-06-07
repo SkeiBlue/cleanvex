@@ -91,10 +91,15 @@ elif command -v pm2 >/dev/null 2>&1; then
   pm2 restart all && ok "pm2 restart OK"
 elif [ -f ./server-start.sh ]; then
   # Stratégie pour install nohup-based (server-start.sh) :
-  # on relance via le script qui gère les PIDs et le rebuild.
-  # On utilise `bash` direct → pas besoin de bit exécutable.
-  SERVER_HOST="$SERVER_HOST" BACKEND_PORT="$BACKEND_PORT" \
-    bash ./server-start.sh restart && ok "server-start.sh restart OK"
+  # On programme le restart en BACKGROUND DÉTACHÉ. Sinon, quand
+  # server-start.sh tue le backend (qui a spawné update.sh), le pipe
+  # stdout se ferme → set -e + EPIPE → update.sh meurt avant la fin
+  # du restart. Le sleep laisse update.sh sortir proprement d'abord.
+  mkdir -p logs
+  nohup setsid bash -c "sleep 3 && SERVER_HOST='$SERVER_HOST' BACKEND_PORT='$BACKEND_PORT' bash ./server-start.sh restart" \
+    >> logs/restart.log 2>&1 < /dev/null &
+  disown
+  ok "Restart programmé en arrière-plan (logs/restart.log)"
 else
   echo "⚠  Aucun gestionnaire détecté. Restart manuel requis."
 fi

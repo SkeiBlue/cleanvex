@@ -74,26 +74,46 @@ export function StockPage() {
   /* ── Handlers ── */
   async function handleCreate(e: FormEv) {
     e.preventDefault()
-    const d = new FormData(e.currentTarget)
-    const r = await authedFetch('/stock/items', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: d.get('name'), category: d.get('category'), unit: d.get('unit'),
-        quantity: d.get('quantity') ? Number(d.get('quantity')) : 0,
-        location: d.get('location') || undefined,
-        valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
-        reference: d.get('reference') || undefined,
-        supplier: d.get('supplier') || undefined,
-        notes: d.get('notes') || undefined,
-        thresholdEnabled: d.get('thresholdEnabled') === 'on',
-        threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
-      }),
-    })
-    if (!r.ok) { toast.err('Création refusée.'); return }
-    const created = await r.json()
-    e.currentTarget.reset(); setShowCreate(false); toast.ok('Article créé.')
-    await reload()
-    setSelected(created); setView('detail'); setDetailTab('infos')
+    const form = e.currentTarget  // capture avant les await (sinon currentTarget=null)
+    const d = new FormData(form)
+    const body = {
+      name: String(d.get('name') ?? '').trim(),
+      category: String(d.get('category') ?? '').trim(),
+      unit: String(d.get('unit') ?? '').trim(),
+      quantity: d.get('quantity') ? Number(d.get('quantity')) : 0,
+      location: d.get('location') || undefined,
+      valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
+      reference: d.get('reference') || undefined,
+      supplier: d.get('supplier') || undefined,
+      notes: d.get('notes') || undefined,
+      thresholdEnabled: d.get('thresholdEnabled') === 'on',
+      threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
+    }
+    if (!body.name || !body.category || !body.unit) {
+      toast.err('Nom, catégorie et unité sont obligatoires.'); return
+    }
+    try {
+      const r = await authedFetch('/stock/items', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!r.ok) {
+        // Affiche le message d'erreur réel du backend (utile pour debug)
+        let msg = `Création refusée (HTTP ${r.status}).`
+        try {
+          const err = await r.json()
+          if (err?.message) msg = Array.isArray(err.message) ? err.message.join(' · ') : err.message
+        } catch { /* pas de body JSON */ }
+        toast.err(msg)
+        return
+      }
+      const created = await r.json()
+      form.reset(); setShowCreate(false); toast.ok('Article créé.')
+      await reload()
+      setSelected(created); setView('detail'); setDetailTab('infos')
+    } catch (err) {
+      toast.err(`Erreur réseau : ${err instanceof Error ? err.message : 'inconnue'}`)
+    }
   }
 
   async function handleUpdate(e: FormEv) {
