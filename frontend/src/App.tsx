@@ -23,6 +23,7 @@ const ContactsPage   = lazy(() => import('./pages/ContactsPage').then(m => ({ de
 const SettingsPage   = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const ReportsPage    = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const BackupsPage    = lazy(() => import('./pages/BackupsPage').then(m => ({ default: m.BackupsPage })))
+const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
 
 type FormEv = { preventDefault(): void }
 
@@ -204,6 +205,12 @@ function ProtectedRoute() {
   return <Outlet />
 }
 
+function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  if (user?.role !== 'admin') return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <ToastProvider>
@@ -224,6 +231,7 @@ export default function App() {
               <Route path="settings" element={<SettingsPage />} />
               <Route path="reports" element={<ReportsPage />} />
               <Route path="backups" element={<BackupsPage />} />
+              <Route path="admin" element={<AdminOnlyRoute><AdminDashboardPage /></AdminOnlyRoute>} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
