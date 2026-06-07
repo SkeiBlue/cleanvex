@@ -44,8 +44,18 @@ lsof -ti:5432 | xargs kill -9 2>/dev/null || true
 ssh -f -N -L 5432:localhost:5432 clement@192.168.1.195 \
   -o StrictHostKeyChecking=no \
   -o ExitOnForwardFailure=yes \
-  -o ConnectTimeout=10
+  -o ConnectTimeout=10 \
+  -o ServerAliveInterval=20 \
+  -o ServerAliveCountMax=3 \
+  -o TCPKeepAlive=yes
 ok "Tunnel SSH actif (localhost:5432 → 192.168.1.195:5432)"
+
+# Vérifie que le tunnel est réellement opérationnel avant de continuer
+for i in 1 2 3 4 5; do
+  if nc -z localhost 5432 2>/dev/null; then break; fi
+  sleep 1
+done
+nc -z localhost 5432 2>/dev/null || err "Tunnel ouvert mais port 5432 injoignable — vérifie le serveur distant 192.168.1.195"
 
 # ── 3. Backend — dépendances + migrations ─────────────────────────────────────
 log "Préparation du backend..."
