@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ArrowRight, CalendarCheck, Car, Eye, EyeOff, FolderOpen,
-  KeyRound, Lock, LogIn, Mail, Package, Plus, ShieldCheck, Sparkles,
+  KeyRound, Lock, LogIn, Mail, Package, ShieldCheck, Sparkles,
   User, UserPlus, Wallet, Wrench, X,
 } from 'lucide-react'
 import { API_URL } from '../contexts/AuthContext'
