@@ -67,14 +67,14 @@ export function RealEstatePage() {
   const reload = useCallback(async () => {
     const [pr, dr] = await Promise.all([authedFetch('/real-estate/properties'), authedFetch('/documents')])
     if (pr.ok) setProperties(await pr.json())
-    if (dr.ok) setDocuments(await dr.json())
+    if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
   }, [authedFetch])
 
   useEffect(() => {
     async function load() {
       const [pr, dr] = await Promise.all([authedFetch('/real-estate/properties'), authedFetch('/documents')])
       if (pr.ok) setProperties(await pr.json())
-      if (dr.ok) setDocuments(await dr.json())
+      if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
     }
     load()
   }, [authedFetch])

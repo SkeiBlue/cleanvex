@@ -77,14 +77,14 @@ export function ContactsPage() {
   const reload = useCallback(async () => {
     const [cr, dr] = await Promise.all([authedFetch('/contacts'), authedFetch('/documents')])
     if (cr.ok) setContacts(await cr.json())
-    if (dr.ok) setDocuments(await dr.json())
+    if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
   }, [authedFetch])
 
   useEffect(() => {
     async function load() {
       const [cr, dr] = await Promise.all([authedFetch('/contacts'), authedFetch('/documents')])
       if (cr.ok) setContacts(await cr.json())
-      if (dr.ok) setDocuments(await dr.json())
+      if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
     }
     load()
   }, [authedFetch])
