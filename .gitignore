@@ -6,3 +6,6 @@ coverage/
 private-files/
 backups/
 *.log
+
+.claude/
+frontend/dev-dist/

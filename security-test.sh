@@ -16,8 +16,8 @@ GRN='\033[0;32m'; RED='\033[0;31m'; YLW='\033[1;33m'
 BLD='\033[1m'; RST='\033[0m'
 
 PASS=0; FAIL=0
-pass() { printf "${GRN}  ✓  PASS${RST}  %s\n" "$*"; ((PASS++)); }
-fail() { printf "${RED}  ✗  FAIL${RST}  %s\n" "$*"; ((FAIL++)); }
+pass() { printf "${GRN}  ✓  PASS${RST}  %s\n" "$*"; PASS=$((PASS+1)); }
+fail() { printf "${RED}  ✗  FAIL${RST}  %s\n" "$*"; FAIL=$((FAIL+1)); }
 section() { printf "\n${BLD}${YLW}▶ %s${RST}\n" "$*"; }
 
 # ── Helpers ───────────────────────────────────────────────────
