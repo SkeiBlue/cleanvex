@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { GitCommit, RefreshCw, ShieldAlert, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { UpdateOverlay, type UpdateJob } from './UpdateOverlay'
 
 type VersionStatus = {
   installed: string | null
@@ -11,16 +12,6 @@ type VersionStatus = {
   warning?: string
 }
 
-type UpdateJob = {
-  id: string
-  status: 'pending' | 'running' | 'success' | 'error'
-  startedAt: string
-  finishedAt: string | null
-  exitCode: number | null
-  logs: string[]
-  startedBy: string
-}
-
 export function SystemPanel() {
   const { authedFetch } = useAuth()
   const [version, setVersion] = useState<VersionStatus | null>(null)
@@ -28,7 +19,6 @@ export function SystemPanel() {
   const [checking, setChecking] = useState(false)
   const [job, setJob] = useState<UpdateJob | null>(null)
   const [confirmUpdate, setConfirmUpdate] = useState(false)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const loadVersion = useCallback(async () => {
     const r = await authedFetch('/admin/system/version')
@@ -51,14 +41,29 @@ export function SystemPanel() {
 
   const isActive = job?.status === 'pending' || job?.status === 'running'
 
-  useEffect(() => {
-    if (!isActive || !job) return
-    pollRef.current = setInterval(async () => {
+  // Polling déplacé dans UpdateOverlay (gère aussi backend-down pendant le restart).
+  // On garde un fetch helper qu'on lui passe.
+  const fetchJobNow = useCallback(async (): Promise<UpdateJob | null> => {
+    if (!job) return null
+    try {
       const r = await authedFetch(`/admin/system/update/${job.id}`)
-      if (r.ok) setJob(await r.json())
-    }, 1500)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  }, [isActive, job, authedFetch])
+      if (!r.ok) return null
+      return (await r.json()) as UpdateJob
+    } catch {
+      return null
+    }
+  }, [authedFetch, job])
+
+  // Synchronise le job du panneau avec celui en cours (utile à la fermeture overlay)
+  useEffect(() => {
+    if (!isActive) return
+    // ping unique au mount, l'overlay prend le relais ensuite
+    const id = setTimeout(async () => {
+      const updated = await fetchJobNow()
+      if (updated) setJob(updated)
+    }, 500)
+    return () => clearTimeout(id)
+  }, [isActive, fetchJobNow])
 
   useEffect(() => {
     if (job && (job.status === 'success' || job.status === 'error')) {
@@ -89,6 +94,19 @@ export function SystemPanel() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Overlay plein écran pendant la MAJ */}
+      {isActive && job && (
+        <UpdateOverlay
+          job={job}
+          fetchJob={fetchJobNow}
+          onClose={async () => {
+            const updated = await fetchJobNow()
+            if (updated) setJob(updated)
+            await loadVersion()
+          }}
+        />
+      )}
+
       {/* État version */}
       <div style={{
         background: 'var(--card)', border: '1px solid var(--border)',
