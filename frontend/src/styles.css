@@ -1186,3 +1186,38 @@ a:focus:not(:focus-visible) { outline: none; }
   font-size: 13px;
 }
 
+/* ─── DENSITÉ COMPACTE ─────────────────────────────────────────
+   Activée via data-density="compact" sur <html>. Persisté en
+   localStorage par useDensity(). Effet : moins de marges, plus
+   d'infos visibles à l'écran. */
+:root[data-density="compact"] {
+  --r: 12px;
+}
+:root[data-density="compact"] .content {
+  padding: 16px 20px;
+  gap: 14px;
+}
+:root[data-density="compact"] .header {
+  height: 52px;
+  padding: 0 20px;
+}
+:root[data-density="compact"] .card-head,
+:root[data-density="compact"] .panel-header {
+  padding: 12px 16px;
+}
+:root[data-density="compact"] .card-body {
+  padding: 10px 16px;
+}
+:root[data-density="compact"] .sidebar-top {
+  padding: 16px 0 10px;
+}
+:root[data-density="compact"] .alert-banner {
+  padding: 10px 14px;
+}
+:root[data-density="compact"] table th,
+:root[data-density="compact"] table td {
+  padding: 8px 10px;
+}
+:root[data-density="compact"] .header-greeting { font-size: 13px; }
+:root[data-density="compact"] .header-date     { font-size: 10px; }
+

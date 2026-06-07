@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bell, LogOut, Settings, Shield, ShieldCheck, Trash2 } from 'lucide-react'
+import { Bell, LayoutGrid, LogOut, Maximize2, Settings, Shield, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
+import { useDensity } from '../hooks/useDensity'
 import type { ActivityLog, AuditLog, ErrorLog, ModuleItem, ProfileInfo, UserSetting } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
@@ -33,6 +34,7 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 export function SettingsPage() {
   const { authedFetch, refreshModules, logout, user } = useAuth()
   const isAdmin = user?.role === 'admin'
+  const [density, setDensity] = useDensity()
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [settings, setSettings] = useState<UserSetting[]>([])
   const [modules, setModules] = useState<ModuleItem[]>([])
@@ -237,6 +239,59 @@ export function SettingsPage() {
                 />
                 <button className="primary-action" type="submit">Mettre à jour</button>
               </form>
+            </div>
+          </article>
+
+          {/* Apparence */}
+          <article className="panel">
+            <div className="panel-header">
+              <div><span className="panel-kicker">Apparence</span><h2>Densité d'affichage</h2></div>
+              <LayoutGrid size={20} />
+            </div>
+            <div style={{ padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>
+                Choisis la densité d'interface. Le réglage s'applique immédiatement et est conservé sur cet appareil.
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setDensity('comfortable')}
+                  aria-pressed={density === 'comfortable'}
+                  style={{
+                    flex: 1, minWidth: 180, padding: '12px 14px',
+                    background: density === 'comfortable' ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${density === 'comfortable' ? 'rgba(167,139,250,0.5)' : 'var(--border)'}`,
+                    borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <Maximize2 size={16} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Confortable</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Marges aérées, lisibilité maximale.</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDensity('compact')}
+                  aria-pressed={density === 'compact'}
+                  style={{
+                    flex: 1, minWidth: 180, padding: '12px 14px',
+                    background: density === 'compact' ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${density === 'compact' ? 'rgba(167,139,250,0.5)' : 'var(--border)'}`,
+                    borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <LayoutGrid size={16} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Compact</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Plus d'infos à l'écran, marges réduites.</div>
+                  </div>
+                </button>
+              </div>
             </div>
           </article>
 
