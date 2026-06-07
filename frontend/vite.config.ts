@@ -13,16 +13,24 @@ export default defineConfig({
       workbox: {
         // mise en cache des assets statiques
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-        // stratégie : network-first pour l'API, cache-first pour les assets
+        // stratégie : network-first pour l'API en lecture seule (GET), cache-first pour les assets
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/localhost:3000\/api\//i,
+            // Exclut auth/backups (sensibles). Couvre localhost dev + domaines prod cleanvex.fr.
+            urlPattern: ({ url, request }) => {
+              if (request.method !== 'GET') return false
+              if (!url.pathname.startsWith('/api/')) return false
+              if (url.pathname.startsWith('/api/auth/')) return false
+              if (url.pathname.startsWith('/api/backups/')) return false
+              return true
+            },
             handler: 'NetworkFirst',
+            method: 'GET',
             options: {
               cacheName: 'api-cache',
               networkTimeoutSeconds: 5,
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 80, maxAgeSeconds: 300 },
+              cacheableResponse: { statuses: [200] },
             },
           },
         ],
