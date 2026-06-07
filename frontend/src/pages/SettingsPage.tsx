@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bell, LayoutGrid, LogOut, Maximize2, Settings, Shield, ShieldCheck, Trash2 } from 'lucide-react'
+import { Bell, LayoutGrid, LogOut, Maximize2, Moon, Settings, Shield, ShieldCheck, Sun, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
 import { useDensity } from '../hooks/useDensity'
+import { useTheme } from '../hooks/useTheme'
 import type { ActivityLog, AuditLog, ErrorLog, ModuleItem, ProfileInfo, UserSetting } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
@@ -35,6 +36,7 @@ export function SettingsPage() {
   const { authedFetch, refreshModules, logout, user } = useAuth()
   const isAdmin = user?.role === 'admin'
   const [density, setDensity] = useDensity()
+  const [theme, setTheme] = useTheme()
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [settings, setSettings] = useState<UserSetting[]>([])
   const [modules, setModules] = useState<ModuleItem[]>([])
@@ -239,6 +241,59 @@ export function SettingsPage() {
                 />
                 <button className="primary-action" type="submit">Mettre à jour</button>
               </form>
+            </div>
+          </article>
+
+          {/* Thème */}
+          <article className="panel">
+            <div className="panel-header">
+              <div><span className="panel-kicker">Apparence</span><h2>Thème</h2></div>
+              {theme === 'light' ? <Sun size={20} /> : <Moon size={20} />}
+            </div>
+            <div style={{ padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>
+                Bascule entre sombre et clair. Appliqué immédiatement et conservé sur cet appareil.
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setTheme('dark')}
+                  aria-pressed={theme === 'dark'}
+                  style={{
+                    flex: 1, minWidth: 180, padding: '12px 14px',
+                    background: theme === 'dark' ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${theme === 'dark' ? 'rgba(167,139,250,0.5)' : 'var(--border)'}`,
+                    borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <Moon size={16} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Sombre</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Confort visuel le soir, look par défaut.</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme('light')}
+                  aria-pressed={theme === 'light'}
+                  style={{
+                    flex: 1, minWidth: 180, padding: '12px 14px',
+                    background: theme === 'light' ? 'rgba(124,58,237,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${theme === 'light' ? 'rgba(167,139,250,0.5)' : 'var(--border)'}`,
+                    borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 10,
+                    transition: 'border-color 0.15s, background 0.15s',
+                  }}
+                >
+                  <Sun size={16} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Clair</div>
+                    <div style={{ fontSize: 11, color: 'var(--text3)' }}>Idéal en plein jour, contraste élevé.</div>
+                  </div>
+                </button>
+              </div>
             </div>
           </article>
 
