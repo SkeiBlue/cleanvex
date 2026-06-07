@@ -136,7 +136,7 @@ cmd_start() {
   if [[ ! -d node_modules ]] || [[ ! -x node_modules/.bin/nest ]]; then
     warn "node_modules incomplet — réinstallation avec devDeps..."
     rm -rf node_modules
-    NODE_ENV= npm install --include=dev --no-audit --no-fund
+    NODE_ENV= npm install --include=dev --production=false --no-audit --no-fund
   fi
   npx prisma generate
   npx prisma migrate deploy || warn "Migrations déjà à jour"
@@ -151,7 +151,7 @@ cmd_start() {
   if [[ ! -d node_modules ]] || [[ ! -x node_modules/.bin/tsc ]]; then
     warn "node_modules incomplet — réinstallation avec devDeps..."
     rm -rf node_modules
-    NODE_ENV= npm install --include=dev --no-audit --no-fund
+    NODE_ENV= npm install --include=dev --production=false --no-audit --no-fund
   fi
   # API URL vue depuis le navigateur du client
   VITE_API_URL="http://$SERVER_HOST:$BACKEND_PORT/api" npm run build

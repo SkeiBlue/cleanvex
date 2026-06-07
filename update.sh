@@ -64,7 +64,7 @@ log "Build frontend ciblera : $VITE_API_URL_VAL"
 
 # ── 3. Backend ────────────────────────────────────────────────
 log "Backend : install (include dev)…"
-(cd backend && NODE_ENV= npm install --include=dev --no-audit --no-fund) \
+(cd backend && NODE_ENV= npm install --include=dev --production=false --no-audit --no-fund) \
   || err "npm install backend a échoué"
 log "Backend : prisma generate…"
 (cd backend && npx prisma generate) || err "prisma generate a échoué"
@@ -76,7 +76,7 @@ ok "Backend prêt"
 
 # ── 4. Frontend ───────────────────────────────────────────────
 log "Frontend : install (include dev)…"
-(cd frontend && NODE_ENV= npm install --include=dev --no-audit --no-fund) \
+(cd frontend && NODE_ENV= npm install --include=dev --production=false --no-audit --no-fund) \
   || err "npm install frontend a échoué"
 log "Frontend : build ($VITE_API_URL_VAL)…"
 (cd frontend && VITE_API_URL="$VITE_API_URL_VAL" npm run build) \
