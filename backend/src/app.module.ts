@@ -2,7 +2,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { SlowRequestInterceptor } from './core/slow-request.interceptor';
 import { AgendaModule } from './agenda/agenda.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -55,6 +56,10 @@ import { VehiclesModule } from './vehicles/vehicles.module';
       useClass: process.env.NODE_ENV === 'test'
         ? class { canActivate() { return true } }
         : ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SlowRequestInterceptor,
     },
   ],
 })
