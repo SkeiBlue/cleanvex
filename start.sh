@@ -18,6 +18,12 @@ printf "\n${BOLD}╔════════════════════
 printf "║   Plateforme Personnelle — Local     ║\n"
 printf "╚══════════════════════════════════════╝${RESET}\n\n"
 
+# ── 0. Nettoyage des ports utilisés ───────────────────────────────────────────
+log "Nettoyage des ports 3000 (backend) et 5173 (frontend)..."
+lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+ok "Ports libérés"
+
 # ── 1. Prérequis ──────────────────────────────────────────────────────────────
 log "Vérification des prérequis..."
 command -v node >/dev/null 2>&1 || err "Node.js manquant — installe-le via https://nodejs.org"
