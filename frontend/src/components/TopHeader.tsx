@@ -1,5 +1,6 @@
 import { type RefObject, useEffect, useRef, useState } from 'react'
-import { Bell, LogOut, Menu, Search, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, LogOut, Menu, Search, Sparkles, X } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import type { SearchResult } from '../types'
 
@@ -40,11 +41,30 @@ export function TopHeader({
   searchResults, searchOpen, onSearchResultClick, onSearchClose,
   searchRef,
 }: Props) {
-  const { authedFetch, setUnreadNotifications } = useAuth()
+  const { authedFetch, setUnreadNotifications, user } = useAuth()
+  const navigate = useNavigate()
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [notifLoading, setNotifLoading] = useState(false)
+  const [updateBehind, setUpdateBehind] = useState(0)
   const notifRef = useRef<HTMLDivElement>(null)
+
+  /* Admin : détection passive d'une MAJ dispo (mount + toutes les 30 min) */
+  useEffect(() => {
+    if (user?.role !== 'admin') return
+    let alive = true
+    const check = async () => {
+      try {
+        const r = await authedFetch('/admin/system/version')
+        if (!alive || !r.ok) return
+        const d = await r.json()
+        setUpdateBehind(d?.behindBy ?? 0)
+      } catch { /* silencieux */ }
+    }
+    check()
+    const id = setInterval(check, 30 * 60 * 1000)
+    return () => { alive = false; clearInterval(id) }
+  }, [authedFetch, user?.role])
 
   /* Load notifications when dropdown opens */
   useEffect(() => {
@@ -198,6 +218,32 @@ export function TopHeader({
             </div>
           )}
         </div>
+
+        {/* ✨ Badge MAJ disponible (admin uniquement) */}
+        {updateBehind > 0 && (
+          <button
+            onClick={() => navigate('/settings?tab=systeme')}
+            title={`${updateBehind} commit${updateBehind > 1 ? 's' : ''} en retard — cliquer pour mettre à jour`}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.18), rgba(37,99,235,0.18))',
+              border: '1px solid rgba(167,139,250,0.4)', borderRadius: 999,
+              padding: '5px 10px', cursor: 'pointer', color: '#c4b5fd',
+              fontSize: 11, fontWeight: 600, fontFamily: 'var(--font)',
+              transition: 'transform 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(167,139,250,0.8)')}
+            onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(167,139,250,0.4)')}
+            aria-label={`Mise à jour disponible : ${updateBehind} commit${updateBehind > 1 ? 's' : ''}`}
+          >
+            <Sparkles size={12} />
+            <span className="desktop-only">MAJ dispo</span>
+            <span style={{
+              background: 'rgba(167,139,250,0.25)', borderRadius: 999,
+              padding: '0 6px', fontFamily: 'var(--mono)', fontSize: 10,
+            }}>{updateBehind}</span>
+          </button>
+        )}
 
         {/* 🔔 Notifications dropdown */}
         <div ref={notifRef} style={{ position: 'relative' }}>

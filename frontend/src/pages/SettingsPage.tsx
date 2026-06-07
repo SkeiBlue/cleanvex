@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Bell, LogOut, Settings, Shield, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
@@ -45,7 +46,23 @@ export function SettingsPage() {
   const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([])
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'ok' | 'err'>('ok')
-  const [activeTab, setActiveTab] = useState<Tab>('profil')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = ((): Tab => {
+    const t = searchParams.get('tab') as Tab | null
+    const allowed: Tab[] = ['profil', 'securite', 'modules', 'logs', 'systeme']
+    return t && allowed.includes(t) ? t : 'profil'
+  })()
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab)
+
+  // Nettoie le param ?tab=... une fois lu (URL plus propre)
+  useEffect(() => {
+    if (searchParams.get('tab')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('tab')
+      setSearchParams(next, { replace: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [logFilter, setLogFilter] = useState('')
 
   function setOk(msg: string) { setMessage(msg); setMessageType('ok') }
