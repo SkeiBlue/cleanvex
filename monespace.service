@@ -1,0 +1,20 @@
+[Unit]
+Description=MonEspace (backend + frontend)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=root
+WorkingDirectory=/opt/monespace
+ExecStart=/usr/bin/bash /opt/monespace/server-start.sh start
+ExecStop=/usr/bin/bash /opt/monespace/server-start.sh stop
+ExecReload=/usr/bin/bash /opt/monespace/server-start.sh restart
+PIDFile=/opt/monespace/run/backend.pid
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/monespace.log
+StandardError=append:/var/log/monespace.log
+
+[Install]
+WantedBy=multi-user.target
