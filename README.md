@@ -1,6 +1,7 @@
-# Plateforme personnelle modulaire
+# MonEspace / CleanVex — Plateforme personnelle modulaire
 
-Socle V0.1 base sur le cahier des charges PRO V3.2.
+Projet livré fonctionnellement jusqu'à V2.1 selon le cahier des charges PRO V4.1 (07/06/2026).
+Statut : stable, en validation finale. Voir [docs/V4.1_ECARTS_VALIDATION.md](docs/V4.1_ECARTS_VALIDATION.md) pour le rapport de validation et les écarts.
 
 ## Stack
 
