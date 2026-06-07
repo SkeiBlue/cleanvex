@@ -18,11 +18,18 @@ printf "\n${BOLD}╔════════════════════
 printf "║   Plateforme Personnelle — Local     ║\n"
 printf "╚══════════════════════════════════════╝${RESET}\n\n"
 
-# ── 0. Nettoyage des ports utilisés ───────────────────────────────────────────
-log "Nettoyage des ports 3000 (backend) et 5173 (frontend)..."
+# ── 0. Nettoyage des anciens serveurs ─────────────────────────────────────────
+log "Arrêt des anciens serveurs MonEspace..."
+# Tue les watchers Nest + Vite de CE projet (par chemin).
+# Indispensable : tuer seulement le port laisse le watcher --watch respawner
+# un nouvel enfant qui reprend le port 3000 → EADDRINUSE.
+pkill -f "$BACKEND" 2>/dev/null || true
+pkill -f "$FRONTEND" 2>/dev/null || true
+sleep 1
+# Filet de sécurité : libère les ports si quelque chose écoute encore.
 lsof -ti:3000 2>/dev/null | xargs kill -9 2>/dev/null || true
 lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
-ok "Ports libérés"
+ok "Anciens serveurs arrêtés"
 
 # ── 1. Prérequis ──────────────────────────────────────────────────────────────
 log "Vérification des prérequis..."
