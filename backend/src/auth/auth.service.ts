@@ -185,17 +185,7 @@ export class AuthService {
       throw new UnauthorizedException('Missing refresh token');
     }
 
-    const candidates = await this.prisma.refreshToken.findMany({
-      where: {
-        revokedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      include: { user: true },
-    });
-
-    const current = candidates.find((token) =>
-      bcrypt.compareSync(rawToken, token.tokenHash),
-    );
+    const current = await this.resolveRefreshToken(rawToken);
 
     if (!current || !current.user.isActive) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -224,13 +214,7 @@ export class AuthService {
       return;
     }
 
-    const tokens = await this.prisma.refreshToken.findMany({
-      where: { revokedAt: null },
-    });
-
-    const current = tokens.find((token) =>
-      bcrypt.compareSync(rawToken, token.tokenHash),
-    );
+    const current = await this.resolveRefreshToken(rawToken);
 
     if (current) {
       await this.prisma.refreshToken.update({
@@ -350,8 +334,8 @@ export class AuthService {
     userId: string,
     meta: { ip?: string; userAgent?: string },
   ) {
-    const raw = randomBytes(48).toString('base64url');
-    const tokenHash = await bcrypt.hash(raw, 12);
+    const secret = randomBytes(48).toString('base64url');
+    const tokenHash = await bcrypt.hash(secret, 12);
     const days = Number(this.config.get<string>('JWT_REFRESH_DAYS', '14'));
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
@@ -365,7 +349,45 @@ export class AuthService {
       },
     });
 
-    return { ...token, raw };
+    // Format `<id>.<secret>` → permet un lookup O(1) au refresh sans
+    // itérer sur tous les tokens en DB (cf. resolveRefreshToken).
+    return { ...token, raw: `${token.id}.${secret}` };
+  }
+
+  /**
+   * Résout un raw token (nouveau format `<id>.<secret>` ou ancien) vers
+   * son enregistrement DB + user. Retourne null si invalide/expiré/révoqué.
+   * Path rapide pour les nouveaux tokens (1 lookup + 1 bcrypt), fallback
+   * O(N) pour les anciens (jusqu'à leur prochain refresh).
+   */
+  private async resolveRefreshToken(rawToken: string) {
+    const now = new Date();
+    const dotIdx = rawToken.indexOf('.');
+    if (dotIdx > 0) {
+      const id = rawToken.slice(0, dotIdx);
+      const secret = rawToken.slice(dotIdx + 1);
+      const token = await this.prisma.refreshToken.findUnique({
+        where: { id },
+        include: { user: true },
+      });
+      if (
+        token &&
+        !token.revokedAt &&
+        token.expiresAt > now &&
+        (await bcrypt.compare(secret, token.tokenHash))
+      ) {
+        return token;
+      }
+      return null;
+    }
+    // Legacy : ancien token sans id encodé → balayage O(N).
+    const candidates = await this.prisma.refreshToken.findMany({
+      where: { revokedAt: null, expiresAt: { gt: now } },
+      include: { user: true },
+    });
+    return (
+      candidates.find((t) => bcrypt.compareSync(rawToken, t.tokenHash)) ?? null
+    );
   }
 
   private async createEmailVerificationToken(userId: string) {
