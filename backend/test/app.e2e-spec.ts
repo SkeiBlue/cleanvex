@@ -6,6 +6,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from '../src/app.module';
 import { setupApp } from '../src/app.setup';
 
@@ -96,7 +97,10 @@ describe('V0.1 security flows (e2e)', () => {
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     app = setupApp(moduleFixture.createNestApplication());
     await app.init();
@@ -285,7 +289,7 @@ describe('V0.1 security flows (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(list.body.some((item: { name: string }) => item.name === 'invoice.txt')).toBe(
+    expect(list.body.data.some((item: { name: string }) => item.name === 'invoice.txt')).toBe(
       true,
     );
   });

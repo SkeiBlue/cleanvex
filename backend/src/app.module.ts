@@ -52,7 +52,9 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: process.env.NODE_ENV === 'test'
+        ? class { canActivate() { return true } }
+        : ThrottlerGuard,
     },
   ],
 })

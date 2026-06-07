@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CoreService } from '../core/core.service';
+import { ModuleCacheService } from '../core/module-cache.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 const CORE_MODULES = [
@@ -18,6 +19,7 @@ export class ModulesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly core: CoreService,
+    private readonly moduleCache: ModuleCacheService,
   ) {}
 
   async seedDefaults() {
@@ -41,6 +43,8 @@ export class ModulesService {
       where: { key },
       data: { isEnabled },
     });
+
+    this.moduleCache.invalidate(key);
 
     if (userId) {
       await this.core.logActivity(
