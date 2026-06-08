@@ -12,6 +12,7 @@ type AuthCtx = {
   modules: ModuleItem[]
   unreadNotifications: number
   isLoading: boolean
+  verifyMessage: string | null
   authedFetch: (path: string, init?: RequestInit) => Promise<Response>
   login: (email: string, password: string) => Promise<string>
   register: (email: string, password: string, username?: string, inviteCode?: string) => Promise<string>
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [modules, setModules]         = useState<ModuleItem[]>([])
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [isLoading, setIsLoading]     = useState(true)
+  const [verifyMessage, setVerifyMessage] = useState<string | null>(null)
 
   // Le refresh token est à usage unique (tourné à chaque appel côté backend).
   // Si plusieurs requêtes échouent en 401 en même temps, il ne faut déclencher
@@ -80,7 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function restore() {
       try {
         const tokenFromUrl = new URLSearchParams(window.location.search).get('verifyToken')
-        if (tokenFromUrl) window.history.replaceState({}, '', window.location.pathname)
+        if (tokenFromUrl) {
+          // Nettoie l'URL d'abord (évite de re-vérifier au refresh / de laisser le token traîner)
+          window.history.replaceState({}, '', window.location.pathname)
+          // Le lien email pointe ici : on vérifie réellement le token au lieu de l'ignorer.
+          setVerifyMessage(await verifyEmail(tokenFromUrl))
+        }
         const r = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
         if (r.ok) {
           const d = await r.json()
@@ -150,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      user, accessToken, modules, unreadNotifications, isLoading,
+      user, accessToken, modules, unreadNotifications, isLoading, verifyMessage,
       authedFetch, login, register, verifyEmail, logout, refreshModules, setUnreadNotifications,
     }}>
       {children}

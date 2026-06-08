@@ -147,7 +147,7 @@ function AppLayout() {
 }
 
 function AuthPage() {
-  const { user, isLoading, login, register, verifyEmail } = useAuth()
+  const { user, isLoading, login, register, verifyEmail, verifyMessage } = useAuth()
   const [email, setEmail] = useState('admin@example.com')
   const [password, setPassword] = useState('ChangeMe123!')
   const [signupEmail, setSignupEmail] = useState('')
@@ -156,6 +156,9 @@ function AuthPage() {
   const [signupInviteCode, setSignupInviteCode] = useState('')
   const [verificationToken, setVerificationToken] = useState('')
   const [message, setMessage] = useState('')
+
+  // Résultat de la vérification auto déclenchée par le lien email (?verifyToken=…)
+  useEffect(() => { if (verifyMessage) setMessage(verifyMessage) }, [verifyMessage])
 
   if (isLoading) return <div className="loading-screen">Chargement...</div>
   if (user) return <Navigate to="/" replace />
