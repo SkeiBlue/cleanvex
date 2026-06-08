@@ -134,6 +134,7 @@ export function TopHeader({
         <button
           onClick={onCmdOpen}
           title="Recherche globale (⌘K)"
+          aria-label="Ouvrir la recherche globale"
           style={{
             display: 'flex', alignItems: 'center', gap: '6px',
             background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
@@ -162,6 +163,7 @@ export function TopHeader({
                 <button
                   type="button"
                   onClick={() => { onSearchChange(''); onSearchClose() }}
+                  aria-label="Effacer la recherche"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', padding: '0 2px', display: 'flex' }}
                 >
                   ✕
@@ -275,7 +277,7 @@ export function TopHeader({
                       Tout lire
                     </button>
                   )}
-                  <button onClick={() => setNotifOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', display: 'flex', padding: 0 }}>
+                  <button onClick={() => setNotifOpen(false)} aria-label="Fermer le panneau de notifications" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', display: 'flex', padding: 0 }}>
                     <X size={14} />
                   </button>
                 </div>

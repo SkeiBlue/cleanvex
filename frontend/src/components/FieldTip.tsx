@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { Children, cloneElement, isValidElement, useId, useRef, useState, type ReactElement, type ReactNode } from 'react'
 import { HelpCircle } from 'lucide-react'
 
 interface FieldTipProps {
@@ -14,11 +14,26 @@ export function FieldTip({ label, hint, required = false, children, style }: Fie
   const [visible, setVisible] = useState(false)
   const btnRef = useRef<HTMLButtonElement>(null)
 
+  // Lie le <label> à son input via id auto-généré pour l'accessibilité
+  // (lecteurs d'écran, clic sur label, focus). Un enfant qui définit déjà
+  // son propre id garde la main.
+  const generatedId = useId()
+  let inputId: string = generatedId
+  let childWithId: ReactNode = children
+  const onlyChild = Children.count(children) === 1 ? Children.only(children) : null
+  if (isValidElement(onlyChild)) {
+    const props = (onlyChild as ReactElement).props as { id?: string }
+    inputId = props.id ?? generatedId
+    if (!props.id) {
+      childWithId = cloneElement(onlyChild as ReactElement<{ id?: string }>, { id: inputId })
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', ...style }}>
       {/* Label row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-        <label style={{
+        <label htmlFor={inputId} style={{
           fontSize: '10px', fontFamily: 'var(--mono)', color: 'var(--text3)',
           textTransform: 'uppercase', letterSpacing: '0.07em', fontWeight: 600,
         }}>
@@ -44,6 +59,7 @@ export function FieldTip({ label, hint, required = false, children, style }: Fie
               cursor: 'pointer', color: visible ? '#c4b5fd' : 'var(--text3)',
               transition: 'all 0.12s', padding: 0, flexShrink: 0,
             }}
+            aria-label={`Aide : ${label}`}
           >
             <HelpCircle size={9} />
           </button>
@@ -86,7 +102,7 @@ export function FieldTip({ label, hint, required = false, children, style }: Fie
       </div>
 
       {/* Input */}
-      {children}
+      {childWithId}
     </div>
   )
 }
