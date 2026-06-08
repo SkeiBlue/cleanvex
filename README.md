@@ -27,7 +27,9 @@ Points a verifier cote serveur PostgreSQL distant:
 - `pg_hba.conf` autorise l'utilisateur depuis l'IP de ce PC;
 - la base `pj` existe avant de lancer les migrations.
 
-`docker-compose.yml` reste seulement une option pour demarrer une base locale de dev.
+`docker-compose.yml` est volontairement limité à PostgreSQL (base jetable pour le dev local).
+Il ne lance ni le backend ni le frontend : pour cela, utilise `./start.sh` (macOS dev) ou
+`./server-start.sh` (Debian prod). Démarrer la base : `docker compose up -d`.
 
 ## Inscription
 

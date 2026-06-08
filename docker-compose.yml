@@ -1,3 +1,17 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  docker-compose.yml — base de données PostgreSQL pour le DÉV LOCAL uniquement.
+#
+#  Ce fichier NE lance PAS l'application (backend NestJS + frontend Vite).
+#  Il fournit juste un Postgres jetable pour ne pas avoir à installer
+#  PostgreSQL sur la machine de dev.
+#
+#  Usage :
+#    docker compose up -d         # démarrer Postgres
+#    docker compose down          # arrêter (volume conservé)
+#    docker compose down -v       # arrêter + tout effacer
+#
+#  Pour lancer l'app : voir start.sh (macOS dev) ou server-start.sh (Debian prod).
+# ─────────────────────────────────────────────────────────────────────────────
 services:
   postgres:
     image: postgres:16-alpine
