@@ -173,30 +173,30 @@ body::after {
 .app-shell.sidebar-collapsed .nav-item:hover::after { opacity: 1; }
 
 /* Bouton toggle */
+/* Bouton réduire/déplier intégré au logo-row (à droite du titre MonEspace).
+   Plus naturel que l'ancienne pastille flottante en bordure de sidebar. */
+.logo-stack { flex: 1; min-width: 0; }
 .sidebar-toggle {
-  position: absolute;
-  top: 24px;
-  right: -13px;
-  width: 26px;
-  height: 26px;
-  background: rgba(12,16,41,0.98);
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  background: rgba(255,255,255,0.04);
   border: 1px solid var(--border);
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text2);
-  z-index: 210;
-  transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
 .sidebar-toggle:hover {
-  background: var(--p1);
-  border-color: var(--p1);
-  color: white;
-  box-shadow: 0 4px 12px rgba(124,58,237,0.4);
+  background: rgba(124,58,237,0.15);
+  border-color: rgba(167,139,250,0.4);
+  color: #c4b5fd;
 }
+.app-shell.sidebar-collapsed .sidebar-toggle { margin-left: 0; }
 /* Masquer le bouton toggle sur mobile */
 @media (max-width: 900px) {
   .sidebar-toggle { display: none; }

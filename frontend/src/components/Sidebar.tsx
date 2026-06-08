@@ -52,26 +52,25 @@ export function Sidebar({
       aria-label="Navigation principale"
       data-tour="sidebar"
     >
-      {/* Bouton rétractable — desktop uniquement (caché via CSS sur mobile) */}
-      <button
-        className="sidebar-toggle"
-        onClick={onToggleCollapse}
-        aria-label={collapsed ? 'Déplier la sidebar' : 'Réduire la sidebar'}
-        title={collapsed ? 'Déplier' : 'Réduire'}
-      >
-        {collapsed
-          ? <ChevronRight size={13} />
-          : <ChevronLeft size={13} />
-        }
-      </button>
-
       <div className="sidebar-top">
         <div className="logo-row">
           <div className="logo-gem" />
-          <div>
+          <div className="logo-stack">
             <div className="logo-text">Mon<span>Espace</span></div>
             <div className="logo-badge">v{__APP_VERSION__} · COSMIC UI</div>
           </div>
+          {/* Bouton réduire/déplier — desktop uniquement (caché via CSS sur mobile) */}
+          <button
+            className="sidebar-toggle"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Déplier la sidebar' : 'Réduire la sidebar'}
+            title={collapsed ? 'Déplier' : 'Réduire'}
+          >
+            {collapsed
+              ? <ChevronRight size={14} />
+              : <ChevronLeft size={14} />
+            }
+          </button>
         </div>
       </div>
 
@@ -90,7 +89,9 @@ export function Sidebar({
         </NavLink>
 
         <div className="nav-label" data-tour="sidebar-modules">Modules</div>
-        {modules.map((module) => {
+        {/* Le backend liste "dashboard" comme module mais il a déjà son entrée
+            "Principal" plus haut — on évite le doublon en le filtrant ici. */}
+        {modules.filter(m => m.key !== 'dashboard').map((module) => {
           const Icon = MODULE_ICONS[module.key] ?? Settings
           return (
             <NavLink

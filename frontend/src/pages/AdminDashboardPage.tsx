@@ -6,6 +6,12 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
 import { SkeletonTabPage } from '../components/Skeleton'
+import type { ModuleItem } from '../types'
+
+const ADMIN_MODULE_ICONS: Record<string, string> = {
+  vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
+  stock: '📦', agenda: '📅', documents: '📁', contacts: '👥',
+}
 
 type AdminStats = {
   users: { total: number; active: number; admins: number; emailsVerified: number }
@@ -313,10 +319,11 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
 
 /* ── Page ────────────────────────────────────────────────────── */
 export function AdminDashboardPage() {
-  const { authedFetch, user: currentUser } = useAuth()
+  const { authedFetch, refreshModules, user: currentUser } = useAuth()
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [users, setUsers] = useState<AdminUser[]>([])
   const [audit, setAudit] = useState<AuditEntry[]>([])
+  const [modules, setModules] = useState<ModuleItem[]>([])
   const [inviteCode, setInviteCode] = useState<string>('')
   const [inviteCopied, setInviteCopied] = useState(false)
   const [search, setSearch] = useState('')
@@ -327,16 +334,18 @@ export function AdminDashboardPage() {
   const reload = useCallback(async () => {
     setLoading(true)
     try {
-      const [s, u, a, i] = await Promise.all([
+      const [s, u, a, i, m] = await Promise.all([
         authedFetch('/admin/stats').then(r => r.ok ? r.json() : null),
         authedFetch('/admin/users?limit=100').then(r => r.ok ? r.json() : { data: [] }),
         authedFetch('/admin/audit-logs?limit=25').then(r => r.ok ? r.json() : { data: [] }),
         authedFetch('/admin/invite-code').then(r => r.ok ? r.json() : { code: '' }),
+        authedFetch('/modules').then(r => r.ok ? r.json() : []),
       ])
       setStats(s)
       setUsers(u.data ?? [])
       setAudit(a.data ?? [])
       setInviteCode(i.code ?? '')
+      setModules(Array.isArray(m) ? m : [])
     } finally {
       setLoading(false)
     }
@@ -382,6 +391,18 @@ export function AdminDashboardPage() {
       setInviteCopied(true)
       setTimeout(() => setInviteCopied(false), 2000)
     })
+  }
+
+  async function toggleModule(module: ModuleItem) {
+    const r = await authedFetch(`/modules/${module.key}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isEnabled: !module.isEnabled }),
+    })
+    if (r.ok) {
+      // Met à jour la liste locale + la sidebar globale
+      setModules(prev => prev.map(m => m.key === module.key ? { ...m, isEnabled: !m.isEnabled } : m))
+      await refreshModules()
+    }
   }
 
   // Skeleton initial pour rester cohérent avec les autres pages (Dashboard, Finances…)
@@ -600,6 +621,52 @@ export function AdminDashboardPage() {
                   ⚠ Aucun code n'est défini. Tout le monde peut s'inscrire librement !
                 </p>
               )}
+            </div>
+          </section>
+
+          {/* Modules globaux (activer/désactiver pour toute l'instance) */}
+          <section className="panel" style={{ padding: 0 }}>
+            <div className="panel-header">
+              <div><span className="panel-kicker">Configuration</span><h2>Modules globaux</h2></div>
+              <span className="badge">{modules.filter(m => m.isEnabled).length}/{modules.length}</span>
+            </div>
+            <p style={{ padding: '8px 20px 4px', fontSize: '12px', color: 'var(--text3)' }}>
+              Activer/désactiver un module masque ses routes et bloque l'accès à l'API pour tous les utilisateurs. Les données sont conservées.
+            </p>
+            <div style={{ padding: '12px 20px 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+              {modules.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => toggleModule(m)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '12px 14px', borderRadius: 10,
+                    background: m.isEnabled ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.02)',
+                    border: `1px solid ${m.isEnabled ? 'rgba(124,58,237,0.25)' : 'var(--border)'}`,
+                    cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font)',
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{ADMIN_MODULE_ICONS[m.key] ?? '⚙️'}</span>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: m.isEnabled ? 'var(--text)' : 'var(--text2)' }}>{m.title}</div>
+                    <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: m.isEnabled ? '#a78bfa' : 'var(--text3)' }}>
+                      {m.isEnabled ? 'Actif' : 'Désactivé'} · v{m.version}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: 32, height: 18, borderRadius: 20,
+                    background: m.isEnabled ? 'var(--p1)' : 'rgba(255,255,255,0.1)',
+                    position: 'relative', transition: 'all 0.2s', flexShrink: 0,
+                  }}>
+                    <div style={{
+                      position: 'absolute', top: 3,
+                      left: m.isEnabled ? 16 : 3,
+                      width: 12, height: 12,
+                      borderRadius: '50%', background: 'white', transition: 'all 0.2s',
+                    }} />
+                  </div>
+                </button>
+              ))}
             </div>
           </section>
 

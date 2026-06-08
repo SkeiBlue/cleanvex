@@ -3,18 +3,13 @@ import { useSearchParams } from 'react-router-dom'
 import { Bell, LayoutGrid, LogOut, Maximize2, Moon, Settings, Shield, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { startOnboardingTour } from '../components/OnboardingTour'
-import { SystemPanel } from '../components/SystemPanel'
 import { useDensity } from '../hooks/useDensity'
 import { useTheme } from '../hooks/useTheme'
-import type { ActivityLog, AuditLog, ErrorLog, ModuleItem, ProfileInfo, UserSetting } from '../types'
+import type { ActivityLog, AuditLog, ErrorLog, ProfileInfo, UserSetting } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
-type Tab = 'profil' | 'securite' | 'modules' | 'logs' | 'systeme'
-
-const MODULE_ICONS: Record<string, string> = {
-  vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
-  stock: '📦', agenda: '📅', documents: '📁', contacts: '👥',
-}
+// "modules" et "systeme" ont été déplacés vers /admin (réservés aux administrateurs).
+type Tab = 'profil' | 'securite' | 'logs'
 
 function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -34,13 +29,11 @@ function TabBtn({ label, active, onClick }: { label: string; active: boolean; on
 }
 
 export function SettingsPage() {
-  const { authedFetch, refreshModules, logout, user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const { authedFetch, logout } = useAuth()
   const [density, setDensity] = useDensity()
   const [theme, setTheme] = useTheme()
   const [profileInfo, setProfileInfo] = useState<ProfileInfo | null>(null)
   const [settings, setSettings] = useState<UserSetting[]>([])
-  const [modules, setModules] = useState<ModuleItem[]>([])
   const [totpQr, setTotpQr] = useState<string | null>(null)
   const [totpSecret, setTotpSecret] = useState<string | null>(null)
   const [totpEnabled, setTotpEnabled] = useState(false)
@@ -54,7 +47,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = ((): Tab => {
     const t = searchParams.get('tab') as Tab | null
-    const allowed: Tab[] = ['profil', 'securite', 'modules', 'logs', 'systeme']
+    const allowed: Tab[] = ['profil', 'securite', 'logs']
     return t && allowed.includes(t) ? t : 'profil'
   })()
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
@@ -93,13 +86,12 @@ export function SettingsPage() {
   }
 
   async function load() {
-    const [p, s, m, act, aud, err] = await Promise.all([
-      authedFetch('/profile'), authedFetch('/settings'), authedFetch('/modules'),
+    const [p, s, act, aud, err] = await Promise.all([
+      authedFetch('/profile'), authedFetch('/settings'),
       authedFetch('/activity'), authedFetch('/audit'), authedFetch('/errors'),
     ])
     if (p.ok) setProfileInfo(await p.json())
     if (s.ok) setSettings(await s.json())
-    if (m.ok) setModules(await m.json())
     if (act.ok) setActivityLogs(await act.json())
     if (aud.ok) setAuditLogs(await aud.json())
     if (err.ok) setErrorLogs(await err.json())
@@ -165,17 +157,6 @@ export function SettingsPage() {
     const sr = await authedFetch('/settings'); if (sr.ok) setSettings(await sr.json())
   }
 
-  async function toggleModule(module: ModuleItem) {
-    const r = await authedFetch(`/modules/${module.key}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isEnabled: !module.isEnabled }),
-    })
-    if (r.ok) {
-      await refreshModules()
-      const mr = await authedFetch('/modules'); if (mr.ok) setModules(await mr.json())
-    }
-  }
-
   const activeSessions = profileInfo?.sessions.filter(s => !s.revokedAt) ?? []
   const filteredActivity = logFilter
     ? activityLogs.filter(l => l.action.includes(logFilter) || (l.moduleKey ?? '').includes(logFilter))
@@ -196,9 +177,7 @@ export function SettingsPage() {
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
         <TabBtn label="Profil" active={activeTab === 'profil'} onClick={() => setActiveTab('profil')} />
         <TabBtn label="Sécurité" active={activeTab === 'securite'} onClick={() => setActiveTab('securite')} />
-        <TabBtn label="Modules" active={activeTab === 'modules'} onClick={() => setActiveTab('modules')} />
         <TabBtn label="Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
-        {isAdmin && <TabBtn label="Système" active={activeTab === 'systeme'} onClick={() => setActiveTab('systeme')} />}
       </div>
 
       {message && (
@@ -567,62 +546,7 @@ export function SettingsPage() {
         </section>
       )}
 
-      {/* ══ ONGLET MODULES ══ */}
-      {activeTab === 'modules' && (
-        <article className="panel" style={{ marginTop: '16px' }}>
-          <div className="panel-header">
-            <div><span className="panel-kicker">Configuration</span><h2>Modules actifs</h2></div>
-            <span className="badge">{modules.filter(m => m.isEnabled).length}/{modules.length}</span>
-          </div>
-          <p style={{ padding: '8px 20px 4px', fontSize: '12px', color: 'var(--text3)' }}>
-            Activer/désactiver un module masque ses routes et bloque l'accès à l'API. Les données sont conservées.
-          </p>
-          <div style={{ padding: '12px 20px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            {modules.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => toggleModule(m)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '10px',
-                  padding: '12px 14px', borderRadius: '10px',
-                  background: m.isEnabled ? 'rgba(124,58,237,0.08)' : 'rgba(255,255,255,0.02)',
-                  border: `1px solid ${m.isEnabled ? 'rgba(124,58,237,0.25)' : 'var(--border)'}`,
-                  cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font)',
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>{MODULE_ICONS[m.key] ?? '⚙️'}</span>
-                <div style={{ flex: 1, textAlign: 'left' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: m.isEnabled ? 'var(--text)' : 'var(--text2)' }}>{m.title}</div>
-                  <div style={{ fontSize: '10px', fontFamily: 'var(--mono)', color: m.isEnabled ? '#a78bfa' : 'var(--text3)' }}>
-                    {m.isEnabled ? 'Actif' : 'Désactivé'} · v{m.version}
-                  </div>
-                </div>
-                <div style={{
-                  width: '32px', height: '18px', borderRadius: '20px',
-                  background: m.isEnabled ? 'var(--p1)' : 'rgba(255,255,255,0.1)',
-                  position: 'relative', transition: 'all 0.2s',
-                }}>
-                  <div style={{
-                    position: 'absolute', top: '3px',
-                    left: m.isEnabled ? '16px' : '3px',
-                    width: '12px', height: '12px',
-                    borderRadius: '50%', background: 'white',
-                    transition: 'all 0.2s',
-                  }} />
-                </div>
-              </button>
-            ))}
-          </div>
-        </article>
-      )}
-
       {/* ══ ONGLET LOGS ══ */}
-      {activeTab === 'systeme' && isAdmin && (
-        <div style={{ marginTop: '16px' }}>
-          <SystemPanel />
-        </div>
-      )}
-
       {activeTab === 'logs' && (
         <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', gap: '8px' }}>
