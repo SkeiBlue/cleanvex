@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bell, LayoutGrid, LogOut, Maximize2, Moon, Settings, Shield, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react'
+import { Bell, FileText, LayoutGrid, LogOut, Maximize2, Moon, Server, Settings, Shield, ShieldCheck, Sparkles, Sun, Trash2, User as UserIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { startOnboardingTour } from '../components/OnboardingTour'
+import { SubSidebar } from '../components/SubSidebar'
 import { SystemPanel } from '../components/SystemPanel'
 import { useDensity } from '../hooks/useDensity'
 import { useTheme } from '../hooks/useTheme'
@@ -16,22 +17,6 @@ const MODULE_ICONS: Record<string, string> = {
   stock: '📦', agenda: '📅', documents: '📁', contacts: '👥',
 }
 
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '8px 18px', fontSize: '13px', fontWeight: 600,
-        fontFamily: 'var(--font)', cursor: 'pointer', border: 'none',
-        borderBottom: active ? '2px solid var(--p1)' : '2px solid transparent',
-        background: 'none', color: active ? '#c4b5fd' : 'var(--text2)',
-        transition: 'all 0.15s', whiteSpace: 'nowrap',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 export function SettingsPage() {
   const { authedFetch, refreshModules, logout, user } = useAuth()
@@ -190,21 +175,25 @@ export function SettingsPage() {
     fontFamily: 'var(--font)', fontSize: '13px', outline: 'none', width: '100%',
   }
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-      {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
-        <TabBtn label="Profil" active={activeTab === 'profil'} onClick={() => setActiveTab('profil')} />
-        <TabBtn label="Sécurité" active={activeTab === 'securite'} onClick={() => setActiveTab('securite')} />
-        <TabBtn label="Modules" active={activeTab === 'modules'} onClick={() => setActiveTab('modules')} />
-        <TabBtn label="Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
-        {isAdmin && <TabBtn label="Système" active={activeTab === 'systeme'} onClick={() => setActiveTab('systeme')} />}
-      </div>
+  const tabs = [
+    { key: 'profil'   as Tab, label: 'Profil',    icon: <UserIcon size={15} /> },
+    { key: 'securite' as Tab, label: 'Sécurité',  icon: <Shield size={15} /> },
+    { key: 'modules'  as Tab, label: 'Modules',   icon: <LayoutGrid size={15} /> },
+    { key: 'logs'     as Tab, label: 'Logs',      icon: <FileText size={15} /> },
+    { key: 'systeme'  as Tab, label: 'Système',   icon: <Server size={15} />, hidden: !isAdmin },
+  ]
 
+  return (
+    <SubSidebar
+      items={tabs}
+      activeKey={activeTab}
+      onSelect={setActiveTab}
+      ariaLabel="Sections des paramètres"
+    >
       {message && (
         <p style={{
           fontSize: '12px', fontFamily: 'var(--mono)',
-          padding: '8px 14px', borderRadius: '0',
+          padding: '8px 14px', borderRadius: '8px', marginTop: 0,
           background: messageType === 'ok' ? 'rgba(74,222,128,0.08)' : 'rgba(244,63,94,0.08)',
           border: `1px solid ${messageType === 'ok' ? 'rgba(74,222,128,0.2)' : 'rgba(244,63,94,0.2)'}`,
           color: messageType === 'ok' ? '#4ade80' : '#f87171',
@@ -722,6 +711,6 @@ export function SettingsPage() {
           </section>
         </div>
       )}
-    </div>
+    </SubSidebar>
   )
 }

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDownUp, CircleDollarSign, Pencil, Plus } from 'lucide-react'
+import { ArrowDownUp, CircleDollarSign, LayoutDashboard, ListOrdered, Pencil, Plus, Wallet } from 'lucide-react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
 import { Modal } from '../components/Modal'
 import { useAuth } from '../contexts/AuthContext'
 import { SkeletonTabPage } from '../components/Skeleton'
+import { SubSidebar } from '../components/SubSidebar'
 import { useToast } from '../contexts/ToastContext'
 import { BalanceLineChart, CategoryPieChart, ChartPanel, MonthlyBarChart } from '../components/ChartsSection'
 import { generateFinancePDF } from '../utils/pdf'
@@ -22,16 +23,6 @@ const SELECT_STYLE: React.CSSProperties = {
   fontSize: '12px', fontFamily: 'var(--font)',
 }
 
-function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '8px 18px', fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font)',
-      cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
-      borderBottom: active ? '2px solid var(--p1)' : '2px solid transparent',
-      background: 'none', color: active ? '#c4b5fd' : 'var(--text2)', transition: 'all 0.15s',
-    }}>{label}</button>
-  )
-}
 
 export function FinancesPage() {
   const { authedFetch } = useAuth()
@@ -186,14 +177,19 @@ export function FinancesPage() {
 
   if (isLoading) return <SkeletonTabPage rows={10} />
 
+  const tabs = [
+    { key: 'resume'     as Tab, label: 'Résumé',                icon: <LayoutDashboard size={15} /> },
+    { key: 'operations' as Tab, label: `Opérations (${financialTransactions.length})`, icon: <ListOrdered size={15} /> },
+    { key: 'comptes'    as Tab, label: 'Comptes & Catégories',  icon: <Wallet size={15} /> },
+  ]
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
-        <TabBtn label="Résumé" active={activeTab === 'resume'} onClick={() => setActiveTab('resume')} />
-        <TabBtn label={`Opérations (${financialTransactions.length})`} active={activeTab === 'operations'} onClick={() => setActiveTab('operations')} />
-        <TabBtn label="Comptes & Catégories" active={activeTab === 'comptes'} onClick={() => setActiveTab('comptes')} />
-      </div>
+    <SubSidebar
+      items={tabs}
+      activeKey={activeTab}
+      onSelect={setActiveTab}
+      ariaLabel="Sections des finances"
+    >
 
       {/* ══ RÉSUMÉ ══ */}
       {activeTab === 'resume' && (
@@ -551,6 +547,6 @@ export function FinancesPage() {
           )}
         </article>
       )}
-    </div>
+    </SubSidebar>
   )
 }
