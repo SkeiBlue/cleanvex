@@ -20,6 +20,8 @@ import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { CreateVehiclePartDto } from './dto/create-vehicle-part.dto';
 import { LinkVehicleDocumentDto } from './dto/link-vehicle-document.dto';
+import { UpdateInterventionDto } from './dto/update-intervention.dto';
+import { UpdateVehicleAlertDto } from './dto/update-vehicle-alert.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { UpdateVehiclePartDto } from './dto/update-vehicle-part.dto';
 import { VehiclesService } from './vehicles.service';
@@ -112,10 +114,10 @@ export class VehiclesController {
   updateAlert(
     @Param('id') id: string,
     @Param('alertId') alertId: string,
-    @Body('status') status: string,
+    @Body() dto: UpdateVehicleAlertDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.vehicles.updateAlert(req.user.id, id, alertId, status);
+    return this.vehicles.updateAlert(req.user.id, id, alertId, dto.status);
   }
 
   @Delete(':id/alerts/:alertId')
@@ -168,10 +170,10 @@ export class VehiclesController {
   updateIntervention(
     @Param('id') id: string,
     @Param('interventionId') interventionId: string,
-    @Body('status') status: string,
+    @Body() dto: UpdateInterventionDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.vehicles.updateIntervention(req.user.id, id, interventionId, status);
+    return this.vehicles.updateIntervention(req.user.id, id, interventionId, dto.status);
   }
 
   @Delete(':id/interventions/:interventionId')

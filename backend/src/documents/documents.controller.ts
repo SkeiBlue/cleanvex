@@ -19,6 +19,7 @@ import type { Request, Response } from 'express';
 import type { FileFilterCallback } from 'multer';
 import { PaginationDto } from '../core/pagination.helper';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UploadDocumentDto } from './dto/upload-document.dto';
 import { DocumentsService } from './documents.service';
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 Mo
@@ -75,10 +76,10 @@ export class DocumentsController {
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_SIZE }, fileFilter: mimeFilter }))
   upload(
     @UploadedFile() file: Express.Multer.File,
-    @Body('expiresAt') expiresAt: string | undefined,
+    @Body() dto: UploadDocumentDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.documents.store(file, req.user.id, expiresAt);
+    return this.documents.store(file, req.user.id, dto.expiresAt);
   }
 
   @Delete(':id')

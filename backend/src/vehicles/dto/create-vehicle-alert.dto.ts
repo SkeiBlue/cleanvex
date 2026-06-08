@@ -1,4 +1,7 @@
-import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsIn, IsOptional, IsString } from 'class-validator';
+
+export const VEHICLE_ALERT_STATUSES = ['open', 'closed', 'resolved'] as const;
+export type VehicleAlertStatus = (typeof VEHICLE_ALERT_STATUSES)[number];
 
 export class CreateVehicleAlertDto {
   @IsString()
@@ -12,6 +15,6 @@ export class CreateVehicleAlertDto {
   dueDate?: string;
 
   @IsOptional()
-  @IsString()
-  status?: string;
+  @IsIn(VEHICLE_ALERT_STATUSES)
+  status?: VehicleAlertStatus;
 }
