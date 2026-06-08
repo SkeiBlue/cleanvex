@@ -293,7 +293,7 @@ export function RealEstatePage() {
                     </div>
                     <StatusBadge status={p.status} />
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px', color: 'var(--text3)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px', fontSize: '11px', color: 'var(--text3)' }}>
                     {p.surface && <span>📐 {Number(p.surface).toLocaleString('fr-FR')} m²</span>}
                     {p.rooms && <span>🚪 {p.rooms} pièces</span>}
                   </div>

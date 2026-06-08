@@ -29,7 +29,7 @@ function StatTile({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{value}</div>
           <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '3px' }}>{label}</div>
-          {sub && <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '1px' }}>{sub}</div>}
+          {sub && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>{sub}</div>}
         </div>
       </div>
     </Link>
@@ -227,11 +227,11 @@ export function DashboardPage() {
                 <div key={t.id} className="document-row" style={{ borderLeft: `3px solid ${priColors[t.priority] ?? 'var(--border)'}` }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{t.title}</div>
-                    {due && <div style={{ fontSize: '10px', color: isLate ? '#f87171' : 'var(--text3)', marginTop: '2px', fontFamily: 'var(--mono)' }}>
+                    {due && <div style={{ fontSize: '11px', color: isLate ? '#f87171' : 'var(--text3)', marginTop: '2px', fontFamily: 'var(--mono)' }}>
                       {isLate ? `⏰ En retard (${Math.abs(days!)}j)` : days === 0 ? '📅 Aujourd\'hui' : `📅 J-${days}`}
                     </div>}
                   </div>
-                  <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '20px', background: `${priColors[t.priority] ?? '#7b82a8'}20`, color: priColors[t.priority] ?? '#7b82a8', border: `1px solid ${priColors[t.priority] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                  <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: `${priColors[t.priority] ?? '#7b82a8'}20`, color: priColors[t.priority] ?? '#7b82a8', border: `1px solid ${priColors[t.priority] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
                     {t.priority}
                   </span>
                 </div>
@@ -258,12 +258,12 @@ export function DashboardPage() {
                   <span style={{ fontSize: '16px' }}>🚗</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{v.name}</div>
-                    <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{v.mileage.toLocaleString('fr-FR')} km</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{v.mileage.toLocaleString('fr-FR')} km</div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    {alerts > 0 && <span style={{ fontSize: '9px', background: '#fbbf2420', color: '#fbbf24', padding: '2px 6px', borderRadius: '20px', border: '1px solid #fbbf2440', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔔 {alerts}</span>}
-                    {interv > 0 && <span style={{ fontSize: '9px', background: '#a78bfa20', color: '#a78bfa', padding: '2px 6px', borderRadius: '20px', border: '1px solid #a78bfa40', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔧 {interv}</span>}
-                    <span style={{ fontSize: '9px', background: `${statusColors[v.status] ?? '#7b82a8'}20`, color: statusColors[v.status] ?? '#7b82a8', padding: '2px 6px', borderRadius: '20px', border: `1px solid ${statusColors[v.status] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                    {alerts > 0 && <span style={{ fontSize: '11px', background: '#fbbf2420', color: '#fbbf24', padding: '2px 6px', borderRadius: '20px', border: '1px solid #fbbf2440', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔔 {alerts}</span>}
+                    {interv > 0 && <span style={{ fontSize: '11px', background: '#a78bfa20', color: '#a78bfa', padding: '2px 6px', borderRadius: '20px', border: '1px solid #a78bfa40', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔧 {interv}</span>}
+                    <span style={{ fontSize: '11px', background: `${statusColors[v.status] ?? '#7b82a8'}20`, color: statusColors[v.status] ?? '#7b82a8', padding: '2px 6px', borderRadius: '20px', border: `1px solid ${statusColors[v.status] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
                       {v.status}
                     </span>
                   </div>

@@ -199,7 +199,7 @@ export function AgendaPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
+      <div className="tabs-bar">
         <TabBtn
           label={`Tâches (${openTasks.length}${overdue.length > 0 ? ` · ${overdue.length} en retard` : ''})`}
           active={activeTab === 'taches'}

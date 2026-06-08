@@ -120,7 +120,7 @@ export function TopHeader({
         >
           <Menu size={18} />
         </button>
-        <div>
+        <div className="header-text">
           <div className="header-greeting">
             Bonjour, <span>{username ?? 'Clément'}</span> ✦
           </div>

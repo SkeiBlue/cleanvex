@@ -189,7 +189,7 @@ export function FinancesPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
+      <div className="tabs-bar">
         <TabBtn label="Résumé" active={activeTab === 'resume'} onClick={() => setActiveTab('resume')} />
         <TabBtn label={`Opérations (${financialTransactions.length})`} active={activeTab === 'operations'} onClick={() => setActiveTab('operations')} />
         <TabBtn label="Comptes & Catégories" active={activeTab === 'comptes'} onClick={() => setActiveTab('comptes')} />
@@ -248,7 +248,7 @@ export function FinancesPage() {
 
         {/* ── Graphiques ────────────────────────────────────────────── */}
         {financialTransactions.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginTop: '16px' }}>
             <ChartPanel title="Revenus / Dépenses" kicker="6 derniers mois">
               <MonthlyBarChart transactions={financialTransactions} months={6} />
             </ChartPanel>

@@ -805,7 +805,7 @@ export function VehiclesPage() {
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '12px' }}>AVANCEMENT GLOBAL</div>
                 <ProgressBar value={progressPct} color={progressPct >= 80 ? '#4ade80' : progressPct >= 40 ? '#fbbf24' : '#a78bfa'} label={`${doneItems}/${totalItems} éléments terminés`} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginTop: '12px' }}>
                   {[
                     { label: 'Travaux faits', value: `${doneInterv}/${totalInterv}`, color: '#4ade80' },
                     { label: 'Bloqués',       value: blockedInterv, color: blockedInterv > 0 ? '#f87171' : 'var(--text3)' },
@@ -953,7 +953,7 @@ export function VehiclesPage() {
               </div>
 
               {parts.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
                   <div style={{ padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', border: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>ESTIMÉ</div>
                     <div style={{ fontSize: '18px', fontWeight: 700, color: '#fbbf24' }}>{estimatedPartsCost.toLocaleString('fr-FR')} €</div>
@@ -1362,8 +1362,8 @@ export function VehiclesPage() {
                 <p className="muted">Aucun historique kilométrage.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px', fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', fontWeight: 700, padding: '0 8px' }}>
-                    <span>DATE</span><span>KILOMÉTRAGE</span><span>VARIATION</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '8px', marginBottom: '8px', fontSize: '11px', color: 'var(--text3)', fontFamily: 'var(--mono)', fontWeight: 700, padding: '0 8px' }}>
+                    <span>DATE</span><span>KM</span><span>VARIATION</span>
                   </div>
                   {sv.mileageLogs.map((log, idx) => {
                     const prev = sv.mileageLogs[idx + 1]

@@ -1298,3 +1298,31 @@ a:focus:not(:focus-visible) { outline: none; }
   background: rgba(15,23,42,0.15);
 }
 
+
+/* ── Tabs horizontaux scrollables sur mobile (R4) ────────────────────────── */
+/* Wrapper des barres de tabs Settings/Finances/Agenda/Documents : sur
+   petits écrans, les labels peuvent déborder. On autorise un scroll
+   horizontal lisse sans afficher la barre de scroll. */
+.tabs-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  padding: 0 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tabs-bar::-webkit-scrollbar { display: none; }
+
+/* ── Mobile <640px : compacter le header + tap targets ≥44px (R5, R6) ───── */
+@media (max-width: 640px) {
+  /* On masque le bloc "Bonjour…" pour libérer la place du hamburger + recherche
+     + notif sur écran étroit (la date sera visible dans la sidebar/profil). */
+  .header-text { display: none; }
+  .header { padding: 0 12px; }
+  /* Tap targets : les boutons ronds du header passent à 44x44 pour pouvoir
+     les viser au pouce sans erreur (recommandation Apple HIG / WCAG 2.5.5). */
+  .hdr-btn { width: 44px; height: 44px; }
+  .sidebar-toggle { width: 44px; height: 44px; }
+}

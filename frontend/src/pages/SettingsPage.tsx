@@ -174,7 +174,7 @@ export function SettingsPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
       {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
+      <div className="tabs-bar">
         <TabBtn label="Profil" active={activeTab === 'profil'} onClick={() => setActiveTab('profil')} />
         <TabBtn label="Sécurité" active={activeTab === 'securite'} onClick={() => setActiveTab('securite')} />
         <TabBtn label="Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
