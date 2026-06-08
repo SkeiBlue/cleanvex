@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ModuleItem, User } from '../types'
 import { identifyUser, initAnalytics, resetAnalytics, trackEvent } from '../analytics'
@@ -30,22 +30,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [isLoading, setIsLoading]     = useState(true)
 
+  // Le refresh token est à usage unique (tourné à chaque appel côté backend).
+  // Si plusieurs requêtes échouent en 401 en même temps, il ne faut déclencher
+  // qu'UN SEUL `/auth/refresh` : la première rotation invaliderait le cookie
+  // pour les suivantes, ce qui provoquerait une déconnexion intempestive.
+  const refreshInFlight = useRef<Promise<string | null> | null>(null)
+
+  const refreshAccessToken = useCallback((): Promise<string | null> => {
+    if (!refreshInFlight.current) {
+      refreshInFlight.current = (async () => {
+        try {
+          const r = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
+          if (!r.ok) return null
+          const d = await r.json()
+          setAccessToken(d.accessToken)
+          setUser(d.user)
+          return d.accessToken as string
+        } catch {
+          return null
+        } finally {
+          refreshInFlight.current = null
+        }
+      })()
+    }
+    return refreshInFlight.current
+  }, [])
+
   const authedFetch = useCallback(async (path: string, init: RequestInit = {}) => {
     const headers = new Headers(init.headers)
     if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
     let res = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: 'include' })
     if (res.status === 401) {
-      const r = await fetch(`${API_URL}/auth/refresh`, { method: 'POST', credentials: 'include' })
-      if (r.ok) {
-        const d = await r.json()
-        setAccessToken(d.accessToken)
-        setUser(d.user)
-        headers.set('Authorization', `Bearer ${d.accessToken}`)
+      const newToken = await refreshAccessToken()
+      if (newToken) {
+        headers.set('Authorization', `Bearer ${newToken}`)
         res = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: 'include' })
       }
     }
     return res
-  }, [accessToken])
+  }, [accessToken, refreshAccessToken])
 
   const refreshModules = useCallback(async () => {
     const r = await authedFetch('/modules')
