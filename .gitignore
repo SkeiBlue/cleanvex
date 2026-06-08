@@ -9,5 +9,9 @@ private-files/
 /backend/backups/
 *.log
 
+# Artefacts OS & build
+.DS_Store
+*.tsbuildinfo
+
 .claude/
 frontend/dev-dist/
