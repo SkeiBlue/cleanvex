@@ -498,7 +498,7 @@ export function LoginScreen({
                   Créer un compte
                 </h1>
                 <p style={{ fontSize: 12.5, color: 'var(--text3)', margin: '4px 0 0' }}>
-                  Demande un code d'invitation à l'admin pour rejoindre l'espace.
+                  Crée ton compte en quelques secondes. Un code d'invitation peut être requis selon la configuration de l'instance.
                 </p>
               </div>
 
@@ -510,9 +510,9 @@ export function LoginScreen({
                 placeholder="ex: clement" autoComplete="username" />
               <PasswordField label="Mot de passe" value={signupPassword} onChange={onSignupPasswordChange}
                 placeholder="8 caractères minimum" autoComplete="new-password" />
-              <Field label="Code d'invitation" icon={<Sparkles size={14} />}
+              <Field label="Code d'invitation (optionnel)" icon={<Sparkles size={14} />}
                 value={signupInviteCode} onChange={onSignupInviteCodeChange}
-                placeholder="xxx-xxx-xxx" required />
+                placeholder="Laisse vide si l'instance est ouverte" />
 
               <button className="primary-action wide" type="submit" style={{ marginTop: 4 }}>
                 <UserPlus size={16} />

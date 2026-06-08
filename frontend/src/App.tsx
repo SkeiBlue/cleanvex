@@ -148,8 +148,8 @@ function AppLayout() {
 
 function AuthPage() {
   const { user, isLoading, login, register, verifyEmail, verifyMessage } = useAuth()
-  const [email, setEmail] = useState('admin@example.com')
-  const [password, setPassword] = useState('ChangeMe123!')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupUsername, setSignupUsername] = useState('')
