@@ -1,8 +1,10 @@
 node_modules/
 dist/
 coverage/
+# Environment files — keep ALL secrets out of git, but track the .example templates
 .env
-.env.local
+.env.*
+!.env.example
 private-files/
 /backend/backups/
 *.log
