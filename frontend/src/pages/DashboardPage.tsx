@@ -142,7 +142,7 @@ export function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* Titre */}
-      <div>
+      <div data-tour="dashboard-title">
         <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vue globale</span>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>Tableau de bord</h1>
       </div>

@@ -50,6 +50,7 @@ export function Sidebar({
     <aside
       className={`sidebar${sidebarOpen ? ' sidebar--open' : ''}`}
       aria-label="Navigation principale"
+      data-tour="sidebar"
     >
       {/* Bouton rétractable — desktop uniquement (caché via CSS sur mobile) */}
       <button
@@ -88,7 +89,7 @@ export function Sidebar({
           <span className="nav-txt">Dashboard</span>
         </NavLink>
 
-        <div className="nav-label">Modules</div>
+        <div className="nav-label" data-tour="sidebar-modules">Modules</div>
         {modules.map((module) => {
           const Icon = MODULE_ICONS[module.key] ?? Settings
           return (
@@ -136,6 +137,7 @@ export function Sidebar({
           onClick={onClose}
           data-label="Paramètres"
           aria-label="Paramètres"
+          data-tour="settings-link"
         >
           <div className="nav-ico"><Settings size={15} /></div>
           <span className="nav-txt">Paramètres</span>
@@ -158,6 +160,7 @@ export function Sidebar({
         <div
           className="user-card"
           title={collapsed ? `${user.username ?? user.email} · ${user.role}` : undefined}
+          data-tour="user-card"
         >
           <div className="user-avatar">{initial}</div>
           <div>

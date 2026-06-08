@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Bell, LayoutGrid, LogOut, Maximize2, Moon, Settings, Shield, ShieldCheck, Sun, Trash2 } from 'lucide-react'
+import { Bell, LayoutGrid, LogOut, Maximize2, Moon, Settings, Shield, ShieldCheck, Sparkles, Sun, Trash2 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { startOnboardingTour } from '../components/OnboardingTour'
 import { SystemPanel } from '../components/SystemPanel'
 import { useDensity } from '../hooks/useDensity'
 import { useTheme } from '../hooks/useTheme'
@@ -347,6 +348,27 @@ export function SettingsPage() {
                   </div>
                 </button>
               </div>
+            </div>
+          </article>
+
+          {/* Aide / Onboarding */}
+          <article className="panel">
+            <div className="panel-header">
+              <div><span className="panel-kicker">Aide</span><h2>Visite guidée</h2></div>
+              <Sparkles size={20} />
+            </div>
+            <div style={{ padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>
+                Tu peux relancer la visite guidée à tout moment pour redécouvrir l'interface.
+              </p>
+              <button
+                type="button"
+                className="primary-action"
+                onClick={() => startOnboardingTour()}
+                style={{ alignSelf: 'flex-start' }}
+              >
+                <Sparkles size={14} /> Refaire la visite guidée
+              </button>
             </div>
           </article>
 
