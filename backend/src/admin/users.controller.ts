@@ -112,6 +112,12 @@ export class AdminUsersController {
       data: { role: body.role },
       select: { id: true, email: true, role: true },
     });
+    // Révoque les sessions actives : un changement de rôle doit prendre effet
+    // immédiatement, pas seulement à la prochaine expiration de l'access token.
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     await this.core.logAudit(req.user.id, 'admin.user.role_changed', {
       ip: req.ip,
     });
@@ -223,6 +229,14 @@ export class AdminUsersController {
       data: { isActive: !!body.isActive },
       select: { id: true, email: true, isActive: true },
     });
+    if (!body.isActive) {
+      // Désactivation : coupe l'accès immédiatement plutôt que d'attendre
+      // l'expiration de l'access token (jusqu'à JWT_ACCESS_EXPIRES_IN).
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: id, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
     await this.core.logAudit(req.user.id, body.isActive ? 'admin.user.activated' : 'admin.user.deactivated', {
       ip: req.ip,
     });
