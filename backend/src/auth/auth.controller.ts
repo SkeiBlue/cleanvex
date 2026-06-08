@@ -58,7 +58,9 @@ export class AuthController {
     return res.json({ accessToken: result.accessToken, user: result.user });
   }
 
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  // Avec le single-flight côté front (1 seul /refresh même si N requêtes 401
+  // arrivent en parallèle), 10/min suffit largement pour un usage normal.
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('refresh')
   @HttpCode(200)
   async refresh(@Req() req: Request, @Res() res: Response) {

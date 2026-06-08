@@ -312,7 +312,7 @@ export function StockPage() {
       {/* Filtres */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Rechercher nom, référence, fournisseur…"
-          style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--font)', outline: 'none' }} />
+          style={{ flex: 1, minWidth: 'min(200px, 100%)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--font)', outline: 'none' }} />
         {(['all', 'piece', 'consommable', 'outil', 'equipement', 'autre'] as const).map(c => (
           <button key={c} onClick={() => setCatFilter(c)} style={{
             padding: '7px 14px', borderRadius: '20px', cursor: 'pointer', fontSize: '12px', fontFamily: 'var(--mono)', fontWeight: 600,

@@ -539,7 +539,7 @@ export function VehiclesPage() {
         <input
           value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
           placeholder="Rechercher nom, marque, immat..."
-          style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--font)', outline: 'none' }}
+          style={{ flex: 1, minWidth: 'min(200px, 100%)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--font)', outline: 'none' }}
         />
         {(['all', 'active', 'repair', 'parked', 'sold'] as const).map(s => {
           const label = s === 'all' ? 'Tous' : STATUS_COLORS[s]?.label ?? s

@@ -1,6 +1,7 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
+import { trackEvent } from '../analytics'
 
 interface Props { children: ReactNode; label?: string }
 interface State { error: Error | null }
@@ -13,7 +14,18 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[ErrorBoundary]', error, info.componentStack)
+    // Remonte au système d'analytics (no-op en V1, prêt pour PostHog en V2).
+    trackEvent('error_boundary_caught', {
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack,
+      label: this.props.label,
+    })
+    // En dev, on garde la trace dans la console pour faciliter le debug.
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('[ErrorBoundary]', error, info.componentStack)
+    }
   }
 
   render() {

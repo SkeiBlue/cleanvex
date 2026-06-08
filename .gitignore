@@ -12,6 +12,12 @@ private-files/
 # Artefacts OS & build
 .DS_Store
 *.tsbuildinfo
+frontend/dev-dist/
+
+# Doublons macOS créés par certains File Providers (iCloud, Drive)
+* 2
+* 2.*
+* 2/
 
 .claude/
 frontend/dev-dist/
