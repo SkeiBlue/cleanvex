@@ -45,6 +45,18 @@ function mimeFilter(_req: Request, file: Express.Multer.File, cb: FileFilterCall
   }
 }
 
+/**
+ * Construit un en-tête Content-Disposition sûr à partir d'un nom de fichier
+ * fourni par l'utilisateur (ex: nom original à l'upload). On fournit un
+ * fallback ASCII débarrassé des caractères qui casseraient le paramètre
+ * (guillemets, antislash, contrôle) ainsi qu'une variante UTF-8 (RFC 6266).
+ */
+function contentDispositionHeader(filename: string): string {
+  const ascii = filename.replace(/[\x00-\x1f"\\]/g, '_');
+  const utf8 = encodeURIComponent(filename);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
+}
+
 type AuthenticatedRequest = Request & {
   user: { id: string; email: string; role: string };
 };
@@ -83,7 +95,7 @@ export class DocumentsController {
   ) {
     const file = await this.documents.getDownload(id, req.user.id);
     res.setHeader('Content-Type', file.mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename="${file.name}"`);
+    res.setHeader('Content-Disposition', contentDispositionHeader(file.name));
     return res.sendFile(file.absolutePath);
   }
 }

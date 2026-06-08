@@ -3,6 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import nodemailer from 'nodemailer';
 import type { DigestData } from '../reminders/reminders.service';
 
+/** Échappe les caractères HTML spéciaux (les contenus interpolés dans les
+ * templates d'email proviennent de données utilisateur — noms, titres…). */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
@@ -66,23 +77,23 @@ export class MailService {
       `<td style="padding:8px 4px;font-size:13px;color:${color}">${v}</td>`;
 
     const alertRows = digest.vehicleAlerts.map(a =>
-      td(`🚗 ${a.vehicleName} — ${a.title}`, a.isUrgent ? urgentColor : warnColor) +
-      td(a.type, '#7b82a8') +
+      td(`🚗 ${escapeHtml(a.vehicleName)} — ${escapeHtml(a.title)}`, a.isUrgent ? urgentColor : warnColor) +
+      td(escapeHtml(a.type), '#7b82a8') +
       td(fmt(a.dueDate), a.isUrgent ? urgentColor : warnColor));
 
     const docRows = digest.expiringDocs.map(d =>
-      td(`📄 ${d.name}`, d.isUrgent ? urgentColor : warnColor) +
+      td(`📄 ${escapeHtml(d.name)}`, d.isUrgent ? urgentColor : warnColor) +
       td('Expire le', '#7b82a8') +
       td(fmt(d.expiresAt), d.isUrgent ? urgentColor : warnColor));
 
     const taskRows = digest.overdueTasks.map(t =>
-      td(`✅ ${t.title}`, urgentColor) +
-      td(t.priority, '#7b82a8') +
+      td(`✅ ${escapeHtml(t.title)}`, urgentColor) +
+      td(escapeHtml(t.priority), '#7b82a8') +
       td(fmt(t.dueDate), urgentColor));
 
     const loanRows = digest.overdueLoans.map(l =>
-      td(`🔧 ${l.itemName}`, purpleColor) +
-      td(`Prêté à ${l.borrowerName}`, '#7b82a8') +
+      td(`🔧 ${escapeHtml(l.itemName)}`, purpleColor) +
+      td(`Prêté à ${escapeHtml(l.borrowerName)}`, '#7b82a8') +
       td(fmt(l.expectedReturnDate), purpleColor));
 
     const html = `<!DOCTYPE html>
@@ -90,7 +101,7 @@ export class MailService {
 <head><meta charset="utf-8"></head>
 <body style="background:#0c1029;color:#c9d1e0;font-family:'Segoe UI',system-ui,sans-serif;padding:32px;max-width:600px;margin:0 auto">
   <div style="background:#141830;border-radius:16px;border:1px solid #1e2347;padding:28px">
-    <h1 style="color:#c4b5fd;font-size:20px;margin:0 0 4px">Bonjour ${name} 👋</h1>
+    <h1 style="color:#c4b5fd;font-size:20px;margin:0 0 4px">Bonjour ${escapeHtml(name)} 👋</h1>
     <p style="color:#7b82a8;font-size:13px;margin:0 0 20px">Résumé du ${new Date().toLocaleDateString('fr-FR')} — points nécessitant ton attention.</p>
     ${buildSection('Alertes véhicules', warnColor, alertRows)}
     ${buildSection('Documents expirent bientôt', warnColor, docRows)}
