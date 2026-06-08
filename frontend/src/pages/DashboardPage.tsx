@@ -87,25 +87,41 @@ export function DashboardPage() {
   const [report, setReport] = useState<ReportSummary | null>(null)
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [transactions, setTransactions] = useState<FinancialTransaction[]>([])
+  const [failedSections, setFailedSections] = useState<string[]>([])
 
   useEffect(() => {
     async function load() {
-      const [ar, fr, vr, sr, rr, dr, tr] = await Promise.all([
-        authedFetch('/agenda/dashboard'),
-        authedFetch('/finances/summary'),
-        authedFetch('/vehicles'),
-        authedFetch('/stock/items'),
-        authedFetch('/reports/summary'),
-        authedFetch('/documents'),
-        authedFetch('/finances/transactions'),
-      ])
-      if (ar.ok) { const d = await ar.json(); setAgenda(d); setUnreadNotifications(d.unreadNotifications ?? 0) }
-      if (fr.ok) setFinance(await fr.json())
-      if (vr.ok) setVehicles(await vr.json())
-      if (sr.ok) { const d = await sr.json(); setStockCount(d.length) }
-      if (rr.ok) setReport(await rr.json())
-      if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
-      if (tr.ok) { const d = await tr.json(); setTransactions(d.data ?? d) }
+      // allSettled : un endpoint en panne ne doit pas casser tout le dashboard.
+      // Chaque section signale son échec pour qu'on l'affiche plutôt que de
+      // laisser des "0" silencieux qu'on ne saurait pas distinguer de vrais 0.
+      const endpoints = [
+        { key: 'Agenda',       path: '/agenda/dashboard' },
+        { key: 'Finances',     path: '/finances/summary' },
+        { key: 'Véhicules',    path: '/vehicles' },
+        { key: 'Stock',        path: '/stock/items' },
+        { key: 'Rapports',     path: '/reports/summary' },
+        { key: 'Documents',    path: '/documents' },
+        { key: 'Transactions', path: '/finances/transactions' },
+      ] as const
+
+      const results = await Promise.allSettled(endpoints.map(e => authedFetch(e.path)))
+      const failed: string[] = []
+
+      async function take<T>(i: number, fn: (json: unknown) => T | Promise<T>): Promise<T | undefined> {
+        const r = results[i]
+        if (r.status === 'rejected' || !r.value.ok) { failed.push(endpoints[i].key); return undefined }
+        try { return await fn(await r.value.json()) } catch { failed.push(endpoints[i].key); return undefined }
+      }
+
+      await take(0, (d: any) => { setAgenda(d); setUnreadNotifications(d?.unreadNotifications ?? 0) })
+      await take(1, (d: any) => setFinance(d))
+      await take(2, (d: any) => setVehicles(d))
+      await take(3, (d: any) => setStockCount(Array.isArray(d) ? d.length : 0))
+      await take(4, (d: any) => setReport(d))
+      await take(5, (d: any) => setDocuments(d?.data ?? d ?? []))
+      await take(6, (d: any) => setTransactions(d?.data ?? d ?? []))
+
+      setFailedSections(failed)
       setIsLoading(false)
     }
     load()
@@ -130,6 +146,17 @@ export function DashboardPage() {
         <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Vue globale</span>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>Tableau de bord</h1>
       </div>
+
+      {/* Sections indisponibles : on évite les "0" qui pourraient être confondus avec de vraies valeurs nulles. */}
+      {failedSections.length > 0 && (
+        <div role="status" style={{
+          padding: '10px 14px', borderRadius: 10, fontSize: 12.5,
+          background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)',
+          color: 'var(--text2)',
+        }}>
+          Données partiellement indisponibles : {failedSections.join(', ')}. Réessaie dans un instant.
+        </div>
+      )}
 
       {/* Bandeau admin (admin only) */}
       {user?.role === 'admin' && (
