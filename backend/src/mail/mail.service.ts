@@ -31,7 +31,9 @@ export class MailService {
     }
 
     const frontendUrl = this.config.get<string>('APP_PUBLIC_URL', 'http://localhost:5173');
-    const verifyUrl = `${frontendUrl}/?verifyToken=${encodeURIComponent(token)}`;
+    // L'app vit sous /app/* depuis la landing : on cible directement /app/ pour
+    // que AuthContext puisse intercepter ?verifyToken= au chargement.
+    const verifyUrl = `${frontendUrl}/app/?verifyToken=${encodeURIComponent(token)}`;
     const transporter = nodemailer.createTransport({
       host: this.config.getOrThrow<string>('SMTP_HOST'),
       port: Number(this.config.get<string>('SMTP_PORT', '587')),
@@ -152,7 +154,7 @@ export class MailService {
     }
 
     const frontendUrl = this.config.get<string>('APP_PUBLIC_URL', 'http://localhost:5173');
-    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+    const resetUrl = `${frontendUrl}/app/reset-password?token=${encodeURIComponent(token)}`;
     const transporter = nodemailer.createTransport({
       host: this.config.getOrThrow<string>('SMTP_HOST'),
       port: Number(this.config.get<string>('SMTP_PORT', '587')),
@@ -178,6 +180,68 @@ export class MailService {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Email delivery failed';
       this.logger.warn(`Password reset email failed: ${message}`);
+      return { sent: false, error: message };
+    }
+  }
+
+  /**
+   * Envoie un message du formulaire de contact (landing publique) vers
+   * CONTACT_EMAIL (ou MAIL_FROM en fallback). Le sender est l'adresse du
+   * formulaire, ce qui permet de répondre directement depuis sa boîte mail.
+   */
+  async sendContactMessage(args: {
+    fromName: string;
+    fromEmail: string;
+    subject: string;
+    message: string;
+  }) {
+    if (!this.isEnabled) {
+      this.logger.debug('SMTP disabled, contact message not sent.');
+      return { sent: false };
+    }
+
+    const to =
+      this.config.get<string>('CONTACT_EMAIL') ??
+      this.config.get<string>('MAIL_FROM') ??
+      'no-reply@example.local';
+
+    const transporter = nodemailer.createTransport({
+      host: this.config.getOrThrow<string>('SMTP_HOST'),
+      port: Number(this.config.get<string>('SMTP_PORT', '587')),
+      secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
+      auth: this.smtpAuth(),
+    });
+
+    const safeName    = escapeHtml(args.fromName);
+    const safeEmail   = escapeHtml(args.fromEmail);
+    const safeSubject = escapeHtml(args.subject);
+    const safeBody    = escapeHtml(args.message).replace(/\n/g, '<br>');
+
+    try {
+      await transporter.sendMail({
+        from: this.config.get<string>('MAIL_FROM', 'Personal Platform <no-reply@example.local>'),
+        to,
+        // replyTo permet de répondre directement au visiteur depuis ta boîte.
+        replyTo: `${args.fromName} <${args.fromEmail}>`,
+        subject: `[CleanVex] ${args.subject}`,
+        text:
+          `Message de ${args.fromName} <${args.fromEmail}>\n\n` +
+          `Sujet : ${args.subject}\n\n${args.message}`,
+        html: `
+          <div style="font-family:'Segoe UI',system-ui,sans-serif;color:#c9d1e0;background:#0c1029;padding:24px;max-width:600px;margin:0 auto">
+            <div style="background:#141830;border:1px solid #1e2347;border-radius:14px;padding:24px">
+              <p style="color:#7b82a8;font-size:11px;font-family:monospace;letter-spacing:0.1em;margin:0 0 6px">NOUVEAU MESSAGE — CLEANVEX</p>
+              <h2 style="color:#c4b5fd;margin:0 0 18px;font-size:18px">${safeSubject}</h2>
+              <p style="margin:0 0 4px;font-size:13px"><strong>De :</strong> ${safeName} &lt;${safeEmail}&gt;</p>
+              <hr style="border:none;border-top:1px solid #1e2347;margin:16px 0">
+              <p style="font-size:13px;line-height:1.6;white-space:pre-wrap">${safeBody}</p>
+            </div>
+          </div>`,
+      });
+      return { sent: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Email delivery failed';
+      this.logger.warn(`Contact email failed: ${message}`);
       return { sent: false, error: message };
     }
   }

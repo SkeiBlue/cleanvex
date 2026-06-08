@@ -10,6 +10,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { BackupsModule } from './backups/backups.module';
+import { ContactModule } from './contact/contact.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -38,6 +39,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     AuthModule,
     ModulesModule,
     CoreModule,
+    ContactModule,
     ContactsModule,
     DocumentsModule,
     VehiclesModule,
