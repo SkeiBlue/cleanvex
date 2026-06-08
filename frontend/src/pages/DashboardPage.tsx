@@ -52,21 +52,21 @@ function UrgentBanner({ overdueTasks, openAlerts, expiringDocs }: { overdueTasks
       </div>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {overdueTasks > 0 && (
-          <Link to="/agenda" style={{ textDecoration: 'none' }}>
+          <Link to="/app/agenda" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
               ⏰ {overdueTasks} tâche{overdueTasks > 1 ? 's' : ''} en retard
             </span>
           </Link>
         )}
         {openAlerts > 0 && (
-          <Link to="/vehicles" style={{ textDecoration: 'none' }}>
+          <Link to="/app/vehicles" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)', cursor: 'pointer' }}>
               🔔 {openAlerts} alerte{openAlerts > 1 ? 's' : ''} véhicule
             </span>
           </Link>
         )}
         {expiringDocs > 0 && (
-          <Link to="/documents" style={{ textDecoration: 'none' }}>
+          <Link to="/app/documents" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', cursor: 'pointer' }}>
               📄 {expiringDocs} document{expiringDocs > 1 ? 's' : ''} expirent bientôt
             </span>
@@ -160,7 +160,7 @@ export function DashboardPage() {
 
       {/* Bandeau admin (admin only) */}
       {user?.role === 'admin' && (
-        <Link to="/admin" style={{ textDecoration: 'none' }}>
+        <Link to="/app/admin" style={{ textDecoration: 'none' }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '12px 16px', borderRadius: 12,
@@ -197,13 +197,13 @@ export function DashboardPage() {
 
       {/* Stats tiles */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-        <StatTile icon={<Car size={20} />} label="Véhicules" value={vehicles.length} sub={vehiclesInRepair.length > 0 ? `${vehiclesInRepair.length} en réparation` : 'Aucun en réparation'} color="#67e8f9" to="/vehicles" />
-        <StatTile icon={<TrendingUp size={20} />} label="Solde" value={`${balance >= 0 ? '+' : ''}${balance.toFixed(0)} €`} sub={`${(finance?.income ?? 0).toFixed(0)} € revenus`} color={balance >= 0 ? '#4ade80' : '#f87171'} to="/finances" />
-        <StatTile icon={<Package size={20} />} label="Stock" value={stockCount} sub="articles référencés" color="#fbbf24" to="/stock" />
-        <StatTile icon={<Bell size={20} />} label="Tâches" value={agenda?.openTasks ?? 0} sub={overdueTasks > 0 ? `⚠ ${overdueTasks} en retard` : 'Tout à jour'} color={overdueTasks > 0 ? '#f87171' : '#a78bfa'} to="/agenda" />
-        <StatTile icon={<Home size={20} />} label="Biens" value={report?.counts.properties ?? 0} sub="biens immobiliers" color="#a78bfa" to="/real-estate" />
-        <StatTile icon={<UserRound size={20} />} label="Contacts" value={report?.counts.contacts ?? 0} sub="dans le carnet" color="#f9a8d4" to="/contacts" />
-        <StatTile icon={<FileText size={20} />} label="Documents" value={report?.counts.documents ?? 0} sub={expiringDocs > 0 ? `⚠ ${expiringDocs} expirent bientôt` : 'Tous valides'} color={expiringDocs > 0 ? '#fbbf24' : '#4ade80'} to="/documents" />
+        <StatTile icon={<Car size={20} />} label="Véhicules" value={vehicles.length} sub={vehiclesInRepair.length > 0 ? `${vehiclesInRepair.length} en réparation` : 'Aucun en réparation'} color="#67e8f9" to="/app/vehicles" />
+        <StatTile icon={<TrendingUp size={20} />} label="Solde" value={`${balance >= 0 ? '+' : ''}${balance.toFixed(0)} €`} sub={`${(finance?.income ?? 0).toFixed(0)} € revenus`} color={balance >= 0 ? '#4ade80' : '#f87171'} to="/app/finances" />
+        <StatTile icon={<Package size={20} />} label="Stock" value={stockCount} sub="articles référencés" color="#fbbf24" to="/app/stock" />
+        <StatTile icon={<Bell size={20} />} label="Tâches" value={agenda?.openTasks ?? 0} sub={overdueTasks > 0 ? `⚠ ${overdueTasks} en retard` : 'Tout à jour'} color={overdueTasks > 0 ? '#f87171' : '#a78bfa'} to="/app/agenda" />
+        <StatTile icon={<Home size={20} />} label="Biens" value={report?.counts.properties ?? 0} sub="biens immobiliers" color="#a78bfa" to="/app/real-estate" />
+        <StatTile icon={<UserRound size={20} />} label="Contacts" value={report?.counts.contacts ?? 0} sub="dans le carnet" color="#f9a8d4" to="/app/contacts" />
+        <StatTile icon={<FileText size={20} />} label="Documents" value={report?.counts.documents ?? 0} sub={expiringDocs > 0 ? `⚠ ${expiringDocs} expirent bientôt` : 'Tous valides'} color={expiringDocs > 0 ? '#fbbf24' : '#4ade80'} to="/app/documents" />
       </div>
 
       {/* Corps 2 colonnes */}
@@ -213,7 +213,7 @@ export function DashboardPage() {
         <article className="panel">
           <div className="panel-header">
             <div><span className="panel-kicker">Agenda</span><h2>Tâches à venir</h2></div>
-            <Link to="/agenda" className="btn-ghost">Tout voir →</Link>
+            <Link to="/app/agenda" className="btn-ghost">Tout voir →</Link>
           </div>
           <div style={{ padding: '4px 0' }}>
             {upcomingTasks.length === 0 ? (
@@ -244,7 +244,7 @@ export function DashboardPage() {
         <article className="panel">
           <div className="panel-header">
             <div><span className="panel-kicker">Garage</span><h2>Véhicules actifs</h2></div>
-            <Link to="/vehicles" className="btn-ghost">Tout voir →</Link>
+            <Link to="/app/vehicles" className="btn-ghost">Tout voir →</Link>
           </div>
           <div style={{ padding: '4px 0' }}>
             {vehicles.length === 0 ? (
@@ -277,7 +277,7 @@ export function DashboardPage() {
         <article className="panel">
           <div className="panel-header">
             <div><span className="panel-kicker">Finances</span><h2>Résumé</h2></div>
-            <Link to="/finances" className="btn-ghost">Voir →</Link>
+            <Link to="/app/finances" className="btn-ghost">Voir →</Link>
           </div>
           <div className="detail-grid">
             <span>Comptes<strong>{finance?.accountCount ?? 0}</strong></span>
@@ -292,7 +292,7 @@ export function DashboardPage() {
         <article className="panel">
           <div className="panel-header">
             <div><span className="panel-kicker">Documents</span><h2>Expirent bientôt</h2></div>
-            <Link to="/documents" className="btn-ghost">Voir →</Link>
+            <Link to="/app/documents" className="btn-ghost">Voir →</Link>
           </div>
           <div style={{ padding: '4px 0' }}>
             {documents.filter(d => d.expiresAt && new Date(d.expiresAt) <= soon30).length === 0 ? (

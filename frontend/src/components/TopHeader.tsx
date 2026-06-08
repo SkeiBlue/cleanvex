@@ -224,7 +224,7 @@ export function TopHeader({
         {/* ✨ Badge MAJ disponible (admin uniquement) */}
         {updateBehind > 0 && (
           <button
-            onClick={() => navigate('/settings?tab=systeme')}
+            onClick={() => navigate('/app/settings?tab=systeme')}
             title={`${updateBehind} commit${updateBehind > 1 ? 's' : ''} en retard — cliquer pour mettre à jour`}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,

@@ -15,7 +15,7 @@ export function ModuleGuard({ moduleKey, children }: Props) {
           <span>🔒</span>
           <h2>Module désactivé</h2>
           <p>Le module <strong>{mod.title}</strong> est désactivé.</p>
-          <p>Activez-le dans <Link to="/settings">Paramètres → Modules</Link>.</p>
+          <p>Activez-le dans <Link to="/app/settings">Paramètres → Modules</Link>.</p>
         </div>
       </div>
     )

@@ -26,16 +26,20 @@ const ReportsPage    = lazy(() => import('./pages/ReportsPage').then(m => ({ def
 const BackupsPage    = lazy(() => import('./pages/BackupsPage').then(m => ({ default: m.BackupsPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
 
+/* Landing publique (lazy aussi pour ne pas alourdir le bundle de l'app) */
+const LandingPage = lazy(() => import('./landing/LandingPage').then(m => ({ default: m.LandingPage })))
+const ContactPage = lazy(() => import('./landing/ContactPage').then(m => ({ default: m.ContactPage })))
+
 type FormEv = { preventDefault(): void }
 
 const RESULT_ROUTES: Record<string, string> = {
-  vehicle: '/vehicles',
-  contact: '/contacts',
-  document: '/documents',
-  property: '/real-estate',
-  task: '/agenda',
-  'stock_item': '/stock',
-  transaction: '/finances',
+  vehicle: '/app/vehicles',
+  contact: '/app/contacts',
+  document: '/app/documents',
+  property: '/app/real-estate',
+  task: '/app/agenda',
+  'stock_item': '/app/stock',
+  transaction: '/app/finances',
 }
 
 function AppLayout() {
@@ -95,7 +99,7 @@ function AppLayout() {
     navigate(route)
   }
 
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/app/login" replace />
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
@@ -163,7 +167,7 @@ function AuthPage() {
   useEffect(() => { if (verifyMessage) setMessage(verifyMessage) }, [verifyMessage])
 
   if (isLoading) return <div className="loading-screen">Chargement...</div>
-  if (user) return <Navigate to="/" replace />
+  if (user) return <Navigate to="/app" replace />
 
   async function handleLogin(event: FormEv) {
     event.preventDefault(); setMessage('')
@@ -206,13 +210,13 @@ function ProtectedRoute() {
       <div className="loading-screen-logo">Mon<span>Espace</span></div>
     </div>
   )
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/app/login" replace />
   return <Outlet />
 }
 
 function AdminOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  if (user?.role !== 'admin') return <Navigate to="/" replace />
+  if (user?.role !== 'admin') return <Navigate to="/app" replace />
   return <>{children}</>
 }
 
@@ -221,26 +225,39 @@ export default function App() {
     <ToastProvider>
     <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<AuthPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AppLayout />}>
-              <Route index element={<DashboardPage />} />
-              <Route path="vehicles" element={<ModuleGuard moduleKey="vehicles"><VehiclesPage /></ModuleGuard>} />
-              <Route path="finances" element={<ModuleGuard moduleKey="finances"><FinancesPage /></ModuleGuard>} />
-              <Route path="stock" element={<ModuleGuard moduleKey="stock"><StockPage /></ModuleGuard>} />
-              <Route path="agenda" element={<ModuleGuard moduleKey="agenda"><AgendaPage /></ModuleGuard>} />
-              <Route path="real-estate" element={<ModuleGuard moduleKey="real-estate"><RealEstatePage /></ModuleGuard>} />
-              <Route path="documents" element={<ModuleGuard moduleKey="documents"><DocumentsPage /></ModuleGuard>} />
-              <Route path="contacts" element={<ModuleGuard moduleKey="contacts"><ContactsPage /></ModuleGuard>} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="backups" element={<BackupsPage />} />
-              <Route path="admin" element={<AdminOnlyRoute><AdminDashboardPage /></AdminOnlyRoute>} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* Landing publique (vitrine) */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+
+            {/* App protégée, isolée sous /app/* */}
+            <Route path="/app">
+              <Route path="login" element={<AuthPage />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AppLayout />}>
+                  <Route index element={<DashboardPage />} />
+                  <Route path="vehicles" element={<ModuleGuard moduleKey="vehicles"><VehiclesPage /></ModuleGuard>} />
+                  <Route path="finances" element={<ModuleGuard moduleKey="finances"><FinancesPage /></ModuleGuard>} />
+                  <Route path="stock" element={<ModuleGuard moduleKey="stock"><StockPage /></ModuleGuard>} />
+                  <Route path="agenda" element={<ModuleGuard moduleKey="agenda"><AgendaPage /></ModuleGuard>} />
+                  <Route path="real-estate" element={<ModuleGuard moduleKey="real-estate"><RealEstatePage /></ModuleGuard>} />
+                  <Route path="documents" element={<ModuleGuard moduleKey="documents"><DocumentsPage /></ModuleGuard>} />
+                  <Route path="contacts" element={<ModuleGuard moduleKey="contacts"><ContactsPage /></ModuleGuard>} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="reports" element={<ReportsPage />} />
+                  <Route path="backups" element={<BackupsPage />} />
+                  <Route path="admin" element={<AdminOnlyRoute><AdminDashboardPage /></AdminOnlyRoute>} />
+                </Route>
+              </Route>
+              {/* Tout chemin /app inconnu retourne au dashboard. */}
+              <Route path="*" element={<Navigate to="/app" replace />} />
             </Route>
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+
+            {/* Tout le reste retombe sur la landing. */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </AuthProvider>
     </ToastProvider>

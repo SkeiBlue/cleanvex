@@ -113,7 +113,7 @@ export function Sidebar({
 
         <div className="nav-label">Système</div>
         <NavLink
-          to="/reports"
+          to="/app/reports"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
           data-label="Rapports"
@@ -123,7 +123,7 @@ export function Sidebar({
           <span className="nav-txt">Rapports</span>
         </NavLink>
         <NavLink
-          to="/backups"
+          to="/app/backups"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
           data-label="Sauvegarde"
@@ -133,7 +133,7 @@ export function Sidebar({
           <span className="nav-txt">Sauvegarde</span>
         </NavLink>
         <NavLink
-          to="/settings"
+          to="/app/settings"
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
           data-label="Paramètres"
@@ -145,7 +145,7 @@ export function Sidebar({
         </NavLink>
         {user.role === 'admin' && (
           <NavLink
-            to="/admin"
+            to="/app/admin"
             className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
             onClick={onClose}
             data-label="Administration"
