@@ -69,7 +69,7 @@ export function Sidebar({
           <div className="logo-gem" />
           <div>
             <div className="logo-text">Mon<span>Espace</span></div>
-            <div className="logo-badge">V0.5 · COSMIC UI</div>
+            <div className="logo-badge">v{__APP_VERSION__} · COSMIC UI</div>
           </div>
         </div>
       </div>
@@ -161,8 +161,8 @@ export function Sidebar({
         >
           <div className="user-avatar">{initial}</div>
           <div>
-            <div className="user-name">{user.username ?? 'Clément'}</div>
-            <div className="user-role">{user.role.toUpperCase()} · V0.5</div>
+            <div className="user-name">{user.username ?? user.email}</div>
+            <div className="user-role">{user.role.toUpperCase()} · v{__APP_VERSION__}</div>
           </div>
           <div className="user-dot" />
         </div>
