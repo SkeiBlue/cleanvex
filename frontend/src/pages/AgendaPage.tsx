@@ -5,7 +5,6 @@ import { FieldTip } from '../components/FieldTip'
 import { Modal } from '../components/Modal'
 import { useAuth } from '../contexts/AuthContext'
 import { SkeletonTabPage } from '../components/Skeleton'
-import { SubSidebar } from '../components/SubSidebar'
 import { useToast } from '../contexts/ToastContext'
 import type { AgendaDashboard, NotificationItem, TaskItem } from '../types'
 
@@ -30,6 +29,16 @@ function PriorityBadge({ priority }: { priority: string }) {
   )
 }
 
+function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      padding: '8px 18px', fontSize: '13px', fontWeight: 600, fontFamily: 'var(--font)',
+      cursor: 'pointer', border: 'none', whiteSpace: 'nowrap',
+      borderBottom: active ? '2px solid var(--p1)' : '2px solid transparent',
+      background: 'none', color: active ? '#c4b5fd' : 'var(--text2)', transition: 'all 0.15s',
+    }}>{label}</button>
+  )
+}
 
 export function AgendaPage() {
   const { authedFetch, setUnreadNotifications } = useAuth()
@@ -187,20 +196,22 @@ export function AgendaPage() {
 
   if (isLoading) return <SkeletonTabPage rows={8} />
 
-  type Tab = 'taches' | 'notifications' | 'calendrier'
-  const tabs = [
-    { key: 'taches'        as Tab, label: `Tâches (${openTasks.length}${overdue.length > 0 ? ` · ${overdue.length} en retard` : ''})`, icon: <CheckCircle2 size={15} /> },
-    { key: 'notifications' as Tab, label: `Alertes${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`, icon: <Bell size={15} /> },
-    { key: 'calendrier'    as Tab, label: 'Calendrier', icon: <CalendarDays size={15} /> },
-  ]
-
   return (
-    <SubSidebar
-      items={tabs}
-      activeKey={activeTab}
-      onSelect={setActiveTab}
-      ariaLabel="Sections de l'agenda"
-    >
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* ─── TABS ─── */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--card)', borderRadius: '16px 16px 0 0', padding: '0 8px' }}>
+        <TabBtn
+          label={`Tâches (${openTasks.length}${overdue.length > 0 ? ` · ${overdue.length} en retard` : ''})`}
+          active={activeTab === 'taches'}
+          onClick={() => setActiveTab('taches')}
+        />
+        <TabBtn
+          label={`Alertes${unreadCount > 0 ? ` (${unreadCount} non lues)` : ''}`}
+          active={activeTab === 'notifications'}
+          onClick={() => setActiveTab('notifications')}
+        />
+        <TabBtn label="Calendrier" active={activeTab === 'calendrier'} onClick={() => setActiveTab('calendrier')} />
+      </div>
 
       {/* ══ TÂCHES ══ */}
       {activeTab === 'taches' && (
@@ -527,6 +538,6 @@ export function AgendaPage() {
           </div>
         </article>
       )}
-    </SubSidebar>
+    </div>
   )
 }
