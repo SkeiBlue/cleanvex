@@ -4,7 +4,7 @@ coverage/
 .env
 .env.local
 private-files/
-backups/
+/backend/backups/
 *.log
 
 .claude/
