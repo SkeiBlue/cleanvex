@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # ============================================================
 #  security-test.sh — Tests de sécurité API (CDC §28)
-#  Usage : ./security-test.sh [http://localhost:3001]
+#  Usage : ./security-test.sh [http://localhost:3000/api]
 #  Le backend doit être lancé et au moins un user "admin" doit
 #  exister (admin@example.com / ChangeMe123! par défaut).
 # ============================================================
 set -euo pipefail
 
-BASE="${1:-http://localhost:3001}"
+# Le backend écoute sur le port 3000 par défaut (cf. PORT dans main.ts) et
+# toutes les routes sont préfixées par /api (app.setGlobalPrefix('api')) :
+# sans ce préfixe, chaque requête tombe en 404 au lieu du code attendu.
+BASE="${1:-http://localhost:3000/api}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@example.com}"
 ADMIN_PASS="${ADMIN_PASS:-ChangeMe123!}"
 
@@ -49,11 +52,11 @@ PROTECTED_ROUTES=(
     "/vehicles"
     "/stock/items"
     "/contacts"
-    "/real-estate"
+    "/real-estate/properties"
     "/agenda/tasks"
     "/documents"
     "/finances/transactions"
-    "/core/errors"
+    "/errors"
 )
 
 for route in "${PROTECTED_ROUTES[@]}"; do
@@ -67,7 +70,7 @@ section "2. Token JWT invalide / falsifié"
 
 FAKE_TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmYWtlLWlkIiwiZW1haWwiOiJoYWNrZXJAdGVzdC5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE3MDAwMDAwMDB9.FAKE_SIGNATURE"
 
-for route in "/auth/me" "/vehicles" "/core/errors"; do
+for route in "/auth/me" "/vehicles" "/errors"; do
     code=$(status_of "$BASE$route" -H "Authorization: Bearer $FAKE_TOKEN")
     expect_status "GET $route avec fake token" "401" "$code"
 done
@@ -106,7 +109,7 @@ else
 
     # ── 6. Routes accessibles avec token valide ──────────
     section "6. Routes accessibles avec token admin valide"
-    for route in "/auth/me" "/vehicles" "/core/errors"; do
+    for route in "/auth/me" "/vehicles" "/errors"; do
         code=$(status_of "$BASE$route" -H "Authorization: Bearer $ADMIN_TOKEN")
         expect_status "GET $route avec token admin" "200" "$code"
     done
@@ -119,8 +122,8 @@ else
     USER_TOKEN=$(echo "$USER_RESP" | grep -o '"accessToken":"[^"]*"' | cut -d'"' -f4 || true)
 
     if [[ -n "$USER_TOKEN" ]]; then
-        code=$(status_of "$BASE/core/errors" -H "Authorization: Bearer $USER_TOKEN")
-        expect_status "GET /core/errors avec token user (doit être 403)" "403" "$code"
+        code=$(status_of "$BASE/errors" -H "Authorization: Bearer $USER_TOKEN")
+        expect_status "GET /errors avec token user (doit être 403)" "403" "$code"
     else
         printf "  ${YLW}⊘  SKIP${RST}  Pas d'utilisateur standard trouvé (user@example.com)\n"
     fi
@@ -139,6 +142,8 @@ else
         expect_status "GET /vehicles/$VEHICLE_ID avec token d'un autre user (doit être 403/404)" "404" "$code"
     elif [[ -n "$VEHICLE_ID" ]]; then
         printf "  ${YLW}⊘  SKIP${RST}  IDOR check (pas de 2e utilisateur disponible)\n"
+    else
+        printf "  ${YLW}⊘  SKIP${RST}  IDOR check (échec de création du véhicule de test — module 'vehicles' désactivé ?)\n"
     fi
 
     # Nettoyage
