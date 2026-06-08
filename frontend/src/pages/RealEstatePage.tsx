@@ -243,10 +243,10 @@ export function RealEstatePage() {
               <input name="postalCode" className="modal-input" placeholder="Ex : 69003" />
             </FieldTip>
             <FieldTip label="Surface (m²)" hint="Surface habitable ou totale selon le type de bien. Utilisée dans les statistiques.">
-              <input name="surface" type="number" step="0.01" className="modal-input" placeholder="Ex : 65" />
+              <input name="surface" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 65" />
             </FieldTip>
             <FieldTip label="Nb de pièces" hint="Nombre de pièces principales (salon + chambres). Indicateur affiché sur la card.">
-              <input name="rooms" type="number" className="modal-input" placeholder="Ex : 3" />
+              <input name="rooms" type="number" min="0" className="modal-input" placeholder="Ex : 3" />
             </FieldTip>
             <FieldTip label="Prix d'achat (€)" hint="Prix payé à l'acquisition (acte notarié). Sert à calculer la plus-value potentielle.">
               <input name="purchasePrice" type="number" step="0.01" className="modal-input" placeholder="Ex : 180000" />
@@ -388,10 +388,10 @@ export function RealEstatePage() {
                       <input name="postalCode" className="modal-input" defaultValue={selected.postalCode ?? ''} />
                     </FieldTip>
                     <FieldTip label="Surface m²" hint="Surface habitable ou totale.">
-                      <input name="surface" type="number" step="0.01" className="modal-input" defaultValue={selected.surface ?? ''} />
+                      <input name="surface" type="number" min="0" step="0.01" className="modal-input" defaultValue={selected.surface ?? ''} />
                     </FieldTip>
                     <FieldTip label="Pièces" hint="Nombre de pièces principales.">
-                      <input name="rooms" type="number" className="modal-input" defaultValue={selected.rooms ?? ''} />
+                      <input name="rooms" type="number" min="0" className="modal-input" defaultValue={selected.rooms ?? ''} />
                     </FieldTip>
                     <FieldTip label="Prix d'achat €" hint="Prix à l'acquisition (notaire). Sert au calcul de plus-value.">
                       <input name="purchasePrice" type="number" step="0.01" className="modal-input" defaultValue={selected.purchasePrice ?? ''} />
@@ -445,7 +445,7 @@ export function RealEstatePage() {
                       <input name="date" type="date" className="modal-input" defaultValue={new Date().toISOString().slice(0,10)} required />
                     </FieldTip>
                     <FieldTip label="Montant (€)" hint="Coût de l'événement. Comptabilisé dans l'onglet Finances de ce bien." style={{ gridColumn: '1/-1' }}>
-                      <input name="amount" type="number" step="0.01" className="modal-input" placeholder="Ex : 1200" />
+                      <input name="amount" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 1200" />
                     </FieldTip>
                   </div>
                   <div className="modal-footer">
