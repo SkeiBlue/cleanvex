@@ -16,7 +16,7 @@ model User {
   email           String    @unique
   username        String?
   passwordHash    String    @map("password_hash")
-  role            String    @default("admin")
+  role            String    @default("user")
   isActive        Boolean   @default(true) @map("is_active")
   emailVerified   Boolean   @default(false) @map("email_verified")
   emailVerifiedAt DateTime? @map("email_verified_at")
