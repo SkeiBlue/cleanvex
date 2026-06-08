@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
+import { SkeletonTabPage } from '../components/Skeleton'
 
 type AdminStats = {
   users: { total: number; active: number; admins: number; emailsVerified: number }
@@ -382,6 +383,10 @@ export function AdminDashboardPage() {
       setTimeout(() => setInviteCopied(false), 2000)
     })
   }
+
+  // Skeleton initial pour rester cohérent avec les autres pages (Dashboard, Finances…)
+  // au lieu d'un écran blanc pendant le 1er chargement.
+  if (loading && !stats) return <SkeletonTabPage />
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

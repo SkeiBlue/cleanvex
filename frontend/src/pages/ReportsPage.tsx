@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BarChart3, RefreshCw, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { relativeDate } from '../utils/date'
+import { SkeletonTabPage } from '../components/Skeleton'
 import type { ActivityLog, AuditLog, ReportSummary } from '../types'
 
 export function ReportsPage() {
@@ -9,7 +10,8 @@ export function ReportsPage() {
   const [summary, setSummary] = useState<ReportSummary | null>(null)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
-  const [loading, setLoading] = useState(false)
+  // true au démarrage pour afficher le skeleton avant le 1er fetch (cohérence avec Dashboard, Finances…).
+  const [loading, setLoading] = useState(true)
 
   async function load() {
     setLoading(true)
@@ -25,6 +27,8 @@ export function ReportsPage() {
   }
 
   useEffect(() => { load() }, [authedFetch])
+
+  if (loading && !summary) return <SkeletonTabPage />
 
   const net = summary?.finance.net ?? 0
 
