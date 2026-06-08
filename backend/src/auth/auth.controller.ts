@@ -85,6 +85,11 @@ export class AuthController {
     return res.status(204).send();
   }
 
+  /**
+   * Profil de l'utilisateur courant. Non consommé par le frontend (qui obtient
+   * ces infos via /auth/refresh), gardé pour le tooling externe (CLI, curl,
+   * intégrations tierces, tests d'intégration). À conserver.
+   */
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Req() req: AuthenticatedRequest) {
