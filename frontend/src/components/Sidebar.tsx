@@ -19,13 +19,13 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
 }
 
 const MODULE_ROUTES: Record<string, string> = {
-  vehicles:     '/vehicles',
-  'real-estate':'/real-estate',
-  finances:     '/finances',
-  stock:        '/stock',
-  agenda:       '/agenda',
-  documents:    '/documents',
-  contacts:     '/contacts',
+  vehicles:     '/app/vehicles',
+  'real-estate':'/app/real-estate',
+  finances:     '/app/finances',
+  stock:        '/app/stock',
+  agenda:       '/app/agenda',
+  documents:    '/app/documents',
+  contacts:     '/app/contacts',
 }
 
 type Props = {
@@ -95,7 +95,7 @@ export function Sidebar({
           const Icon = MODULE_ICONS[module.key] ?? Settings
           return (
             <NavLink
-              to={MODULE_ROUTES[module.key] ?? '/'}
+              to={MODULE_ROUTES[module.key] ?? '/app'}
               key={module.key}
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               onClick={onClose}
