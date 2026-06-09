@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
@@ -149,17 +149,83 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
 
-    return this.prisma.vehicleIntervention.create({
-      data: {
-        vehicleId,
-        title: dto.title,
-        date: new Date(dto.date),
-        mileage: dto.mileage,
-        timeMinutes: dto.timeMinutes,
-        costAmount: dto.costAmount,
-        status: dto.status ?? 'planned',
-        notes: dto.notes,
-      },
+    // S2 — Si l'utilisateur a coché "Inclure des pièces du stock" dans la modal,
+    // on consomme chaque pièce + on lie son StockMovement à l'intervention
+    // créée, le tout dans une seule transaction Prisma pour garantir la
+    // cohérence (rollback complet si une pièce est en stock insuffisant ou
+    // appartient à un autre utilisateur).
+    const usages = dto.stockUsages ?? [];
+
+    if (usages.length === 0) {
+      return this.prisma.vehicleIntervention.create({
+        data: {
+          vehicleId,
+          title: dto.title,
+          date: new Date(dto.date),
+          mileage: dto.mileage,
+          timeMinutes: dto.timeMinutes,
+          costAmount: dto.costAmount,
+          status: dto.status ?? 'planned',
+          notes: dto.notes,
+        },
+      });
+    }
+
+    // Pré-charge les items pour valider ownership + stock suffisant avant
+    // d'ouvrir la transaction (réponse 400 propre plutôt que rollback).
+    const itemIds = Array.from(new Set(usages.map(u => u.stockItemId)));
+    const items = await this.prisma.stockItem.findMany({
+      where: { id: { in: itemIds }, ownerId },
+    });
+    const itemById = new Map(items.map(i => [i.id, i]));
+    for (const usage of usages) {
+      const item = itemById.get(usage.stockItemId);
+      if (!item) {
+        throw new NotFoundException(`Pièce stock introuvable : ${usage.stockItemId}`);
+      }
+      if (Number(item.quantity) < usage.quantity) {
+        throw new BadRequestException(
+          `Stock insuffisant pour "${item.name}" : ${item.quantity} ${item.unit} disponibles, ${usage.quantity} demandés.`,
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const intervention = await tx.vehicleIntervention.create({
+        data: {
+          vehicleId,
+          title: dto.title,
+          date: new Date(dto.date),
+          mileage: dto.mileage,
+          timeMinutes: dto.timeMinutes,
+          costAmount: dto.costAmount,
+          status: dto.status ?? 'planned',
+          notes: dto.notes,
+        },
+      });
+
+      for (const usage of usages) {
+        const item = itemById.get(usage.stockItemId)!;
+        await tx.stockItem.update({
+          where: { id: item.id },
+          data: { quantity: { decrement: usage.quantity } },
+        });
+        await tx.stockMovement.create({
+          data: {
+            ownerId,
+            stockItemId: item.id,
+            type: 'consume',
+            quantity: usage.quantity,
+            valueAmount: item.valueAmount ? Number(item.valueAmount) * usage.quantity : undefined,
+            targetType: 'vehicle',
+            targetId: vehicleId,
+            interventionId: intervention.id,
+            note: `Travail : ${dto.title}`,
+          },
+        });
+      }
+
+      return intervention;
     });
   }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, Bell, Car, FileText,
-  FileLock2, Gauge, Pencil, Plus, Settings2, TrendingUp,
+  FileLock2, Gauge, Package, Pencil, Plus, Settings2, Trash2, TrendingUp,
   Truck, Upload, Wallet, Wrench,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -125,6 +125,13 @@ export function VehiclesPage() {
   const [showAddPart, setShowAddPart] = useState(false)
   const [showUploadDoc, setShowUploadDoc] = useState(false)
 
+  // S2 — Stock du user pour lier des pièces à un travail dans la modal
+  // "Nouveau travail". Chargé une fois au mount via /stock/items (échoue
+  // silencieusement si le module stock est désactivé pour le user).
+  const [stockItems, setStockItems] = useState<{ id: string; name: string; unit: string; quantity: string }[]>([])
+  const [usePartsFromStock, setUsePartsFromStock] = useState(false)
+  const [stockUsages, setStockUsages] = useState<{ stockItemId: string; quantity: number }[]>([])
+
   const loadVehicleDetail = useCallback(async (id: string) => {
     const [vr, pr] = await Promise.all([
       authedFetch(`/vehicles/${id}`),
@@ -147,9 +154,17 @@ export function VehiclesPage() {
 
   useEffect(() => {
     async function load() {
-      const [vr, dr] = await Promise.all([authedFetch('/vehicles'), authedFetch('/documents')])
+      const [vr, dr, sr] = await Promise.all([
+        authedFetch('/vehicles'),
+        authedFetch('/documents'),
+        // /stock/items renvoie 403 si le module stock est désactivé → on
+        // ignore silencieusement et stockItems reste vide (la checkbox
+        // "Inclure des pièces du stock" sera juste masquée).
+        authedFetch('/stock/items'),
+      ])
       if (vr.ok) setVehicles(await vr.json())
       if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
+      if (sr.ok) setStockItems(await sr.json())
     }
     load()
   }, [authedFetch])
@@ -232,6 +247,15 @@ export function VehiclesPage() {
   async function handleAddIntervention(event: FormEv) {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget; const data = new FormData(form)
+
+    // S2 — si l'utilisateur a coché "Inclure des pièces du stock", on
+    // envoie le tableau stockUsages au backend. La validation côté front
+    // (pièce sélectionnée + quantité >0) est faite en amont via l'UI ;
+    // une qty invalide est rejetée par le backend avec un message clair.
+    const usagesPayload = usePartsFromStock
+      ? stockUsages.filter(u => u.stockItemId && u.quantity > 0)
+      : []
+
     const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -240,10 +264,19 @@ export function VehiclesPage() {
         costAmount: data.get('costAmount') ? Number(data.get('costAmount')) : undefined,
         notes: data.get('notes') || undefined,
         status: data.get('status') || 'a-faire',
+        stockUsages: usagesPayload.length > 0 ? usagesPayload : undefined,
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Création du travail refusée.')); return }
-    form.reset(); setShowAddIntervention(false); toast.ok('Travail ajouté.'); await loadVehicleDetail(selectedVehicle.id)
+    form.reset()
+    setShowAddIntervention(false)
+    setUsePartsFromStock(false)
+    setStockUsages([])
+    toast.ok(usagesPayload.length > 0
+      ? `Travail ajouté (${usagesPayload.length} pièce${usagesPayload.length > 1 ? 's' : ''} du stock consommée${usagesPayload.length > 1 ? 's' : ''}).`
+      : 'Travail ajouté.',
+    )
+    await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleSetIntervStatus(interventionId: string, status: string) {
@@ -901,9 +934,97 @@ export function VehiclesPage() {
                     <FieldTip label="Notes" hint="Détails supplémentaires : qui a réalisé les travaux, observations, pièces utilisées…" style={{ gridColumn: '1/-1' }}>
                       <textarea name="notes" className="modal-input" rows={3} placeholder="Détails, observations, références pièces…" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
                     </FieldTip>
+
+                    {/* S2 — Liaison avec le stock : on n'affiche le toggle que si
+                        le module stock est activé (sinon /stock/items renvoie 403
+                        au mount → stockItems reste vide). */}
+                    {stockItems.length > 0 && (
+                      <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: usePartsFromStock ? 'rgba(124,58,237,0.06)' : 'rgba(255,255,255,0.02)' }}>
+                          <input
+                            type="checkbox"
+                            checked={usePartsFromStock}
+                            onChange={e => { setUsePartsFromStock(e.target.checked); if (!e.target.checked) setStockUsages([]) }}
+                            style={{ width: 16, height: 16, accentColor: '#7c3aed', cursor: 'pointer' }}
+                          />
+                          <Package size={15} style={{ color: '#a78bfa' }} />
+                          <span style={{ fontWeight: 600 }}>Ajouter une ou plusieurs pièces du stock</span>
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
+                            (décrémente le stock automatiquement)
+                          </span>
+                        </label>
+
+                        {usePartsFromStock && (
+                          <div style={{ padding: '12px', background: 'rgba(124,58,237,0.04)', border: '1px solid rgba(167,139,250,0.2)', borderRadius: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {stockUsages.length === 0 && (
+                              <p style={{ margin: 0, fontSize: 12, color: 'var(--text3)' }}>
+                                Aucune pièce ajoutée pour l'instant. Utilise la ligne du bas pour en sélectionner.
+                              </p>
+                            )}
+                            {stockUsages.map((usage, i) => {
+                              const item = stockItems.find(s => s.id === usage.stockItemId)
+                              const stockQty = item ? Number(item.quantity) : 0
+                              const exceeds = usage.quantity > stockQty
+                              return (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: 8, border: exceeds ? '1px solid rgba(248,113,113,0.4)' : '1px solid transparent' }}>
+                                  <span style={{ flex: 1, fontSize: 13, color: 'var(--text)' }}>
+                                    {item?.name ?? '(pièce inconnue)'}
+                                  </span>
+                                  <input
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    max={stockQty}
+                                    value={usage.quantity || ''}
+                                    onChange={e => {
+                                      const v = Number(e.target.value)
+                                      setStockUsages(u => u.map((x, idx) => idx === i ? { ...x, quantity: Number.isFinite(v) ? v : 0 } : x))
+                                    }}
+                                    style={{ width: 80, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', color: 'var(--text)', fontSize: 12, textAlign: 'right' }}
+                                  />
+                                  <span style={{ fontSize: 11, color: exceeds ? '#f87171' : 'var(--text3)', fontFamily: 'var(--mono)', minWidth: 50 }}>
+                                    / {stockQty} {item?.unit ?? ''}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setStockUsages(u => u.filter((_, idx) => idx !== i))}
+                                    aria-label="Retirer cette pièce"
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171', display: 'flex', padding: 4 }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              )
+                            })}
+                            {/* Sélecteur d'ajout : filtre les items déjà ajoutés et ceux à 0 */}
+                            <div style={{ display: 'flex', gap: 8, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+                              <select
+                                value=""
+                                onChange={e => {
+                                  const id = e.target.value
+                                  if (!id) return
+                                  setStockUsages(u => [...u, { stockItemId: id, quantity: 1 }])
+                                  e.target.value = ''
+                                }}
+                                style={{ flex: 1, background: 'rgba(12,16,41,0.95)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)' }}
+                              >
+                                <option value="">+ Ajouter une pièce…</option>
+                                {stockItems
+                                  .filter(s => Number(s.quantity) > 0 && !stockUsages.some(u => u.stockItemId === s.id))
+                                  .map(s => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.name} — {Number(s.quantity).toLocaleString('fr-FR')} {s.unit} dispo
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn-ghost" onClick={() => setShowAddIntervention(false)}>Annuler</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setShowAddIntervention(false); setUsePartsFromStock(false); setStockUsages([]) }}>Annuler</button>
                     <button type="submit" className="primary-action"><Wrench size={13} /> Ajouter le travail</button>
                   </div>
                 </form>

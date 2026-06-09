@@ -247,7 +247,8 @@ model VehicleIntervention {
   status      String   @default("planned")
   notes       String?
 
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
 
   @@index([vehicleId])
   @@map("vehicle_interventions")
@@ -467,14 +468,21 @@ model StockMovement {
   sourceId    String?  @map("source_id")
   targetType  String?  @map("target_type")
   targetId    String?  @map("target_id")
+  // Lien fin vers une intervention véhicule précise quand le mouvement a
+  // été déclenché par la création/validation d'un travail (S2). Permet
+  // d'afficher dans la fiche véhicule la liste des pièces consommées par
+  // intervention plutôt qu'agrégées au niveau véhicule.
+  interventionId String? @map("intervention_id")
   note        String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  stockItem StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  stockItem    StockItem            @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  intervention VehicleIntervention? @relation(fields: [interventionId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
   @@index([targetType, targetId])
+  @@index([interventionId])
   @@map("stock_movements")
 }
 
