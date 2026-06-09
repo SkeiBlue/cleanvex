@@ -36,7 +36,12 @@ export class SystemController {
     if (req.user?.id) {
       await this.core.logActivity(req.user.id, 'system.update.start', 'admin', 'update-job', job.id);
     }
-    return { jobId: job.id, status: job.status, startedAt: job.startedAt };
+    // Renvoie `id` (pas `jobId`) pour rester cohérent avec GET /update/current
+    // et GET /update/:id qui renvoient l'objet UpdateJob complet (avec `id`).
+    // Le frontend faisait `setJob({ ...data })` puis `GET /update/${job.id}` :
+    // avec `jobId`, job.id était undefined → 404 silencieux → l'overlay
+    // restait bloqué en "Connexion au backend perdue".
+    return { id: job.id, status: job.status, startedAt: job.startedAt };
   }
 
   @Get('update/current')
