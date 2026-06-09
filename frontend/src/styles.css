@@ -1326,3 +1326,11 @@ a:focus:not(:focus-visible) { outline: none; }
   .hdr-btn { width: 44px; height: 44px; }
   .sidebar-toggle { width: 44px; height: 44px; }
 }
+
+/* ── Admin grid responsive (B6) ───────────────────────────────────────── */
+/* La grille principale du dashboard admin (Utilisateurs / Invite) reste
+   2fr/1fr sur desktop, mais s'empile en colonne sur <900px pour éviter
+   les débordements observés sur tablette portrait et mobile. */
+@media (max-width: 900px) {
+  .admin-grid { grid-template-columns: 1fr !important; }
+}

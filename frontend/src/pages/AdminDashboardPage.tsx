@@ -483,13 +483,13 @@ export function AdminDashboardPage() {
               {filteredUsers.length}/{users.length}
             </span>
           </div>
-          <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+          <div style={{ maxHeight: 480, overflowY: 'auto', overflowX: 'auto' }}>
             {filteredUsers.length === 0 ? (
               <p style={{ padding: 30, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
                 Aucun utilisateur.
               </p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+              <table style={{ width: '100%', minWidth: 640, borderCollapse: 'collapse', fontSize: 12.5 }}>
                 <thead>
                   <tr style={{
                     fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--text3)',
