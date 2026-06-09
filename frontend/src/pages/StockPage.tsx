@@ -6,6 +6,7 @@ import { Modal } from '../components/Modal'
 import { useAuth } from '../contexts/AuthContext'
 import { SkeletonGridPage } from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
+import { parseApiError } from '../hooks/useApiError'
 import type { FinancialAccount, StockItem, StockMovement, ToolLoan, VehicleItem } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
@@ -131,14 +132,14 @@ export function StockPage() {
         threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
       }),
     })
-    if (!r.ok) { toast.err('Mise à jour refusée.'); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Mise à jour refusée.')); return }
     setEditMode(false); toast.ok('Article mis à jour.'); await reload()
   }
 
   async function handleDelete() {
     if (!selected) return
     const r = await authedFetch(`/stock/items/${selected.id}`, { method: 'DELETE' })
-    if (!r.ok) { toast.err('Suppression refusée.'); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); return }
     toast.ok('Article supprimé.'); setSelected(null); setView('list'); await reload()
   }
 
@@ -154,7 +155,7 @@ export function StockPage() {
         operationDate: d.get('operationDate') || undefined,
       }),
     })
-    if (!r.ok) { toast.err('Achat refusé.'); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Achat refusé.')); return }
     e.currentTarget.reset(); setShowPurchase(false); toast.ok('Achat enregistré.'); await reload()
   }
 
@@ -170,7 +171,7 @@ export function StockPage() {
         note: d.get('note') || undefined,
       }),
     })
-    if (!r.ok) { toast.err('Sortie refusée.'); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Sortie refusée.')); return }
     e.currentTarget.reset(); setShowConsume(false); toast.ok('Sortie enregistrée.'); await reload()
   }
 
@@ -187,7 +188,7 @@ export function StockPage() {
         notes: d.get('notes') || undefined,
       }),
     })
-    if (!r.ok) { toast.err('Prêt refusé.'); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Prêt refusé.')); return }
     e.currentTarget.reset(); setShowCreateLoan(false); toast.ok('Prêt enregistré.'); await reload()
   }
 
@@ -233,7 +234,7 @@ export function StockPage() {
               const f = e.target.files?.[0]; if (!f) return
               const fd = new FormData(); fd.append('file', f)
               const r = await authedFetch('/stock/items/import.csv', { method: 'POST', body: fd })
-              if (!r.ok) { toast.err('Import échoué.'); return }
+              if (!r.ok) { toast.err(await parseApiError(r, 'Import échoué.')); return }
               const j = await r.json() as { created: number; errors: string[]; total: number }
               toast.ok(`Import : ${j.created}/${j.total} articles créés${j.errors.length ? ` (${j.errors.length} erreur${j.errors.length > 1 ? 's' : ''})` : ''}.`)
               e.target.value = ''; await reload()
