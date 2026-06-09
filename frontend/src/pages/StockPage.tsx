@@ -156,7 +156,12 @@ export function StockPage() {
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Achat refusé.')); return }
-    e.currentTarget.reset(); setShowPurchase(false); toast.ok('Achat enregistré.'); await reload()
+    e.currentTarget.reset(); setShowPurchase(false); toast.ok('Achat enregistré.')
+    await reload()
+    // Bascule sur l'onglet "Mouvements" pour que le nouveau mouvement
+    // apparaisse immédiatement à l'écran (la quantité change aussi mais
+    // ce n'est pas toujours évident à voir).
+    setDetailTab('mouvements')
   }
 
   async function handleConsume(e: FormEv) {
@@ -172,7 +177,9 @@ export function StockPage() {
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Sortie refusée.')); return }
-    e.currentTarget.reset(); setShowConsume(false); toast.ok('Sortie enregistrée.'); await reload()
+    e.currentTarget.reset(); setShowConsume(false); toast.ok('Sortie enregistrée.')
+    await reload()
+    setDetailTab('mouvements')
   }
 
   async function handleCreateLoan(e: FormEv) {

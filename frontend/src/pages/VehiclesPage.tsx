@@ -438,9 +438,12 @@ export function VehiclesPage() {
     || (intervStatusFilter === 'fait' && i.status === 'done')
   )
 
+  // Tout ce qui n'est PAS dans une catégorie photo va dans "Documents",
+  // y compris les images uploadées avec un context non-photo (ex : photo
+  // d'une carte grise scannée avec context='carte_grise'). Sans cette
+  // inclusion, ces images disparaissaient complètement de la liste.
   const otherDocs = sv?.documents.filter(l =>
     !['avant', 'apres', 'photo', 'travail', 'piece'].includes(l.context ?? '')
-    && !l.document.mimeType.startsWith('image/')
   ) ?? []
 
   const statusColors: Record<string, string> = { 'a-acheter': '#f87171', commande: '#fbbf24', recu: '#67e8f9', monte: '#4ade80', 'a-verifier': '#a78bfa' }

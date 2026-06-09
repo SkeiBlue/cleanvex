@@ -1334,3 +1334,12 @@ a:focus:not(:focus-visible) { outline: none; }
 @media (max-width: 900px) {
   .admin-grid { grid-template-columns: 1fr !important; }
 }
+
+/* ── Admin responsive iPhone (RB3) ──────────────────────────────────────── */
+/* Sur <500px (iPhone Pro Max et plus petits), réduit les paddings internes
+   des panels et la taille du titre principal pour éviter les débordements. */
+@media (max-width: 500px) {
+  .admin-grid .panel-header { padding: 12px 14px; }
+  .admin-grid .panel-header h2 { font-size: 14px; }
+  .admin-grid .panel-kicker { font-size: 10px; }
+}

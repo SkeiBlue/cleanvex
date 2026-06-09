@@ -411,8 +411,8 @@ export function AdminDashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+      {/* Header — flex-wrap pour laisser le bouton "Actualiser" passer sous le titre sur mobile */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <div style={{
             fontSize: 10, color: '#a78bfa', fontFamily: 'var(--mono)',
@@ -437,9 +437,9 @@ export function AdminDashboardPage() {
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats — minmax(180px) au lieu de 220px : tient à 2 col sur 430px de viewport */}
       <section style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12,
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12,
       }}>
         <StatCard icon={<Users size={20} />} label="Utilisateurs"
           value={stats?.users.total ?? '—'}
