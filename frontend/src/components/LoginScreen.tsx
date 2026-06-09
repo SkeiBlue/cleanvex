@@ -38,7 +38,10 @@ const INPUT: React.CSSProperties = {
   padding: '11px 14px 11px 38px',
   color: 'var(--text)',
   fontFamily: 'var(--font)',
-  fontSize: 13.5,
+  // 16px minimum : sous 16px, iOS Safari zoome au focus, ce qui désaligne
+  // le viewport et fait souvent rater le tap suivant sur le bouton "Se
+  // connecter" — c'est pour ça que le login mobile semblait cassé.
+  fontSize: 16,
   outline: 'none',
   width: '100%',
   transition: 'border-color 0.15s, background 0.15s',
@@ -93,12 +96,17 @@ function Field({
 /* Champ password avec œil afficher/cacher */
 function PasswordField({
   label, value, onChange, placeholder, autoComplete = 'current-password',
+  name = 'password',
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   autoComplete?: string
+  /** Indispensable pour que Safari iOS / Chrome propose la sauvegarde
+   *  des identifiants. Sans attribut name explicite, les password managers
+   *  refusent de mémoriser. */
+  name?: string
 }) {
   const [shown, setShown] = useState(false)
   return (
@@ -108,6 +116,7 @@ function PasswordField({
         <span style={ICON_IN_INPUT}><Lock size={14} /></span>
         <input
           type={shown ? 'text' : 'password'}
+          name={name}
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
