@@ -78,7 +78,7 @@ function UrgentBanner({ overdueTasks, openAlerts, expiringDocs }: { overdueTasks
 }
 
 export function DashboardPage() {
-  const { authedFetch, setUnreadNotifications, user } = useAuth()
+  const { authedFetch, setUnreadNotifications } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [agenda, setAgenda] = useState<AgendaDashboard | null>(null)
   const [finance, setFinance] = useState<FinancialSummary | null>(null)
@@ -156,40 +156,6 @@ export function DashboardPage() {
         }}>
           Données partiellement indisponibles : {failedSections.join(', ')}. Réessaie dans un instant.
         </div>
-      )}
-
-      {/* Bandeau admin (admin only) */}
-      {user?.role === 'admin' && (
-        <Link to="/app/admin" style={{ textDecoration: 'none' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 16px', borderRadius: 12,
-            background: 'linear-gradient(135deg, rgba(124,58,237,0.10), rgba(37,99,235,0.10))',
-            border: '1px solid rgba(167,139,250,0.3)',
-            cursor: 'pointer', transition: 'border-color 0.15s, transform 0.15s',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.6)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.3)'; e.currentTarget.style.transform = 'translateY(0)' }}
-          >
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, #7c3aed, #2563eb)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', flexShrink: 0,
-            }}>
-              <ShieldCheck size={18} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                Espace administration
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-                Utilisateurs, code d'invitation, audit, mises à jour système.
-              </div>
-            </div>
-            <span style={{ color: '#a78bfa', fontSize: 12, fontWeight: 600 }}>Ouvrir →</span>
-          </div>
-        </Link>
       )}
 
       {/* Bannière urgences */}
