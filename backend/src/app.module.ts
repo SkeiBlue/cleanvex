@@ -22,6 +22,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { ReportsModule } from './reports/reports.module';
 import { SearchModule } from './search/search.module';
 import { StockModule } from './stock/stock.module';
+import { SystemPublicModule } from './system-public/system-public.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     ReportsModule,
     RemindersModule,
     BackupsModule,
+    SystemPublicModule,
   ],
   controllers: [AppController],
   providers: [

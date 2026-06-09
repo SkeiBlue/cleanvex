@@ -5,6 +5,7 @@ import { ToastProvider } from './contexts/ToastContext'
 import { Sidebar } from './components/Sidebar'
 import { TopHeader } from './components/TopHeader'
 import { LoginScreen } from './components/LoginScreen'
+import { MaintenanceOverlay } from './components/MaintenanceOverlay'
 import { OnboardingTour } from './components/OnboardingTour'
 import { CommandPalette } from './components/CommandPalette'
 import { ModuleGuard } from './components/ModuleGuard'
@@ -104,6 +105,7 @@ function AppLayout() {
   return (
     <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <OnboardingTour />
+      <MaintenanceOverlay />
       <a href="#main-content" className="skip-link">Aller au contenu</a>
       {/* Overlay mobile pour fermer la sidebar */}
       {sidebarOpen && (
