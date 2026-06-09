@@ -245,6 +245,11 @@ model VehicleIntervention {
   timeMinutes Int?     @map("time_minutes")
   costAmount  Decimal? @map("cost_amount") @db.Decimal(12, 2)
   status      String   @default("planned")
+  // 'self' = fait moi-même (défaut). 'pro' = délégué à un professionnel
+  // (atelier, garagiste, concessionnaire…). Utilisé pour le carnet
+  // d'entretien et les filtres associés.
+  executor         String  @default("self")
+  professionalName String? @map("professional_name")
   notes       String?
 
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)

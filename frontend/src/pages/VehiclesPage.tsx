@@ -132,6 +132,16 @@ export function VehiclesPage() {
   const [usePartsFromStock, setUsePartsFromStock] = useState(false)
   const [stockUsages, setStockUsages] = useState<{ stockItemId: string; quantity: number }[]>([])
 
+  // V1 — Executor du travail (qui l'a fait). 'self' par défaut → masque
+  // le champ "Nom du pro" ; 'pro' → l'affiche pour saisie optionnelle.
+  const [interventionExecutor, setInterventionExecutor] = useState<'self' | 'pro'>('self')
+
+  // V3 — Quand on passe un travail à "fait", on demande le kilométrage
+  // dans un mini-prompt (plus pertinent qu'à la création).
+  const [validatingIntervention, setValidatingIntervention] = useState<{ id: string; title: string } | null>(null)
+  // Filtre carnet d'entretien : seulement les travaux faits (utilisé via
+  // intervStatusFilter, on ajoute juste une option dédiée).
+
   const loadVehicleDetail = useCallback(async (id: string) => {
     const [vr, pr] = await Promise.all([
       authedFetch(`/vehicles/${id}`),
@@ -260,10 +270,13 @@ export function VehiclesPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: data.get('title'), date: data.get('date'),
-        mileage: data.get('mileage') ? Number(data.get('mileage')) : undefined,
+        // V3 — kilométrage retiré de la création, demandé à la validation
+        // ('fait') via le mini-prompt setValidatingIntervention.
         costAmount: data.get('costAmount') ? Number(data.get('costAmount')) : undefined,
         notes: data.get('notes') || undefined,
         status: data.get('status') || 'a-faire',
+        executor: data.get('executor') || 'self',
+        professionalName: data.get('professionalName') || undefined,
         stockUsages: usagesPayload.length > 0 ? usagesPayload : undefined,
       }),
     })
@@ -281,11 +294,38 @@ export function VehiclesPage() {
 
   async function handleSetIntervStatus(interventionId: string, status: string) {
     if (!selectedVehicle) return
+    // V3 — Quand l'utilisateur passe un travail à "fait", on ouvre d'abord
+    // un mini-prompt pour saisir le kilométrage (et c'est là que la donnée
+    // a vraiment du sens, pas à la création du travail).
+    if (status === 'fait' || status === 'done') {
+      const interv = selectedVehicle.interventions.find(i => i.id === interventionId)
+      if (interv) {
+        setValidatingIntervention({ id: interventionId, title: interv.title })
+        return
+      }
+    }
     const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${interventionId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Changement de statut refusé.')); return }
+    await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  async function handleValidateIntervention(event: FormEv) {
+    event.preventDefault(); if (!selectedVehicle || !validatingIntervention) return
+    const form = event.currentTarget; const data = new FormData(form)
+    const mileageRaw = data.get('mileage')
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${validatingIntervention.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        status: 'fait',
+        mileage: mileageRaw ? Number(mileageRaw) : undefined,
+      }),
+    })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Validation du travail refusée.')); return }
+    setValidatingIntervention(null)
+    toast.ok('Travail validé.')
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -925,12 +965,25 @@ export function VehiclesPage() {
                     <FieldTip label="Date" hint="La date de réalisation ou la date prévue si c'est planifié." required>
                       <input name="date" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} className="modal-input" />
                     </FieldTip>
-                    <FieldTip label="Kilométrage" hint="Le kilométrage du véhicule au moment de l'intervention. Permet de savoir à quel intervalle elle a eu lieu.">
-                      <input name="mileage" type="number" className="modal-input" placeholder="Ex : 45000" />
-                    </FieldTip>
                     <FieldTip label="Coût (€)" hint="Le montant dépensé pour cette intervention (pièces + main d'œuvre). Alimentera le budget total du véhicule.">
-                      <input name="costAmount" type="number" step="0.01" className="modal-input" placeholder="Ex : 250" />
+                      <input name="costAmount" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 250" />
                     </FieldTip>
+                    <FieldTip label="Qui réalise le travail ?" hint="Sert au carnet d'entretien : permet de tracer ce qui est fait soi-même et ce qui est délégué à un pro.">
+                      <select
+                        name="executor"
+                        value={interventionExecutor}
+                        onChange={e => setInterventionExecutor(e.target.value as 'self' | 'pro')}
+                        className="modal-select"
+                      >
+                        <option value="self">🛠 Moi-même</option>
+                        <option value="pro">🏢 Professionnel</option>
+                      </select>
+                    </FieldTip>
+                    {interventionExecutor === 'pro' && (
+                      <FieldTip label="Nom du professionnel" hint="Optionnel. Nom du garage, atelier ou concessionnaire qui réalise l'intervention." style={{ gridColumn: '1/-1' }}>
+                        <input name="professionalName" type="text" maxLength={120} className="modal-input" placeholder="Ex : Garage Dupont, Renault Centre-ville…" />
+                      </FieldTip>
+                    )}
                     <FieldTip label="Notes" hint="Détails supplémentaires : qui a réalisé les travaux, observations, pièces utilisées…" style={{ gridColumn: '1/-1' }}>
                       <textarea name="notes" className="modal-input" rows={3} placeholder="Détails, observations, références pièces…" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
                     </FieldTip>
@@ -1030,8 +1083,43 @@ export function VehiclesPage() {
                 </form>
               </Modal>
 
+              {/* V3 — Mini-modal de validation : demande le kilométrage quand
+                  on passe un travail à 'fait'. Sauter est OK, le mileage
+                  reste null si l'utilisateur ne sait pas. */}
+              <Modal
+                open={validatingIntervention !== null}
+                onClose={() => setValidatingIntervention(null)}
+                title="Valider le travail"
+                subtitle={validatingIntervention?.title}
+                icon={<Wrench size={20} />}
+                maxWidth={420}
+              >
+                <form onSubmit={handleValidateIntervention}>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text2)' }}>
+                    Le travail va passer en « Fait ✓ ». Note le kilométrage si tu le connais — c'est utile pour le carnet d'entretien et les intervalles de maintenance.
+                  </p>
+                  <FieldTip label="Kilométrage actuel" hint="Optionnel. Le compteur du véhicule au moment où ce travail est terminé.">
+                    <input
+                      name="mileage"
+                      type="number"
+                      min="0"
+                      autoFocus
+                      className="modal-input"
+                      placeholder="Ex : 87420"
+                      style={{ width: '100%', boxSizing: 'border-box' }}
+                    />
+                  </FieldTip>
+                  <div className="modal-footer">
+                    <button type="button" className="btn-ghost" onClick={() => setValidatingIntervention(null)}>Annuler</button>
+                    <button type="submit" className="primary-action">
+                      <Wrench size={13} /> Valider le travail
+                    </button>
+                  </div>
+                </form>
+              </Modal>
+
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {[['all','Tous','var(--text2)'],['a-faire','À faire','#7b82a8'],['en-cours','En cours','#67e8f9'],['bloque','Bloqué','#f87171'],['fait','Fait','#4ade80']].map(([val, label, color]) => (
+                {[['all','Tous','var(--text2)'],['a-faire','À faire','#7b82a8'],['en-cours','En cours','#67e8f9'],['bloque','Bloqué','#f87171'],['fait','Fait (carnet)','#4ade80']].map(([val, label, color]) => (
                   <button key={val} onClick={() => setIntervStatusFilter(val)} style={{ padding: '4px 12px', borderRadius: '20px', border: `1px solid ${intervStatusFilter === val ? color : 'var(--border)'}`, background: intervStatusFilter === val ? `${color}18` : 'none', color: intervStatusFilter === val ? color : 'var(--text3)', fontSize: '11px', fontFamily: 'var(--mono)', cursor: 'pointer', fontWeight: 600 }}>
                     {label}
                   </button>
@@ -1047,7 +1135,19 @@ export function VehiclesPage() {
                   <div key={i.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', borderLeft: `3px solid ${s.color}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', marginBottom: '5px' }}>{i.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '5px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{i.title}</span>
+                          {/* V1 — Badge carnet d'entretien : qui a fait le travail. */}
+                          {i.executor === 'pro' ? (
+                            <span title={i.professionalName ?? undefined} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(103,232,249,0.12)', color: '#67e8f9', border: '1px solid rgba(103,232,249,0.3)' }}>
+                              🏢 PRO{i.professionalName ? ` · ${i.professionalName.slice(0, 18)}${i.professionalName.length > 18 ? '…' : ''}` : ''}
+                            </span>
+                          ) : i.executor === 'self' ? (
+                            <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>
+                              🛠 MOI-MÊME
+                            </span>
+                          ) : null}
+                        </div>
                         <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                           <span>{new Date(i.date).toLocaleDateString('fr-FR')}</span>
                           {i.mileage && <span>🔧 {Number(i.mileage).toLocaleString('fr-FR')} km</span>}

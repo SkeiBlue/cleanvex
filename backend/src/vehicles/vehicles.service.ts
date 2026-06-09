@@ -166,6 +166,8 @@ export class VehiclesService {
           timeMinutes: dto.timeMinutes,
           costAmount: dto.costAmount,
           status: dto.status ?? 'planned',
+          executor: dto.executor ?? 'self',
+          professionalName: dto.professionalName,
           notes: dto.notes,
         },
       });
@@ -200,6 +202,8 @@ export class VehiclesService {
           timeMinutes: dto.timeMinutes,
           costAmount: dto.costAmount,
           status: dto.status ?? 'planned',
+          executor: dto.executor ?? 'self',
+          professionalName: dto.professionalName,
           notes: dto.notes,
         },
       });
@@ -351,12 +355,25 @@ export class VehiclesService {
     await this.prisma.vehicle.delete({ where: { id } });
   }
 
-  async updateIntervention(ownerId: string, vehicleId: string, interventionId: string, status: string) {
+  async updateIntervention(
+    ownerId: string,
+    vehicleId: string,
+    interventionId: string,
+    dto: { status: string; mileage?: number; executor?: string; professionalName?: string },
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     return this.prisma.vehicleIntervention.update({
       where: { id: interventionId },
-      data: { status },
+      data: {
+        status: dto.status,
+        // V3 — mileage est posé seulement s'il est fourni (et non écrasé
+        // par undefined) pour que la validation du travail puisse l'ajouter
+        // sans toucher aux autres champs.
+        ...(dto.mileage !== undefined && { mileage: dto.mileage }),
+        ...(dto.executor !== undefined && { executor: dto.executor }),
+        ...(dto.professionalName !== undefined && { professionalName: dto.professionalName }),
+      },
     });
   }
 

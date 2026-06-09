@@ -173,7 +173,7 @@ export class VehiclesController {
     @Body() dto: UpdateInterventionDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.vehicles.updateIntervention(req.user.id, id, interventionId, dto.status);
+    return this.vehicles.updateIntervention(req.user.id, id, interventionId, dto);
   }
 
   @Delete(':id/interventions/:interventionId')

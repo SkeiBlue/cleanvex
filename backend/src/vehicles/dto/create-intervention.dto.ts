@@ -23,6 +23,11 @@ export const INTERVENTION_STATUSES = [
   'planned', 'done', 'fait', 'bloque',
   'a-faire', 'en-cours',
 ] as const;
+
+// V1 — Carnet d'entretien : qui a réalisé le travail.
+// 'self' = fait par l'utilisateur. 'pro' = délégué à un pro (nom optionnel).
+export const INTERVENTION_EXECUTORS = ['self', 'pro'] as const;
+export type InterventionExecutor = (typeof INTERVENTION_EXECUTORS)[number];
 export type InterventionStatus = (typeof INTERVENTION_STATUSES)[number];
 
 export class CreateInterventionDto {
@@ -50,6 +55,14 @@ export class CreateInterventionDto {
   @IsOptional()
   @IsIn(INTERVENTION_STATUSES)
   status?: InterventionStatus;
+
+  @IsOptional()
+  @IsIn(INTERVENTION_EXECUTORS)
+  executor?: InterventionExecutor;
+
+  @IsOptional()
+  @IsString()
+  professionalName?: string;
 
   @IsOptional()
   @IsString()
