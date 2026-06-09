@@ -232,12 +232,16 @@ export type FinancialTransaction = {
   category: FinancialCategory | null
 }
 
+export type StockItemStatus = 'in-stock' | 'to-buy'
+
 export type StockItem = {
   id: string
   name: string
   category: string
   unit: string
   quantity: string
+  /** 'to-buy' = wishlist d'achat (pas encore en stock). 'in-stock' = défaut. */
+  status: StockItemStatus
   location: string | null
   valueAmount: string | null
   thresholdEnabled: boolean

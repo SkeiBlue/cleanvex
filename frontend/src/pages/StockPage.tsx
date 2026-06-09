@@ -39,6 +39,7 @@ export function StockPage() {
 
   const [searchQ, setSearchQ]         = useState('')
   const [catFilter, setCatFilter]     = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'in-stock' | 'to-buy'>('all')
   const [showCreate, setShowCreate]   = useState(false)
   const [showPurchase, setShowPurchase] = useState(false)
   const [showConsume, setShowConsume]   = useState(false)
@@ -82,6 +83,7 @@ export function StockPage() {
       category: String(d.get('category') ?? '').trim(),
       unit: String(d.get('unit') ?? '').trim(),
       quantity: d.get('quantity') ? Number(d.get('quantity')) : 0,
+      status: d.get('status') || undefined,
       location: d.get('location') || undefined,
       valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
       reference: d.get('reference') || undefined,
@@ -125,6 +127,7 @@ export function StockPage() {
       body: JSON.stringify({
         name: d.get('name') || undefined, category: d.get('category') || undefined,
         unit: d.get('unit') || undefined, location: d.get('location') || undefined,
+        status: d.get('status') || undefined,
         valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
         reference: d.get('reference') || undefined, supplier: d.get('supplier') || undefined,
         notes: d.get('notes') || undefined,
@@ -209,10 +212,13 @@ export function StockPage() {
   const totalValue     = stockItems.reduce((s, i) => s + Number(i.quantity) * Number(i.valueAmount ?? 0), 0)
 
   const filtered = stockItems.filter(i => {
-    const matchQ   = !searchQ || i.name.toLowerCase().includes(searchQ.toLowerCase()) || (i.reference ?? '').toLowerCase().includes(searchQ.toLowerCase()) || (i.supplier ?? '').toLowerCase().includes(searchQ.toLowerCase())
-    const matchCat = catFilter === 'all' || i.category === catFilter
-    return matchQ && matchCat
+    const matchQ      = !searchQ || i.name.toLowerCase().includes(searchQ.toLowerCase()) || (i.reference ?? '').toLowerCase().includes(searchQ.toLowerCase()) || (i.supplier ?? '').toLowerCase().includes(searchQ.toLowerCase())
+    const matchCat    = catFilter === 'all' || i.category === catFilter
+    const matchStatus = statusFilter === 'all' || (i.status ?? 'in-stock') === statusFilter
+    return matchQ && matchCat && matchStatus
   })
+
+  const toBuyCount = stockItems.filter(i => (i.status ?? 'in-stock') === 'to-buy').length
 
   const itemMovements = selected ? movements.filter(m => m.stockItem.id === selected.id) : []
   const itemLoans     = selected ? toolLoans.filter(l => l.stockItem.id === selected.id) : []
@@ -272,8 +278,14 @@ export function StockPage() {
             <FieldTip label="Unité" hint="L'unité de mesure : 'unit', 'L' (litres), 'kg', 'paire', 'rouleau'… Sera affiché à côté de chaque quantité." required>
               <input name="unit" defaultValue="unit" required className="modal-input" placeholder="Ex : unit, L, kg, paire" />
             </FieldTip>
-            <FieldTip label="Quantité initiale" hint="Le stock actuel au moment où vous créez l'article. Vous pourrez ensuite enregistrer des achats et des sorties.">
-              <input name="quantity" type="number" step="0.01" className="modal-input" placeholder="Ex : 10" />
+            <FieldTip label="Quantité initiale" hint="Le stock actuel au moment où vous créez l'article. Mettez 0 si c'est un article que vous souhaitez acheter mais que vous n'avez pas encore.">
+              <input name="quantity" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 10" />
+            </FieldTip>
+            <FieldTip label="Statut" hint="« En stock » pour un article que vous possédez. « À acheter » pour un article que vous voulez acheter prochainement (wishlist d'achat).">
+              <select name="status" defaultValue="in-stock" className="modal-select">
+                <option value="in-stock">📦 En stock</option>
+                <option value="to-buy">🛒 À acheter</option>
+              </select>
             </FieldTip>
             <FieldTip label="Valeur unitaire (€)" hint="Le coût à l'unité de cet article. Multipliée par la quantité, elle donne la valeur totale de votre stock.">
               <input name="valueAmount" type="number" step="0.01" className="modal-input" placeholder="Ex : 12.50" />
@@ -333,6 +345,29 @@ export function StockPage() {
         ))}
       </div>
 
+      {/* Filtre statut — en évidence si des articles "à acheter" existent */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        {([
+          { key: 'all',      label: 'Tous',           count: stockItems.length },
+          { key: 'in-stock', label: '📦 En stock',    count: stockItems.length - toBuyCount },
+          { key: 'to-buy',   label: `🛒 À acheter${toBuyCount > 0 ? ` (${toBuyCount})` : ''}`, count: toBuyCount },
+        ] as const).map(f => (
+          <button key={f.key} onClick={() => setStatusFilter(f.key as 'all' | 'in-stock' | 'to-buy')} style={{
+            padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
+            fontSize: 12, fontFamily: 'var(--font)', fontWeight: 600,
+            border: `1px solid ${statusFilter === f.key ? (f.key === 'to-buy' ? '#fbbf24' : 'var(--p1)') : 'var(--border)'}`,
+            background: statusFilter === f.key
+              ? (f.key === 'to-buy' ? 'rgba(251,191,36,0.12)' : 'rgba(124,58,237,0.12)')
+              : 'rgba(255,255,255,0.02)',
+            color: statusFilter === f.key
+              ? (f.key === 'to-buy' ? '#fbbf24' : '#c4b5fd')
+              : 'var(--text2)',
+          }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Grille articles */}
       {filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text3)' }}>
@@ -344,22 +379,27 @@ export function StockPage() {
           {filtered.map(item => {
             const qty       = Number(item.quantity)
             const isLow     = item.thresholdEnabled && qty <= Number(item.threshold ?? 0)
+            const isToBuy   = (item.status ?? 'in-stock') === 'to-buy'
             const color     = CAT_COLORS[item.category] ?? '#7b82a8'
             const totalVal  = item.valueAmount ? qty * Number(item.valueAmount) : null
+            const accentColor = isToBuy ? '#fbbf24' : color
             return (
               <div key={item.id} onClick={() => { setSelected(item); setView('detail'); setDetailTab('infos'); setEditMode(false) }}
-                style={{ background: 'var(--card)', border: `1px solid ${isLow ? 'rgba(248,113,113,0.4)' : 'var(--border)'}`, borderTop: `3px solid ${color}`, borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'transform 0.12s, border-color 0.12s', display: 'flex', flexDirection: 'column', gap: '10px' }}
+                style={{ background: isToBuy ? 'rgba(251,191,36,0.04)' : 'var(--card)', border: `1px solid ${isLow ? 'rgba(248,113,113,0.4)' : isToBuy ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, borderTop: `3px solid ${accentColor}`, borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'transform 0.12s, border-color 0.12s', display: 'flex', flexDirection: 'column', gap: '10px' }}
                 onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '10px', fontFamily: 'var(--mono)', color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    <span style={{ fontSize: '10px', fontFamily: 'var(--mono)', color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                       {CAT_ICONS[item.category]} {item.category}
                     </span>
                     <div style={{ fontSize: '15px', fontWeight: 700, color: isLow ? '#f87171' : 'var(--text)', marginTop: '2px', lineHeight: 1.2 }}>{item.name}</div>
                   </div>
-                  {isLow && <AlertTriangle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: '2px' }} />}
+                  {isToBuy && (
+                    <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', flexShrink: 0, marginTop: 2 }}>🛒 À ACHETER</span>
+                  )}
+                  {!isToBuy && isLow && <AlertTriangle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: '2px' }} />}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
@@ -470,6 +510,12 @@ export function StockPage() {
                     </FieldTip>
                     <FieldTip label="Unité" hint="L'unité de mesure : 'unit', 'L', 'kg', 'paire'… Affiché à côté des quantités." required>
                       <input name="unit" defaultValue={sv.unit} required className="modal-input" placeholder="Ex : unit, L, kg" />
+                    </FieldTip>
+                    <FieldTip label="Statut" hint="Bascule entre « En stock » et « À acheter » (wishlist). Quand l'article arrive, repassez-le en « En stock ».">
+                      <select name="status" defaultValue={sv.status ?? 'in-stock'} className="modal-select">
+                        <option value="in-stock">📦 En stock</option>
+                        <option value="to-buy">🛒 À acheter</option>
+                      </select>
                     </FieldTip>
                     <FieldTip label="Valeur unitaire (€)" hint="Le coût à l'unité. Multipliée par la quantité, elle donne la valeur totale du stock.">
                       <input name="valueAmount" type="number" step="0.01" defaultValue={sv.valueAmount ?? ''} className="modal-input" placeholder="Ex : 12.50" />
