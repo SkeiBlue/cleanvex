@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -52,8 +52,20 @@ export class UpdateJobService implements OnModuleInit {
         throw new ConflictException('Une mise à jour est déjà en cours.');
       }
     }
+
+    // F3 — Détection de lock orphelin : si update.sh est tué brutalement
+    // (SIGKILL, OOM, kill -9), le trap EXIT ne s'exécute pas et le lock
+    // reste. On lit le PID stocké dans le lock par update.sh (echo $$ > LOCK)
+    // et on vérifie via kill(-0) si le process existe encore. Si mort, on
+    // considère le lock orphelin et on le supprime au lieu de refuser
+    // toute MAJ jusqu'à intervention manuelle.
     if (existsSync(LOCK_FILE)) {
-      throw new ConflictException('Lock file présent : une mise à jour est déjà en cours.');
+      if (this.isLockStale()) {
+        this.logger.warn(`Lock orphelin détecté (PID mort) — suppression`);
+        try { unlinkSync(LOCK_FILE); } catch { /* ignore */ }
+      } else {
+        throw new ConflictException('Lock file présent : une mise à jour est déjà en cours.');
+      }
     }
 
     const job: UpdateJob = {
@@ -77,11 +89,18 @@ export class UpdateJobService implements OnModuleInit {
     job.status = 'running';
     this.persistNow(job);
 
+    // F4 — detached: true + unref() pour que update.sh survive même si le
+    // backend NestJS meurt avant la fin du restart (OOM pendant vite build,
+    // signal, etc.). Sans ça, le child était dans le même process group que
+    // le parent et mourait avec lui à mi-chemin. Combiné avec F1 (persistance
+    // du job sur disque), le frontend retrouve l'état correct au reload.
     const proc = spawn('bash', ['./update.sh'], {
       cwd: PROJECT_ROOT,
       env: { ...process.env, FORCE_COLOR: '0' },
-      detached: false,
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+    proc.unref();
 
     const push = (chunk: Buffer) => {
       const text = chunk.toString().replace(/\[[0-9;]*m/g, '');
@@ -155,6 +174,35 @@ export class UpdateJobService implements OnModuleInit {
    * (OOM, restart). On infère 'success' avec un commentaire honnête dans les
    * logs pour que l'overlay frontend puisse afficher le résultat correctement.
    */
+  /**
+   * F3 — Vérifie si le lock file est orphelin : lit le PID stocké dedans
+   * (update.sh fait `echo $$ > $LOCK_FILE`) et envoie un signal 0 pour
+   * détecter si le process existe encore. Retourne true si le lock est
+   * orphelin (PID mort ou contenu invalide).
+   */
+  private isLockStale(): boolean {
+    try {
+      const raw = readFileSync(LOCK_FILE, 'utf-8').trim();
+      const pid = Number.parseInt(raw, 10);
+      if (!Number.isFinite(pid) || pid <= 0) {
+        // Contenu non parsable → considéré orphelin par sécurité.
+        return true;
+      }
+      try {
+        process.kill(pid, 0); // signal 0 : vérifie l'existence sans tuer
+        return false; // process vivant → lock légitime
+      } catch (err) {
+        // ESRCH = no such process → orphelin. EPERM = process vivant mais
+        // appartient à un autre user (rare ici) → on considère légitime.
+        const code = (err as NodeJS.ErrnoException).code;
+        return code === 'ESRCH';
+      }
+    } catch {
+      // Fichier illisible → on considère orphelin pour ne pas bloquer.
+      return true;
+    }
+  }
+
   private restoreFromDisk(): void {
     try {
       if (!existsSync(PERSIST_FILE)) return;
