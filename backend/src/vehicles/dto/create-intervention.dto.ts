@@ -1,7 +1,13 @@
 import { IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
-// 'fait' et 'done' coexistent dans le code historique (cf. isDone côté front).
-export const INTERVENTION_STATUSES = ['planned', 'done', 'fait', 'bloque'] as const;
+// Plusieurs vocabulaires coexistent dans le code historique : on accepte
+// les deux pour ne rien casser. 'fait' / 'done' sont équivalents (cf.
+// isDone côté front), 'a-faire' / 'planned' aussi, 'en-cours' est utilisé
+// uniquement côté UI nouveau.
+export const INTERVENTION_STATUSES = [
+  'planned', 'done', 'fait', 'bloque',
+  'a-faire', 'en-cours',
+] as const;
 export type InterventionStatus = (typeof INTERVENTION_STATUSES)[number];
 
 export class CreateInterventionDto {

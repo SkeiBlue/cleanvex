@@ -9,6 +9,7 @@ import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
 import { Modal } from '../components/Modal'
 import { useToast } from '../contexts/ToastContext'
+import { parseApiError } from '../hooks/useApiError'
 import type { DocumentItem, VehicleDetail, VehicleItem, VehiclePart } from '../types'
 import { generateVehiclePDF } from '../utils/pdf'
 
@@ -224,7 +225,8 @@ export function VehiclesPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mileage: Number(data.get('mileage')), date: data.get('date') }),
     })
-    if (r.ok) { form.reset(); toast.ok('Kilométrage enregistré.'); await loadVehicleDetail(selectedVehicle.id) }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Kilométrage refusé.')); return }
+    form.reset(); toast.ok('Kilométrage enregistré.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleAddIntervention(event: FormEv) {
@@ -240,21 +242,24 @@ export function VehiclesPage() {
         status: data.get('status') || 'a-faire',
       }),
     })
-    if (r.ok) { form.reset(); setShowAddIntervention(false); toast.ok('Travail ajouté.'); await loadVehicleDetail(selectedVehicle.id) }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Création du travail refusée.')); return }
+    form.reset(); setShowAddIntervention(false); toast.ok('Travail ajouté.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleSetIntervStatus(interventionId: string, status: string) {
     if (!selectedVehicle) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${interventionId}`, {
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${interventionId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Changement de statut refusé.')); return }
     await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleDeleteIntervention(id: string) {
     if (!selectedVehicle) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${id}`, { method: 'DELETE' })
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${id}`, { method: 'DELETE' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); return }
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -278,7 +283,9 @@ export function VehiclesPage() {
         comment: data.get('comment') || undefined,
       }),
     })
-    if (r.ok) { form.reset(); setShowAddPart(false); const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`); if (pr.ok) setParts(await pr.json()) }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Ajout de la pièce refusé.')); return }
+    form.reset(); setShowAddPart(false); toast.ok('Pièce ajoutée.')
+    const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`); if (pr.ok) setParts(await pr.json())
   }
 
   async function handleUpdatePart(event: FormEv, partId: string) {
@@ -299,27 +306,29 @@ export function VehiclesPage() {
         comment: data.get('comment') || undefined,
       }),
     })
-    if (r.ok) {
-      setEditingPart(null)
-      const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`)
-      if (pr.ok) setParts(await pr.json())
-    }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Mise à jour refusée.')); return }
+    setEditingPart(null); toast.ok('Pièce mise à jour.')
+    const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`)
+    if (pr.ok) setParts(await pr.json())
   }
 
   async function handlePartStatus(partId: string, status: string) {
     if (!selectedVehicle) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, {
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Changement de statut refusé.')); return }
     const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`)
     if (pr.ok) setParts(await pr.json())
   }
 
   async function handleDeletePart(partId: string) {
     if (!selectedVehicle) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, { method: 'DELETE' })
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/parts/${partId}`, { method: 'DELETE' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); return }
     setParts(p => p.filter(x => x.id !== partId))
+    toast.ok('Pièce supprimée.')
   }
 
   async function handleAddAlert(event: FormEv) {
@@ -329,15 +338,17 @@ export function VehiclesPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type: data.get('type'), title: data.get('title'), dueDate: data.get('dueDate') || undefined }),
     })
-    if (r.ok) { form.reset(); setShowAddAlert(false); await loadVehicleDetail(selectedVehicle.id) }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Création de l\'alerte refusée.')); return }
+    form.reset(); setShowAddAlert(false); toast.ok('Alerte créée.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleCloseAlert(alertId: string) {
     if (!selectedVehicle) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/alerts/${alertId}`, {
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/alerts/${alertId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'closed' }),
     })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Fermeture refusée.')); return }
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -351,30 +362,32 @@ export function VehiclesPage() {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget
     const input = form.elements.namedItem('vehicleFile') as HTMLInputElement
-    const file = input.files?.[0]; if (!file) return
+    const file = input.files?.[0]; if (!file) { toast.err('Sélectionne un fichier.'); return }
     const body = new FormData(); body.append('file', file)
     const expiresAt = (form.elements.namedItem('vehicleFileExpiresAt') as HTMLInputElement).value
     if (expiresAt) body.append('expiresAt', expiresAt)
     const context = (form.elements.namedItem('vehicleFileContext') as HTMLInputElement).value
     const upload = await authedFetch('/documents', { method: 'POST', body })
-    if (!upload.ok) return
+    if (!upload.ok) { toast.err(await parseApiError(upload, 'Upload du document refusé.')); return }
     const doc = await upload.json()
-    await authedFetch(`/vehicles/${selectedVehicle.id}/documents`, {
+    const link = await authedFetch(`/vehicles/${selectedVehicle.id}/documents`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ documentId: doc.id, context: context || (file.type.startsWith('image/') ? 'avant' : 'document') }),
     })
+    if (!link.ok) { toast.err(await parseApiError(link, 'Liaison au véhicule refusée.')); return }
     form.reset(); setShowUploadDoc(false); toast.ok('Document ajouté.'); await reload(); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleLinkDoc(event: FormEv) {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget; const data = new FormData(form)
-    const documentId = data.get('documentId'); if (!documentId) return
-    await authedFetch(`/vehicles/${selectedVehicle.id}/documents`, {
+    const documentId = data.get('documentId'); if (!documentId) { toast.err('Sélectionne un document.'); return }
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/documents`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ documentId, context: data.get('context') || 'document' }),
     })
-    form.reset(); await loadVehicleDetail(selectedVehicle.id)
+    if (!r.ok) { toast.err(await parseApiError(r, 'Liaison refusée.')); return }
+    form.reset(); toast.ok('Document associé.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function downloadDoc(docId: string, name: string) {
