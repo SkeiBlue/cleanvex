@@ -9,5 +9,9 @@ import { AdminUsersController } from './users.controller';
   imports: [CoreModule],
   controllers: [SystemController, AdminUsersController],
   providers: [SystemService, UpdateJobService],
+  // SystemPublicModule (endpoint public /system/maintenance) consomme
+  // UpdateJobService : sans cet export, Nest crashe au démarrage avec
+  // UnknownDependenciesException.
+  exports: [UpdateJobService],
 })
 export class AdminModule {}
