@@ -1087,10 +1087,19 @@ a:focus:not(:focus-visible) { outline: none; }
   to   { opacity: 1; }
 }
 
-/* Container — desktop */
+/* Container — desktop. Fond/bordure thémables (le mode clair les remplace
+   plus bas) — on ne met plus de couleur en dur dans le composant Modal. */
 .modal-container {
   border-radius: 20px;
+  background: linear-gradient(135deg, #12183c 0%, #0c1029 100%);
+  border: 1px solid rgba(124,58,237,0.25);
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(124,58,237,0.1);
   animation: modalDesktopIn 0.2s cubic-bezier(0.34,1.4,0.64,1);
+}
+:root[data-theme="light"] .modal-container {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 60px rgba(15,23,42,0.18);
 }
 @keyframes modalDesktopIn {
   from { opacity: 0; transform: scale(0.93) translateY(8px); }
@@ -1129,7 +1138,7 @@ a:focus:not(:focus-visible) { outline: none; }
 
 /* ── Modal inputs (inherit FieldTip children) ── */
 .modal-input {
-  background: rgba(255,255,255,0.05);
+  background: var(--card);
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 10px 12px;
@@ -1151,7 +1160,7 @@ a:focus:not(:focus-visible) { outline: none; }
   .modal-input { font-size: 16px; }
 }
 .modal-select {
-  background: rgba(10,13,40,0.95);
+  background-color: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 9px;
   padding: 10px 12px;

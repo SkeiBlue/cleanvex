@@ -25,7 +25,7 @@ const TYPE_ICONS: Record<string, string> = {
 }
 
 const SELECT_STYLE: React.CSSProperties = {
-  background: 'rgba(12,16,41,0.95)', border: '1px solid var(--border)',
+  background: 'var(--bg2)', border: '1px solid var(--border)',
   borderRadius: '8px', color: 'var(--text)', padding: '8px 10px',
   fontSize: '12px', fontFamily: 'var(--font)',
 }

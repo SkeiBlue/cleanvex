@@ -35,7 +35,7 @@ const INTERV_STATUS: Record<string, { color: string; label: string }> = {
 }
 
 const SELECT_STYLE: React.CSSProperties = {
-  background: 'rgba(12,16,41,0.95)', border: '1px solid var(--border)',
+  background: 'var(--bg2)', border: '1px solid var(--border)',
   borderRadius: '8px', color: 'var(--text)', padding: '8px 10px',
   fontSize: '12px', fontFamily: 'var(--font)',
 }
@@ -1184,7 +1184,7 @@ export function VehiclesPage() {
                                   setStockUsages(u => [...u, { stockItemId: id, quantity: 1 }])
                                   e.target.value = ''
                                 }}
-                                style={{ flex: 1, background: 'rgba(12,16,41,0.95)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)' }}
+                                style={{ flex: 1, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 10px', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)' }}
                               >
                                 <option value="">+ Ajouter une pièce…</option>
                                 {stockItems

@@ -56,9 +56,8 @@ export function Modal({ open, onClose, title, subtitle, children, maxWidth = 560
         style={{
           maxWidth,
           width: '100%',
-          background: 'linear-gradient(135deg, rgba(18,24,60,0.98) 0%, rgba(12,16,41,0.99) 100%)',
-          border: '1px solid rgba(124,58,237,0.25)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(124,58,237,0.1)',
+          // Fond/bordure/ombre déplacés dans .modal-container (styles.css) pour
+          // être thémables (mode clair) — pas de couleur codée en dur ici.
           display: 'flex',
           flexDirection: 'column',
           maxHeight: '90vh',
@@ -69,7 +68,7 @@ export function Modal({ open, onClose, title, subtitle, children, maxWidth = 560
         <div style={{
           display: 'flex', alignItems: 'flex-start', gap: '12px',
           padding: '20px 24px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid var(--border)',
           flexShrink: 0,
         }}>
           {icon && (
@@ -94,13 +93,13 @@ export function Modal({ open, onClose, title, subtitle, children, maxWidth = 560
             style={{
               flexShrink: 0, width: 32, height: 32,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'var(--card)',
+              border: '1px solid var(--border)',
               borderRadius: '8px', cursor: 'pointer',
               color: 'var(--text3)', transition: 'all 0.12s',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.15)'; e.currentTarget.style.color = '#f87171' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text3)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--card)'; e.currentTarget.style.color = 'var(--text3)' }}
           >
             <X size={15} />
           </button>

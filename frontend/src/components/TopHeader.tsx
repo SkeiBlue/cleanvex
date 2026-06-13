@@ -175,7 +175,7 @@ export function TopHeader({
           {searchOpen && (
             <div style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 300,
-              background: 'rgba(12,16,41,0.98)', border: '1px solid var(--border)',
+              background: 'var(--bg2)', border: '1px solid var(--border)',
               borderRadius: '12px', boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
               zIndex: 100, overflow: 'hidden', backdropFilter: 'blur(20px)',
             }}>
@@ -265,7 +265,7 @@ export function TopHeader({
           {notifOpen && (
             <div style={{
               position: 'absolute', top: 'calc(100% + 10px)', right: 0, width: 320,
-              background: 'rgba(12,16,41,0.98)', border: '1px solid var(--border)',
+              background: 'var(--bg2)', border: '1px solid var(--border)',
               borderRadius: '14px', boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
               zIndex: 200, overflow: 'hidden', backdropFilter: 'blur(20px)',
             }}>
