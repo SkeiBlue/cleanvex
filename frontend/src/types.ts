@@ -129,8 +129,14 @@ export type VehicleDetail = VehicleItem & {
   interventions: Array<{
     id: string; title: string; date: string; status: string
     costAmount: string | null; mileage: number | null; notes: string | null
+    timeMinutes: number | null
     executor: 'self' | 'pro' | null
     professionalName: string | null
+    category: string | null
+    warrantyUntil: string | null; warrantyMileage: number | null
+    nextDueDate: string | null; nextDueMileage: number | null
+    documents?: Array<{ id: string; document: { id: string; name: string; mimeType: string; createdAt: string } }>
+    financeTransaction?: { id: string; amount: string } | null
   }>
   alerts: Array<{ id: string; title: string; type: string; dueDate: string | null; status: string }>
   documents: Array<{

@@ -139,6 +139,11 @@ export function VehiclesPage() {
   // V3 — Quand on passe un travail à "fait", on demande le kilométrage
   // dans un mini-prompt (plus pertinent qu'à la création).
   const [validatingIntervention, setValidatingIntervention] = useState<{ id: string; title: string } | null>(null)
+  // Lot A — édition d'un travail + option "enregistrer en Finances" (dégradable).
+  const [editingIntervention, setEditingIntervention] = useState<VehicleDetail['interventions'][number] | null>(null)
+  const [recordInFinance, setRecordInFinance] = useState(false)
+  const [financeAccounts, setFinanceAccounts] = useState<{ id: string; name: string }[]>([])
+  const [financeCategories, setFinanceCategories] = useState<{ id: string; name: string; type: string }[]>([])
   // Filtre carnet d'entretien : seulement les travaux faits (utilisé via
   // intervStatusFilter, on ajoute juste une option dédiée).
 
@@ -175,6 +180,14 @@ export function VehiclesPage() {
       if (vr.ok) setVehicles(await vr.json())
       if (dr.ok) { const d = await dr.json(); setDocuments(d.data ?? d) }
       if (sr.ok) setStockItems(await sr.json())
+      // Lot A — comptes/catégories Finances (403 si module off → on ignore,
+      // l'option "enregistrer en Finances" sera simplement masquée).
+      const [ar, cr] = await Promise.all([
+        authedFetch('/finances/accounts'),
+        authedFetch('/finances/categories'),
+      ])
+      if (ar.ok) setFinanceAccounts(await ar.json())
+      if (cr.ok) setFinanceCategories(await cr.json())
     }
     load()
   }, [authedFetch])
@@ -277,6 +290,16 @@ export function VehiclesPage() {
         status: data.get('status') || 'a-faire',
         executor: data.get('executor') || 'self',
         professionalName: data.get('professionalName') || undefined,
+        // Lot A — enrichissements
+        category: data.get('category') || undefined,
+        warrantyMileage: data.get('warrantyMileage') ? Number(data.get('warrantyMileage')) : undefined,
+        warrantyUntil: data.get('warrantyUntil') || undefined,
+        nextDueMileage: data.get('nextDueMileage') ? Number(data.get('nextDueMileage')) : undefined,
+        nextDueDate: data.get('nextDueDate') || undefined,
+        // Lot A — option Finances (dégradable : ignorée côté back si module off)
+        recordInFinance: recordInFinance || undefined,
+        financeAccountId: recordInFinance ? (data.get('financeAccountId') || undefined) : undefined,
+        financeCategoryId: recordInFinance ? (data.get('financeCategoryId') || undefined) : undefined,
         stockUsages: usagesPayload.length > 0 ? usagesPayload : undefined,
       }),
     })
@@ -285,11 +308,49 @@ export function VehiclesPage() {
     setShowAddIntervention(false)
     setUsePartsFromStock(false)
     setStockUsages([])
+    setRecordInFinance(false)
     toast.ok(usagesPayload.length > 0
       ? `Travail ajouté (${usagesPayload.length} pièce${usagesPayload.length > 1 ? 's' : ''} du stock consommée${usagesPayload.length > 1 ? 's' : ''}).`
       : 'Travail ajouté.',
     )
     await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  async function handleEditIntervention(event: FormEv) {
+    event.preventDefault(); if (!selectedVehicle || !editingIntervention) return
+    const form = event.currentTarget; const data = new FormData(form)
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${editingIntervention.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: data.get('title') || undefined,
+        date: data.get('date') || undefined,
+        status: data.get('status') || undefined,
+        costAmount: data.get('costAmount') ? Number(data.get('costAmount')) : undefined,
+        timeMinutes: data.get('timeMinutes') ? Number(data.get('timeMinutes')) : undefined,
+        mileage: data.get('mileage') ? Number(data.get('mileage')) : undefined,
+        executor: data.get('executor') || undefined,
+        professionalName: data.get('professionalName') || undefined,
+        notes: data.get('notes') || undefined,
+        category: data.get('category') || undefined,
+        warrantyMileage: data.get('warrantyMileage') ? Number(data.get('warrantyMileage')) : undefined,
+        warrantyUntil: data.get('warrantyUntil') || undefined,
+        nextDueMileage: data.get('nextDueMileage') ? Number(data.get('nextDueMileage')) : undefined,
+        nextDueDate: data.get('nextDueDate') || undefined,
+      }),
+    })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Modification refusée.')); return }
+    setEditingIntervention(null); toast.ok('Travail mis à jour.')
+    await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  async function handleAttachInterventionDoc(interventionId: string, documentId: string) {
+    if (!selectedVehicle) return
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${interventionId}/documents`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId }),
+    })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Pièce jointe refusée.')); return }
+    toast.ok('Pièce jointe ajoutée.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
   async function handleSetIntervStatus(interventionId: string, status: string) {
@@ -990,6 +1051,57 @@ export function VehiclesPage() {
                       <textarea name="notes" className="modal-input" rows={3} placeholder="Détails, observations, références pièces…" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
                     </FieldTip>
 
+                    {/* Lot A — catégorie / garantie / prochaine échéance */}
+                    <FieldTip label="Catégorie" hint="Le type de travail (vidange, freinage, pneus…). Aide à filtrer le carnet d'entretien.">
+                      <select name="category" defaultValue="" className="modal-select">
+                        <option value="">—</option>
+                        <option value="vidange">Vidange</option>
+                        <option value="freinage">Freinage</option>
+                        <option value="pneus">Pneus</option>
+                        <option value="distribution">Distribution</option>
+                        <option value="revision">Révision</option>
+                        <option value="reparation">Réparation</option>
+                        <option value="carrosserie">Carrosserie</option>
+                        <option value="autre">Autre</option>
+                      </select>
+                    </FieldTip>
+                    <FieldTip label="Garantie (km)" hint="Kilométrage jusqu'auquel la pièce / le travail est garanti.">
+                      <input name="warrantyMileage" type="number" min="0" className="modal-input" placeholder="Ex : 15000" />
+                    </FieldTip>
+                    <FieldTip label="Garantie jusqu'au" hint="Date de fin de garantie (optionnel).">
+                      <input name="warrantyUntil" type="date" className="modal-input" />
+                    </FieldTip>
+                    <FieldTip label="Prochaine échéance (km)" hint="Kilométrage de la prochaine intervention liée (ex : prochaine vidange).">
+                      <input name="nextDueMileage" type="number" min="0" className="modal-input" placeholder="Ex : 105000" />
+                    </FieldTip>
+                    <FieldTip label="Prochaine échéance (date)" hint="Date prévue de la prochaine intervention liée.">
+                      <input name="nextDueDate" type="date" className="modal-input" />
+                    </FieldTip>
+
+                    {/* Lot A — option « enregistrer la dépense en Finances » (affichée
+                        seulement si le module Finances est actif → comptes chargés). */}
+                    {financeAccounts.length > 0 && (
+                      <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: recordInFinance ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.02)' }}>
+                          <input type="checkbox" checked={recordInFinance} onChange={e => setRecordInFinance(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#22c55e', cursor: 'pointer' }} />
+                          <span style={{ fontWeight: 600 }}>💰 Enregistrer la dépense dans Finances</span>
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>(si un coût est saisi)</span>
+                        </label>
+                        {recordInFinance && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '12px', background: 'rgba(74,222,128,0.04)', border: '1px solid rgba(74,222,128,0.2)', borderRadius: 10 }}>
+                            <select name="financeAccountId" required defaultValue="" className="modal-select">
+                              <option value="" disabled>Compte…</option>
+                              {financeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                            </select>
+                            <select name="financeCategoryId" defaultValue="" className="modal-select">
+                              <option value="">Sans catégorie</option>
+                              {financeCategories.filter(c => c.type !== 'income').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* S2 — Liaison avec le stock : on n'affiche le toggle que si
                         le module stock est activé (sinon /stock/items renvoie 403
                         au mount → stockItems reste vide). */}
@@ -1120,6 +1232,88 @@ export function VehiclesPage() {
                 </form>
               </Modal>
 
+              {/* Lot A — modal d'édition complète d'un travail */}
+              {editingIntervention && (
+                <Modal open={!!editingIntervention} onClose={() => setEditingIntervention(null)} title="Modifier le travail" subtitle={sv.name} icon={<Pencil size={20} />} maxWidth={520}>
+                  <form onSubmit={handleEditIntervention} key={editingIntervention.id}>
+                    <div className="modal-grid">
+                      <FieldTip label="Titre" required hint="Le nom de l'intervention." style={{ gridColumn: '1/-1' }}>
+                        <input name="title" required defaultValue={editingIntervention.title} className="modal-input" style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </FieldTip>
+                      <FieldTip label="Statut" hint="L'avancement du travail.">
+                        <select name="status" defaultValue={editingIntervention.status === 'planned' ? 'a-faire' : editingIntervention.status === 'done' ? 'fait' : editingIntervention.status} className="modal-select">
+                          <option value="a-faire">À faire</option>
+                          <option value="en-cours">En cours</option>
+                          <option value="bloque">Bloqué</option>
+                          <option value="fait">Fait</option>
+                        </select>
+                      </FieldTip>
+                      <FieldTip label="Date" hint="Date de réalisation ou prévue.">
+                        <input name="date" type="date" defaultValue={editingIntervention.date?.slice(0, 10)} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Coût (€)" hint="Montant dépensé (pièces + main d'œuvre).">
+                        <input name="costAmount" type="number" min="0" step="0.01" defaultValue={editingIntervention.costAmount ?? ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Kilométrage" hint="Km du véhicule au moment du travail.">
+                        <input name="mileage" type="number" min="0" defaultValue={editingIntervention.mileage ?? ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Durée (min)" hint="Temps passé sur le travail.">
+                        <input name="timeMinutes" type="number" min="0" defaultValue={editingIntervention.timeMinutes ?? ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Catégorie" hint="Type de travail.">
+                        <select name="category" defaultValue={editingIntervention.category ?? ''} className="modal-select">
+                          <option value="">—</option>
+                          <option value="vidange">Vidange</option>
+                          <option value="freinage">Freinage</option>
+                          <option value="pneus">Pneus</option>
+                          <option value="distribution">Distribution</option>
+                          <option value="revision">Révision</option>
+                          <option value="reparation">Réparation</option>
+                          <option value="carrosserie">Carrosserie</option>
+                          <option value="autre">Autre</option>
+                        </select>
+                      </FieldTip>
+                      <FieldTip label="Qui réalise ?" hint="Carnet d'entretien : soi-même ou pro.">
+                        <select name="executor" defaultValue={editingIntervention.executor ?? 'self'} className="modal-select">
+                          <option value="self">🛠 Moi-même</option>
+                          <option value="pro">🏢 Professionnel</option>
+                        </select>
+                      </FieldTip>
+                      <FieldTip label="Nom du professionnel" hint="Optionnel." style={{ gridColumn: '1/-1' }}>
+                        <input name="professionalName" defaultValue={editingIntervention.professionalName ?? ''} className="modal-input" style={{ width: '100%', boxSizing: 'border-box' }} />
+                      </FieldTip>
+                      <FieldTip label="Garantie (km)" hint="Km de fin de garantie.">
+                        <input name="warrantyMileage" type="number" min="0" defaultValue={editingIntervention.warrantyMileage ?? ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Garantie jusqu'au" hint="Date de fin de garantie.">
+                        <input name="warrantyUntil" type="date" defaultValue={editingIntervention.warrantyUntil ? editingIntervention.warrantyUntil.slice(0, 10) : ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Prochaine échéance (km)" hint="Km de la prochaine intervention liée.">
+                        <input name="nextDueMileage" type="number" min="0" defaultValue={editingIntervention.nextDueMileage ?? ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Prochaine échéance (date)" hint="Date de la prochaine intervention liée.">
+                        <input name="nextDueDate" type="date" defaultValue={editingIntervention.nextDueDate ? editingIntervention.nextDueDate.slice(0, 10) : ''} className="modal-input" />
+                      </FieldTip>
+                      <FieldTip label="Notes" hint="Détails, observations, références pièces…" style={{ gridColumn: '1/-1' }}>
+                        <textarea name="notes" rows={3} defaultValue={editingIntervention.notes ?? ''} className="modal-input" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
+                      </FieldTip>
+                      {documents.length > 0 && (
+                        <FieldTip label="Joindre un document" hint="Associe une facture/photo déjà importée à ce travail." style={{ gridColumn: '1/-1' }}>
+                          <select defaultValue="" className="modal-select" onChange={e => { if (e.target.value) { handleAttachInterventionDoc(editingIntervention.id, e.target.value); e.currentTarget.value = '' } }}>
+                            <option value="">+ Choisir un document…</option>
+                            {documents.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </FieldTip>
+                      )}
+                    </div>
+                    <div className="modal-footer">
+                      <button type="button" className="btn-ghost" onClick={() => setEditingIntervention(null)}>Annuler</button>
+                      <button type="submit" className="primary-action"><Pencil size={13} /> Enregistrer</button>
+                    </div>
+                  </form>
+                </Modal>
+              )}
+
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                 {[['all','Tous','var(--text2)'],['a-faire','À faire','#7b82a8'],['en-cours','En cours','#67e8f9'],['bloque','Bloqué','#f87171'],['fait','Fait (carnet)','#4ade80']].map(([val, label, color]) => (
                   <button key={val} onClick={() => setIntervStatusFilter(val)} style={{ padding: '4px 12px', borderRadius: '20px', border: `1px solid ${intervStatusFilter === val ? color : 'var(--border)'}`, background: intervStatusFilter === val ? `${color}18` : 'none', color: intervStatusFilter === val ? color : 'var(--text3)', fontSize: '11px', fontFamily: 'var(--mono)', cursor: 'pointer', fontWeight: 600 }}>
@@ -1152,8 +1346,17 @@ export function VehiclesPage() {
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                           <span>{new Date(i.date).toLocaleDateString('fr-FR')}</span>
+                          {i.category && <span>🏷 {i.category}</span>}
                           {i.mileage && <span>🔧 {Number(i.mileage).toLocaleString('fr-FR')} km</span>}
                           {i.costAmount && <span style={{ color: '#f87171', fontWeight: 600 }}>💰 {Number(i.costAmount).toFixed(2)} €</span>}
+                          {i.financeTransaction && <span style={{ color: '#4ade80' }} title="Dépense enregistrée dans Finances">📊 Finances</span>}
+                          {i.documents && i.documents.length > 0 && <span title="Pièces jointes">📎 {i.documents.length}</span>}
+                          {(i.warrantyMileage || i.warrantyUntil) && (
+                            <span title="Garantie">🛡 {[i.warrantyMileage ? `${Number(i.warrantyMileage).toLocaleString('fr-FR')} km` : null, i.warrantyUntil ? new Date(i.warrantyUntil).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
+                          )}
+                          {(i.nextDueMileage || i.nextDueDate) && (
+                            <span style={{ color: '#fbbf24' }} title="Prochaine échéance">⏭ {[i.nextDueMileage ? `${Number(i.nextDueMileage).toLocaleString('fr-FR')} km` : null, i.nextDueDate ? new Date(i.nextDueDate).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
+                          )}
                         </div>
                         {i.notes && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px', fontStyle: 'italic' }}>{i.notes}</div>}
                       </div>
@@ -1164,6 +1367,7 @@ export function VehiclesPage() {
                           <option value="bloque">Bloqué</option>
                           <option value="fait">Fait</option>
                         </select>
+                        <button className="btn-ghost" style={{ padding: '4px 8px' }} title="Modifier le travail" onClick={() => setEditingIntervention(i)}><Pencil size={13} /></button>
                         <button className="btn-ghost" style={{ color: '#f87171', padding: '4px 8px' }} onClick={() => handleDeleteIntervention(i.id)}>✕</button>
                       </div>
                     </div>

@@ -1,4 +1,12 @@
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import {
   INTERVENTION_EXECUTORS,
   INTERVENTION_STATUSES,
@@ -8,19 +16,40 @@ import type {
   InterventionStatus,
 } from './create-intervention.dto';
 
+/**
+ * Lot A — édition complète d'une intervention.
+ * Tous les champs sont optionnels : le même endpoint sert à un simple
+ * changement de statut (ex: { status: 'fait', mileage }) comme à une
+ * édition complète depuis le formulaire.
+ */
 export class UpdateInterventionDto {
+  @IsOptional()
   @IsIn(INTERVENTION_STATUSES)
-  status!: InterventionStatus;
+  status?: InterventionStatus;
 
-  // V3 — Optionnel : le kilométrage du véhicule au moment de la validation
-  // du travail. Permet de demander le km à la fin (quand la donnée a un
-  // sens) plutôt qu'à la création.
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
   @IsOptional()
   @IsInt()
   @Min(0)
   mileage?: number;
 
-  // V1 — Permettre la mise à jour du carnet d'entretien après coup.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  timeMinutes?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  costAmount?: number;
+
   @IsOptional()
   @IsIn(INTERVENTION_EXECUTORS)
   executor?: InterventionExecutor;
@@ -28,4 +57,30 @@ export class UpdateInterventionDto {
   @IsOptional()
   @IsString()
   professionalName?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsDateString()
+  warrantyUntil?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  warrantyMileage?: number;
+
+  @IsOptional()
+  @IsDateString()
+  nextDueDate?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  nextDueMileage?: number;
 }

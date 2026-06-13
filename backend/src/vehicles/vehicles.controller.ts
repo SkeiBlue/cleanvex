@@ -222,4 +222,20 @@ export class VehiclesController {
   ) {
     return this.vehicles.deleteIntervention(req.user.id, id, interventionId);
   }
+
+  // Lot A — rattacher une pièce jointe (facture/photo) à une intervention.
+  @Post(':id/interventions/:interventionId/documents')
+  linkInterventionDocument(
+    @Param('id') id: string,
+    @Param('interventionId') interventionId: string,
+    @Body() dto: LinkVehicleDocumentDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.linkInterventionDocument(
+      req.user.id,
+      id,
+      interventionId,
+      dto.documentId,
+    );
+  }
 }

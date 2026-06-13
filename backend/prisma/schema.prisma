@@ -252,6 +252,17 @@ model VehicleIntervention {
   professionalName String? @map("professional_name")
   notes       String?
 
+  // Lot A — Interventions enrichies.
+  // category : type de travail (vidange, freinage, pneus, distribution…),
+  // chaîne ouverte (pas un enum) pour rester souple.
+  category String?
+  // Garantie de l'intervention/pièce : échéance par date ET/OU kilométrage.
+  warrantyUntil   DateTime? @map("warranty_until")
+  warrantyMileage Int?      @map("warranty_mileage")
+  // Prochaine échéance liée (ex: prochaine vidange) par date ET/OU km.
+  nextDueDate    DateTime? @map("next_due_date")
+  nextDueMileage Int?      @map("next_due_mileage")
+
   vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
 

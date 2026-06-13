@@ -10,6 +10,7 @@ import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
 import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { CreateVehiclePartDto } from './dto/create-vehicle-part.dto';
+import { UpdateInterventionDto } from './dto/update-intervention.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
 import { UpdateVehiclePartDto } from './dto/update-vehicle-part.dto';
 
@@ -109,7 +110,48 @@ export class VehiclesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return { ...vehicle, documents, stockMovements };
+    // Lot A — pièces jointes + dépense Finances rattachées à chaque travail.
+    const interventionIds = vehicle.interventions.map((i) => i.id);
+    const [interventionDocLinks, interventionTxs] =
+      interventionIds.length > 0
+        ? await Promise.all([
+            this.prisma.documentLink.findMany({
+              where: {
+                targetType: 'intervention',
+                targetId: { in: interventionIds },
+              },
+              include: {
+                document: {
+                  select: {
+                    id: true,
+                    name: true,
+                    mimeType: true,
+                    createdAt: true,
+                  },
+                },
+              },
+              orderBy: { createdAt: 'desc' },
+            }),
+            this.prisma.financialTransaction.findMany({
+              where: {
+                ownerId,
+                sourceModule: 'vehicles',
+                sourceType: 'intervention',
+                sourceId: { in: interventionIds },
+              },
+              select: { id: true, sourceId: true, amount: true },
+            }),
+          ])
+        : [[], []];
+
+    const interventions = vehicle.interventions.map((interv) => ({
+      ...interv,
+      documents: interventionDocLinks.filter((l) => l.targetId === interv.id),
+      financeTransaction:
+        interventionTxs.find((t) => t.sourceId === interv.id) ?? null,
+    }));
+
+    return { ...vehicle, interventions, documents, stockMovements };
   }
 
   async update(ownerId: string, id: string, dto: UpdateVehicleDto) {
@@ -180,37 +222,21 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
 
-    // S2 — Si l'utilisateur a coché "Inclure des pièces du stock" dans la modal,
-    // on consomme chaque pièce + on lie son StockMovement à l'intervention
-    // créée, le tout dans une seule transaction Prisma pour garantir la
-    // cohérence (rollback complet si une pièce est en stock insuffisant ou
-    // appartient à un autre utilisateur).
+    // S2 — pièces du stock à consommer · Lot A — dépense en Finances.
+    // Tout est fait dans une seule transaction Prisma : intervention +
+    // décrément stock + mouvements + transaction financière (rollback
+    // complet si une étape échoue).
     const usages = dto.stockUsages ?? [];
 
-    if (usages.length === 0) {
-      return this.prisma.vehicleIntervention.create({
-        data: {
-          vehicleId,
-          title: dto.title,
-          date: new Date(dto.date),
-          mileage: dto.mileage,
-          timeMinutes: dto.timeMinutes,
-          costAmount: dto.costAmount,
-          status: dto.status ?? 'planned',
-          executor: dto.executor ?? 'self',
-          professionalName: dto.professionalName,
-          notes: dto.notes,
-        },
-      });
-    }
-
-    // Pré-charge les items pour valider ownership + stock suffisant avant
-    // d'ouvrir la transaction (réponse 400 propre plutôt que rollback).
+    // Pré-validation stock (hors transaction → erreur 400 propre).
     const itemIds = Array.from(new Set(usages.map((u) => u.stockItemId)));
-    const items = await this.prisma.stockItem.findMany({
-      where: { id: { in: itemIds }, ownerId },
-    });
-    const itemById = new Map(items.map((i) => [i.id, i]));
+    const items =
+      itemIds.length > 0
+        ? await this.prisma.stockItem.findMany({
+            where: { id: { in: itemIds }, ownerId },
+          })
+        : [];
+    const itemById = new Map(items.map((i) => [i.id, i] as const));
     for (const usage of usages) {
       const item = itemById.get(usage.stockItemId);
       if (!item) {
@@ -225,20 +251,35 @@ export class VehiclesService {
       }
     }
 
+    // Pré-validation finance (dégradable : ignorée si module Finances off).
+    const wantFinance =
+      !!dto.recordInFinance && !!dto.costAmount && dto.costAmount > 0;
+    const financeOk = wantFinance && (await this.isFinancesEnabled());
+    if (financeOk) {
+      if (!dto.financeAccountId) {
+        throw new BadRequestException(
+          'Compte requis pour enregistrer la dépense en Finances.',
+        );
+      }
+      const account = await this.prisma.financialAccount.findFirst({
+        where: { id: dto.financeAccountId, ownerId },
+        select: { id: true },
+      });
+      if (!account)
+        throw new NotFoundException('Compte financier introuvable.');
+      if (dto.financeCategoryId) {
+        const cat = await this.prisma.financialCategory.findFirst({
+          where: { id: dto.financeCategoryId, ownerId },
+          select: { id: true },
+        });
+        if (!cat)
+          throw new NotFoundException('Catégorie financière introuvable.');
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       const intervention = await tx.vehicleIntervention.create({
-        data: {
-          vehicleId,
-          title: dto.title,
-          date: new Date(dto.date),
-          mileage: dto.mileage,
-          timeMinutes: dto.timeMinutes,
-          costAmount: dto.costAmount,
-          status: dto.status ?? 'planned',
-          executor: dto.executor ?? 'self',
-          professionalName: dto.professionalName,
-          notes: dto.notes,
-        },
+        data: this.interventionData(vehicleId, dto),
       });
 
       for (const usage of usages) {
@@ -264,8 +305,51 @@ export class VehiclesService {
         });
       }
 
+      if (financeOk) {
+        // CDC 16.1 — la dépense garde sa source (source_module=vehicles).
+        await tx.financialTransaction.create({
+          data: {
+            ownerId,
+            type: 'expense',
+            amount: dto.costAmount!,
+            accountId: dto.financeAccountId!,
+            categoryId: dto.financeCategoryId,
+            operationDate: new Date(dto.date),
+            label: `Véhicule — ${dto.title}`,
+            note: dto.notes,
+            sourceModule: 'vehicles',
+            sourceType: 'intervention',
+            sourceId: intervention.id,
+            status: 'linked',
+          },
+        });
+      }
+
       return intervention;
     });
+  }
+
+  /** Construit les données communes d'une intervention (création). */
+  private interventionData(vehicleId: string, dto: CreateInterventionDto) {
+    return {
+      vehicleId,
+      title: dto.title,
+      date: new Date(dto.date),
+      mileage: dto.mileage,
+      timeMinutes: dto.timeMinutes,
+      costAmount: dto.costAmount,
+      status: dto.status ?? 'planned',
+      executor: dto.executor ?? 'self',
+      professionalName: dto.professionalName,
+      notes: dto.notes,
+      category: dto.category,
+      warrantyUntil: dto.warrantyUntil
+        ? new Date(dto.warrantyUntil)
+        : undefined,
+      warrantyMileage: dto.warrantyMileage,
+      nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : undefined,
+      nextDueMileage: dto.nextDueMileage,
+    };
   }
 
   async addAlert(
@@ -410,16 +494,13 @@ export class VehiclesService {
     await this.prisma.vehicle.delete({ where: { id } });
   }
 
+  // Lot A — édition complète d'une intervention (le même endpoint sert
+  // aussi au simple changement de statut : tous les champs sont optionnels).
   async updateIntervention(
     ownerId: string,
     vehicleId: string,
     interventionId: string,
-    dto: {
-      status: string;
-      mileage?: number;
-      executor?: string;
-      professionalName?: string;
-    },
+    dto: UpdateInterventionDto,
   ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
@@ -427,15 +508,55 @@ export class VehiclesService {
     return this.prisma.vehicleIntervention.update({
       where: { id: interventionId },
       data: {
-        status: dto.status,
-        // V3 — mileage est posé seulement s'il est fourni (et non écrasé
-        // par undefined) pour que la validation du travail puisse l'ajouter
-        // sans toucher aux autres champs.
+        ...(dto.status !== undefined && { status: dto.status }),
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.date !== undefined && { date: new Date(dto.date) }),
         ...(dto.mileage !== undefined && { mileage: dto.mileage }),
+        ...(dto.timeMinutes !== undefined && { timeMinutes: dto.timeMinutes }),
+        ...(dto.costAmount !== undefined && { costAmount: dto.costAmount }),
         ...(dto.executor !== undefined && { executor: dto.executor }),
         ...(dto.professionalName !== undefined && {
           professionalName: dto.professionalName,
         }),
+        ...(dto.notes !== undefined && { notes: dto.notes }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.warrantyUntil !== undefined && {
+          warrantyUntil: dto.warrantyUntil ? new Date(dto.warrantyUntil) : null,
+        }),
+        ...(dto.warrantyMileage !== undefined && {
+          warrantyMileage: dto.warrantyMileage,
+        }),
+        ...(dto.nextDueDate !== undefined && {
+          nextDueDate: dto.nextDueDate ? new Date(dto.nextDueDate) : null,
+        }),
+        ...(dto.nextDueMileage !== undefined && {
+          nextDueMileage: dto.nextDueMileage,
+        }),
+      },
+    });
+  }
+
+  // Lien pièce jointe (facture/photo) → intervention (réutilise document_links).
+  async linkInterventionDocument(
+    ownerId: string,
+    vehicleId: string,
+    interventionId: string,
+    documentId: string,
+  ) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureInterventionBelongs(vehicleId, interventionId);
+    const document = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerId },
+      select: { id: true },
+    });
+    if (!document) throw new NotFoundException('Document not found');
+    return this.prisma.documentLink.create({
+      data: {
+        documentId,
+        targetType: 'intervention',
+        targetId: interventionId,
+        context: 'intervention',
       },
     });
   }
@@ -448,6 +569,24 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.ensureInterventionBelongs(vehicleId, interventionId);
+    // CDC 16.3 — on ne supprime pas la dépense liée : on la détache
+    // (conserve l'historique financier), on retire juste le lien source.
+    await this.prisma.financialTransaction.updateMany({
+      where: {
+        ownerId,
+        sourceModule: 'vehicles',
+        sourceType: 'intervention',
+        sourceId: interventionId,
+      },
+      data: {
+        sourceModule: null,
+        sourceType: null,
+        sourceId: null,
+        status: 'manual',
+      },
+    });
+    // Les StockMovement liés ont onDelete:SetNull → l'historique reste,
+    // seul le lien interventionId est nullé automatiquement.
     await this.prisma.vehicleIntervention.delete({
       where: { id: interventionId },
     });
@@ -539,5 +678,14 @@ export class VehiclesService {
     if (module && !module.isEnabled) {
       throw new ForbiddenException('Vehicles module is disabled');
     }
+  }
+
+  // Lot A — le lien Finances est optionnel/dégradable : si le module est
+  // désactivé, on n'écrit simplement rien côté Finances (pas d'erreur).
+  private async isFinancesEnabled(): Promise<boolean> {
+    const module = await this.prisma.module.findUnique({
+      where: { key: 'finances' },
+    });
+    return !module || module.isEnabled;
   }
 }

@@ -1,5 +1,6 @@
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsIn,
   IsInt,
@@ -10,6 +11,18 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+
+// Lot A — catégories d'intervention (liste indicative, champ libre côté DB).
+export const INTERVENTION_CATEGORIES = [
+  'vidange',
+  'freinage',
+  'pneus',
+  'distribution',
+  'revision',
+  'reparation',
+  'carrosserie',
+  'autre',
+] as const;
 
 /**
  * Pièce du stock à consommer en même temps que la création de l'intervention.
@@ -81,6 +94,44 @@ export class CreateInterventionDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  // Lot A — enrichissements
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @IsOptional()
+  @IsDateString()
+  warrantyUntil?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  warrantyMileage?: number;
+
+  @IsOptional()
+  @IsDateString()
+  nextDueDate?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  nextDueMileage?: number;
+
+  // Lot A — option « enregistrer la dépense en Finances » (dégradable :
+  // ignorée si le module Finances est désactivé). Si activé et coût > 0,
+  // crée une financial_transaction liée (source_module=vehicles).
+  @IsOptional()
+  @IsBoolean()
+  recordInFinance?: boolean;
+
+  @IsOptional()
+  @IsString()
+  financeAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  financeCategoryId?: string;
 
   // S2 — liste optionnelle de pièces du stock à consommer pour ce travail.
   // Le backend les retire du stock + crée un StockMovement par usage dans
