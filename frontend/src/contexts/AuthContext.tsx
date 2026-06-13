@@ -112,10 +112,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessToken, authedFetch])
 
   async function login(email: string, password: string): Promise<string> {
-    const r = await fetch(`${API_URL}/auth/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ email, password }),
-    })
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ email, password }),
+      })
+    } catch {
+      return 'Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.'
+    }
     if (!r.ok) return parseApiError(r, 'Connexion refusée.')
     const d = await r.json()
     setAccessToken(d.accessToken)
@@ -126,20 +131,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function register(email: string, password: string, username?: string, inviteCode?: string): Promise<string> {
-    const r = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ email, password, username, inviteCode }),
-    })
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/auth/register`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ email, password, username, inviteCode }),
+      })
+    } catch {
+      return 'Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.'
+    }
     if (!r.ok) return parseApiError(r, 'Inscription refusée.')
     trackEvent('signup_created')
     return 'Compte créé. Vérifiez votre email avant de vous connecter.'
   }
 
   async function verifyEmail(token: string): Promise<string> {
-    const r = await fetch(`${API_URL}/auth/verify-email`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', body: JSON.stringify({ token }),
-    })
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/auth/verify-email`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', body: JSON.stringify({ token }),
+      })
+    } catch {
+      return 'Impossible de contacter le serveur. Vérifiez votre connexion et réessayez.'
+    }
     if (!r.ok) return parseApiError(r, 'Vérification email refusée.')
     trackEvent('email_verified')
     return 'Email vérifié. Connexion disponible.'
