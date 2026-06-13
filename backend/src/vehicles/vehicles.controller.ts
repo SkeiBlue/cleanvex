@@ -158,6 +158,17 @@ export class VehiclesController {
     return this.vehicles.deleteAlert(req.user.id, id, alertId);
   }
 
+  // Lot B — créer une tâche Agenda depuis une alerte/échéance.
+  @Post(':id/alerts/:alertId/task')
+  @HttpCode(200)
+  createTaskFromAlert(
+    @Param('id') id: string,
+    @Param('alertId') alertId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.createTaskFromAlert(req.user.id, id, alertId);
+  }
+
   @Get(':id/parts')
   listParts(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.vehicles.listParts(req.user.id, id);

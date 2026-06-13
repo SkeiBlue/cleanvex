@@ -420,6 +420,51 @@ export class VehiclesService {
     await this.prisma.vehicleAlert.delete({ where: { id: alertId } });
   }
 
+  // Lot B — crée une tâche Agenda depuis une alerte/échéance véhicule.
+  // Dégradable : 403 si le module Agenda est désactivé. Idempotent : ne
+  // recrée pas de tâche si une tâche active existe déjà pour cette alerte
+  // (targetType=vehicle_alert) → la tâche remonte dans l'agenda + rappels.
+  async createTaskFromAlert(
+    ownerId: string,
+    vehicleId: string,
+    alertId: string,
+  ) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureAlertBelongs(vehicleId, alertId);
+    if (!(await this.isAgendaEnabled())) {
+      throw new ForbiddenException('Module Agenda désactivé.');
+    }
+    const alert = await this.prisma.vehicleAlert.findUniqueOrThrow({
+      where: { id: alertId },
+    });
+    const vehicle = await this.prisma.vehicle.findUniqueOrThrow({
+      where: { id: vehicleId },
+      select: { name: true },
+    });
+    const existing = await this.prisma.task.findFirst({
+      where: {
+        ownerId,
+        targetType: 'vehicle_alert',
+        targetId: alertId,
+        status: { not: 'done' },
+      },
+    });
+    if (existing) return { task: existing, alreadyExists: true };
+    const task = await this.prisma.task.create({
+      data: {
+        ownerId,
+        title: `${vehicle.name} — ${alert.title}`,
+        dueDate: alert.dueDate ?? undefined,
+        moduleKey: 'vehicles',
+        targetType: 'vehicle_alert',
+        targetId: alertId,
+        priority: 'high',
+      },
+    });
+    return { task, alreadyExists: false };
+  }
+
   async listParts(ownerId: string, vehicleId: string) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
@@ -685,6 +730,14 @@ export class VehiclesService {
   private async isFinancesEnabled(): Promise<boolean> {
     const module = await this.prisma.module.findUnique({
       where: { key: 'finances' },
+    });
+    return !module || module.isEnabled;
+  }
+
+  // Lot B — même principe pour l'Agenda.
+  private async isAgendaEnabled(): Promise<boolean> {
+    const module = await this.prisma.module.findUnique({
+      where: { key: 'agenda' },
     });
     return !module || module.isEnabled;
   }

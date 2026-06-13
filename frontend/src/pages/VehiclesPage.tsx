@@ -103,8 +103,10 @@ function VehicleTypeIcon({ type }: { type: string }) {
 
 /* ─── composant principal ─── */
 export function VehiclesPage() {
-  const { authedFetch } = useAuth()
+  const { authedFetch, modules } = useAuth()
   const toast = useToast()
+  // Lot B — n'affiche le bouton "→ Agenda" que si le module Agenda est actif.
+  const agendaEnabled = modules.find((m) => m.key === 'agenda')?.isEnabled ?? true
 
   const [vehicles, setVehicles] = useState<VehicleItem[]>([])
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleDetail | null>(null)
@@ -492,6 +494,15 @@ export function VehiclesPage() {
     if (!selectedVehicle) return
     await authedFetch(`/vehicles/${selectedVehicle.id}/alerts/${alertId}`, { method: 'DELETE' })
     await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  // Lot B — transforme une alerte/échéance en tâche Agenda (avec rappels).
+  async function handleAlertToTask(alertId: string) {
+    if (!selectedVehicle) return
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/alerts/${alertId}/task`, { method: 'POST' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Création de la tâche refusée.')); return }
+    const d = await r.json()
+    toast.ok(d.alreadyExists ? 'Une tâche existe déjà dans l\'agenda.' : 'Tâche créée dans l\'agenda.')
   }
 
   async function handleUploadDoc(event: FormEv) {
@@ -1630,6 +1641,9 @@ export function VehiclesPage() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
+                        {a.status === 'open' && agendaEnabled && (
+                          <button className="btn-ghost" style={{ fontSize: '11px', color: '#a78bfa' }} title="Créer une tâche dans l'agenda" onClick={() => handleAlertToTask(a.id)}>→ Agenda</button>
+                        )}
                         {a.status === 'open' && <button className="btn-ghost" style={{ fontSize: '11px' }} onClick={() => handleCloseAlert(a.id)}>Fermer</button>}
                         <button className="btn-ghost" style={{ color: '#f87171' }} onClick={() => handleDeleteAlert(a.id)}>✕</button>
                       </div>
