@@ -242,6 +242,12 @@ export class AuthService {
     if (!valid) throw new UnauthorizedException('Mot de passe actuel incorrect');
     const hash = await bcrypt.hash(newPassword, 12);
     await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } });
+    // Révoque les sessions actives : un changement de mot de passe doit
+    // invalider les anciens refresh tokens (cohérent avec resetPassword).
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
     await this.core.logAudit(userId, 'auth.password_changed');
     await this.core.logActivity(userId, 'auth.password_changed', 'core', 'user', userId);
     return { success: true };

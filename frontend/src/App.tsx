@@ -26,6 +26,7 @@ const SettingsPage   = lazy(() => import('./pages/SettingsPage').then(m => ({ de
 const ReportsPage    = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const BackupsPage    = lazy(() => import('./pages/BackupsPage').then(m => ({ default: m.BackupsPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
 
 /* Landing publique (lazy aussi pour ne pas alourdir le bundle de l'app) */
 const LandingPage = lazy(() => import('./landing/LandingPage').then(m => ({ default: m.LandingPage })))
@@ -236,6 +237,7 @@ export default function App() {
             {/* App protégée, isolée sous /app/* */}
             <Route path="/app">
               <Route path="login" element={<AuthPage />} />
+              <Route path="reset-password" element={<ResetPasswordPage />} />
               <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>
                   <Route index element={<DashboardPage />} />

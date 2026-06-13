@@ -125,20 +125,12 @@ export function AgendaPage() {
   }
 
   async function handleToggleSubtask(taskId: string, subtaskId: string, isDone: boolean) {
-    await authedFetch(`/agenda/tasks/${taskId}/subtasks/${subtaskId}`, {
+    const res = await authedFetch(`/agenda/tasks/${taskId}/subtasks/${subtaskId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isDone: !isDone }),
-    }).catch(() =>
-      authedFetch(`/agenda/tasks/${taskId}/subtasks`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: '', isDone: !isDone }),
-      })
-    )
-    const r = await authedFetch(`/agenda/tasks/${taskId}`)
-    if (r.ok) {
-      const updated = await r.json()
-      setTasks(prev => prev.map(t => t.id === taskId ? updated : t))
-    }
+    })
+    if (!res.ok) { toast.err('Mise à jour de la sous-tâche refusée.'); return }
+    await reload()
   }
 
   async function handleDeleteNotification(id: string) {

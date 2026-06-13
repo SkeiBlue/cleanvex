@@ -109,7 +109,12 @@ export function DashboardPage() {
 
       async function take<T>(i: number, fn: (json: unknown) => T | Promise<T>): Promise<T | undefined> {
         const r = results[i]
-        if (r.status === 'rejected' || !r.value.ok) { failed.push(endpoints[i].key); return undefined }
+        if (r.status === 'rejected') { failed.push(endpoints[i].key); return undefined }
+        // 403 = module désactivé volontairement → ce n'est pas une panne, on
+        // n'affiche pas « Réessaie dans un instant » (sinon toute install neuve,
+        // où la plupart des modules sont OFF, montre une fausse erreur).
+        if (r.value.status === 403) return undefined
+        if (!r.value.ok) { failed.push(endpoints[i].key); return undefined }
         try { return await fn(await r.value.json()) } catch { failed.push(endpoints[i].key); return undefined }
       }
 

@@ -278,6 +278,7 @@ export class VehiclesService {
   async updateAlert(ownerId: string, vehicleId: string, alertId: string, status: string) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureAlertBelongs(vehicleId, alertId);
     return this.prisma.vehicleAlert.update({
       where: { id: alertId },
       data: { status },
@@ -287,6 +288,7 @@ export class VehiclesService {
   async deleteAlert(ownerId: string, vehicleId: string, alertId: string) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureAlertBelongs(vehicleId, alertId);
     await this.prisma.vehicleAlert.delete({ where: { id: alertId } });
   }
 
@@ -324,6 +326,7 @@ export class VehiclesService {
   async updatePart(ownerId: string, vehicleId: string, partId: string, dto: UpdateVehiclePartDto) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensurePartBelongs(vehicleId, partId);
     return this.prisma.vehiclePart.update({
       where: { id: partId },
       data: {
@@ -346,6 +349,7 @@ export class VehiclesService {
   async deletePart(ownerId: string, vehicleId: string, partId: string) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensurePartBelongs(vehicleId, partId);
     await this.prisma.vehiclePart.delete({ where: { id: partId } });
   }
 
@@ -363,6 +367,7 @@ export class VehiclesService {
   ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureInterventionBelongs(vehicleId, interventionId);
     return this.prisma.vehicleIntervention.update({
       where: { id: interventionId },
       data: {
@@ -380,6 +385,7 @@ export class VehiclesService {
   async deleteIntervention(ownerId: string, vehicleId: string, interventionId: string) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
+    await this.ensureInterventionBelongs(vehicleId, interventionId);
     await this.prisma.vehicleIntervention.delete({ where: { id: interventionId } });
   }
 
@@ -413,6 +419,35 @@ export class VehiclesService {
         });
       }
     }
+  }
+
+  // Garde-fous d'isolation : une sous-ressource (alerte/pièce/intervention) ne
+  // peut être modifiée/supprimée que si elle appartient bien au véhicule du
+  // chemin — sinon un utilisateur possédant un véhicule pourrait, en
+  // connaissant l'UUID cible, agir sur la sous-ressource d'un autre véhicule
+  // (y compris d'un autre utilisateur). Cf. audit IDOR.
+  private async ensureAlertBelongs(vehicleId: string, alertId: string) {
+    const alert = await this.prisma.vehicleAlert.findFirst({
+      where: { id: alertId, vehicleId },
+      select: { id: true },
+    });
+    if (!alert) throw new NotFoundException('Alert not found');
+  }
+
+  private async ensurePartBelongs(vehicleId: string, partId: string) {
+    const part = await this.prisma.vehiclePart.findFirst({
+      where: { id: partId, vehicleId },
+      select: { id: true },
+    });
+    if (!part) throw new NotFoundException('Part not found');
+  }
+
+  private async ensureInterventionBelongs(vehicleId: string, interventionId: string) {
+    const intervention = await this.prisma.vehicleIntervention.findFirst({
+      where: { id: interventionId, vehicleId },
+      select: { id: true },
+    });
+    if (!intervention) throw new NotFoundException('Intervention not found');
   }
 
   private async ensureVehicleExists(ownerId: string, id: string) {

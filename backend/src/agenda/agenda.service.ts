@@ -96,6 +96,41 @@ export class AgendaService {
     });
   }
 
+  async updateSubtask(
+    ownerId: string,
+    taskId: string,
+    subtaskId: string,
+    dto: { title?: string; isDone?: boolean; position?: number },
+  ) {
+    await this.ensureAgendaEnabled();
+    await this.ensureOwnedTask(ownerId, taskId);
+    await this.ensureSubtaskBelongs(taskId, subtaskId);
+    return this.prisma.subtask.update({
+      where: { id: subtaskId },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.isDone !== undefined && { isDone: dto.isDone }),
+        ...(dto.position !== undefined && { position: dto.position }),
+      },
+    });
+  }
+
+  async deleteSubtask(ownerId: string, taskId: string, subtaskId: string) {
+    await this.ensureAgendaEnabled();
+    await this.ensureOwnedTask(ownerId, taskId);
+    await this.ensureSubtaskBelongs(taskId, subtaskId);
+    await this.prisma.subtask.delete({ where: { id: subtaskId } });
+    return { deleted: true };
+  }
+
+  private async ensureSubtaskBelongs(taskId: string, subtaskId: string) {
+    const subtask = await this.prisma.subtask.findFirst({
+      where: { id: subtaskId, taskId },
+      select: { id: true },
+    });
+    if (!subtask) throw new NotFoundException('Subtask not found');
+  }
+
   async notifications(ownerId: string) {
     await this.ensureAgendaEnabled();
     return this.prisma.notification.findMany({

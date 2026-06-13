@@ -372,6 +372,8 @@ export function VehiclesPage() {
         category: data.get('category') || undefined,
         status: data.get('status') || undefined,
         urgency: data.get('urgency') || undefined,
+        priority: data.get('priority') || undefined,
+        dimension: data.get('dimension') || undefined,
         reference: data.get('reference') || undefined,
         estimatedPrice: data.get('estimatedPrice') ? Number(data.get('estimatedPrice')) : undefined,
         realPrice: data.get('realPrice') ? Number(data.get('realPrice')) : undefined,
@@ -751,10 +753,10 @@ export function VehiclesPage() {
       </div>
 
       {/* ── Layout sidebar + contenu ── */}
-      <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
+      <div className="vehicle-detail-layout" style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
 
         {/* ── Navigation verticale ── */}
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '160px', flexShrink: 0 }}>
+        <nav className="vehicle-detail-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '160px', flexShrink: 0 }}>
           {NAV_ITEMS.map(({ tab, icon, label }) => {
             const active = activeTab === tab
             let badge = 0

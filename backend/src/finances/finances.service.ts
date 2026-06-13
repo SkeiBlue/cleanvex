@@ -107,6 +107,14 @@ export class FinancesService {
       throw new NotFoundException('Financial account not found');
     }
 
+    if (dto.categoryId) {
+      const category = await this.prisma.financialCategory.findFirst({
+        where: { id: dto.categoryId, ownerId },
+        select: { id: true },
+      });
+      if (!category) throw new NotFoundException('Financial category not found');
+    }
+
     if (dto.sourceModule === 'vehicles' && dto.sourceType && dto.sourceId) {
       const vehicle = await this.prisma.vehicle.findFirst({
         where: { id: dto.sourceId, ownerId },
@@ -153,6 +161,24 @@ export class FinancesService {
       where: { id, ownerId },
     });
     if (!tx) throw new NotFoundException('Transaction not found');
+
+    // Empêche de rattacher la transaction à un compte/catégorie d'un autre
+    // utilisateur (isolation + évite la fuite via include account/category).
+    if (dto.accountId !== undefined) {
+      const account = await this.prisma.financialAccount.findFirst({
+        where: { id: dto.accountId, ownerId },
+        select: { id: true },
+      });
+      if (!account) throw new NotFoundException('Financial account not found');
+    }
+    if (dto.categoryId) {
+      const category = await this.prisma.financialCategory.findFirst({
+        where: { id: dto.categoryId, ownerId },
+        select: { id: true },
+      });
+      if (!category) throw new NotFoundException('Financial category not found');
+    }
+
     return this.prisma.financialTransaction.update({
       where: { id },
       data: {

@@ -952,7 +952,12 @@ body::after {
     z-index: 200;
   }
   .sidebar.sidebar--open { transform: translateX(0); }
-  .main { margin-left: 0; }
+  /* min-width:0 : sans ça, .main (flex-item) refuse de descendre sous la
+     largeur min-content de son contenu et déborde la largeur de l'écran
+     (clipé par app-shell overflow:hidden) au lieu de laisser le contenu
+     se réempiler. Corrige le rognage horizontal sur mobile. */
+  .main { margin-left: 0; min-width: 0; }
+  .content { min-width: 0; }
   .mobile-only  { display: flex; }
   .desktop-only { display: none !important; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
@@ -1314,6 +1319,31 @@ a:focus:not(:focus-visible) { outline: none; }
   -webkit-overflow-scrolling: touch;
 }
 .tabs-bar::-webkit-scrollbar { display: none; }
+
+/* ── Fiche véhicule : le 2-panneaux (nav latérale + contenu) doit se réempiler
+   sur petit écran, sinon le contenu déborde et se fait rogner (pas de scroll).
+   La nav passe en barre horizontale scrollable au-dessus du contenu. ───────── */
+.vehicle-detail-layout { min-width: 0; }
+.vehicle-detail-layout > * { min-width: 0; }
+
+@media (max-width: 700px) {
+  .vehicle-detail-layout { flex-direction: column; }
+  .vehicle-detail-nav {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .vehicle-detail-nav::-webkit-scrollbar { display: none; }
+  .vehicle-detail-nav > button { flex-shrink: 0; }
+}
+
+/* Grilles de fiches (résumé véhicule, résumé finances…) : 1 colonne sous 480px
+   pour éviter le rognage des 2 colonnes sur mobile étroit. */
+@media (max-width: 480px) {
+  .detail-grid { grid-template-columns: 1fr; }
+}
 
 /* ── Mobile <640px : compacter le header + tap targets ≥44px (R5, R6) ───── */
 @media (max-width: 640px) {

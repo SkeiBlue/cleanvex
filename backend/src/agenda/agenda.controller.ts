@@ -5,6 +5,7 @@ import { AgendaService } from './agenda.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateSubtaskDto } from './dto/create-subtask.dto';
 import { CreateTaskDto } from './dto/create-task.dto';
+import { UpdateSubtaskDto } from './dto/update-subtask.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 
 type AuthenticatedRequest = Request & {
@@ -47,6 +48,26 @@ export class AgendaController {
     @Body() dto: CreateSubtaskDto,
   ) {
     return this.agenda.addSubtask(req.user.id, id, dto);
+  }
+
+  @Patch('tasks/:id/subtasks/:subtaskId')
+  updateSubtask(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('subtaskId') subtaskId: string,
+    @Body() dto: UpdateSubtaskDto,
+  ) {
+    return this.agenda.updateSubtask(req.user.id, id, subtaskId, dto);
+  }
+
+  @Delete('tasks/:id/subtasks/:subtaskId')
+  @HttpCode(204)
+  deleteSubtask(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Param('subtaskId') subtaskId: string,
+  ) {
+    return this.agenda.deleteSubtask(req.user.id, id, subtaskId);
   }
 
   @Get('notifications')
