@@ -24,7 +24,12 @@ export interface Paginated<T> {
   totalPages: number;
 }
 
-export function paginate<T>(data: T[], total: number, page: number, limit: number): Paginated<T> {
+export function paginate<T>(
+  data: T[],
+  total: number,
+  page: number,
+  limit: number,
+): Paginated<T> {
   return {
     data,
     total,

@@ -52,7 +52,11 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
-  async login(@Body() dto: LoginDto, @Req() req: Request, @Res() res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
     const result = await this.auth.login(dto, this.meta(req));
     this.setRefreshCookie(res, result.refreshToken);
     return res.json({ accessToken: result.accessToken, user: result.user });
@@ -114,8 +118,15 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('password')
-  changePassword(@Req() req: AuthenticatedRequest, @Body() dto: ChangePasswordDto) {
-    return this.auth.changePassword(req.user.id, dto.currentPassword, dto.newPassword);
+  changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.auth.changePassword(
+      req.user.id,
+      dto.currentPassword,
+      dto.newPassword,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

@@ -82,6 +82,11 @@ export class ContactsController {
     @Body() dto: LinkContactDocumentDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.contacts.linkDocument(req.user.id, id, dto.documentId, dto.context);
+    return this.contacts.linkDocument(
+      req.user.id,
+      id,
+      dto.documentId,
+      dto.context,
+    );
   }
 }

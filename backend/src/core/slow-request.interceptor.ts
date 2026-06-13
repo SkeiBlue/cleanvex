@@ -17,7 +17,8 @@ export class SlowRequestInterceptor implements NestInterceptor {
 
   constructor() {
     const fromEnv = Number(process.env.SLOW_REQUEST_THRESHOLD_MS);
-    this.thresholdMs = Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_THRESHOLD_MS;
+    this.thresholdMs =
+      Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_THRESHOLD_MS;
   }
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {

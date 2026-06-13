@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Cron } from '@nestjs/schedule';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -49,7 +49,11 @@ export class RemindersService {
     for (const user of users) {
       const digest = await this.buildDigest(user.id);
       if (digest.hasItems) {
-        await this.mail.sendReminderDigest(user.email, user.username ?? user.email, digest);
+        await this.mail.sendReminderDigest(
+          user.email,
+          user.username ?? user.email,
+          digest,
+        );
         sent++;
       }
     }
@@ -57,14 +61,20 @@ export class RemindersService {
   }
 
   /** Forcer un envoi immédiat (pour test) */
-  async triggerNow(userId: string): Promise<{ sent: boolean; digest: DigestData }> {
+  async triggerNow(
+    userId: string,
+  ): Promise<{ sent: boolean; digest: DigestData }> {
     const user = await this.prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: { id: true, email: true, username: true },
     });
     const digest = await this.buildDigest(userId);
     if (digest.hasItems && this.mail.isEnabled) {
-      await this.mail.sendReminderDigest(user.email, user.username ?? user.email, digest);
+      await this.mail.sendReminderDigest(
+        user.email,
+        user.username ?? user.email,
+        digest,
+      );
       return { sent: true, digest };
     }
     return { sent: false, digest };
@@ -73,7 +83,7 @@ export class RemindersService {
   private async buildDigest(userId: string): Promise<DigestData> {
     const now = new Date();
     const in30 = new Date(now.getTime() + 30 * 86_400_000);
-    const in7  = new Date(now.getTime() + 7  * 86_400_000);
+    const in7 = new Date(now.getTime() + 7 * 86_400_000);
 
     /* ── Alertes véhicules imminentes ── */
     const vehicleAlerts = await this.prisma.vehicleAlert.findMany({
@@ -116,25 +126,25 @@ export class RemindersService {
     });
 
     return {
-      vehicleAlerts: vehicleAlerts.map(a => ({
+      vehicleAlerts: vehicleAlerts.map((a) => ({
         vehicleName: a.vehicle.name,
-        title:       a.title,
-        type:        a.type,
-        dueDate:     a.dueDate,
-        isUrgent:    a.dueDate ? a.dueDate <= in7 : false,
+        title: a.title,
+        type: a.type,
+        dueDate: a.dueDate,
+        isUrgent: a.dueDate ? a.dueDate <= in7 : false,
       })),
-      expiringDocs: expiringDocs.map(d => ({
-        name:    d.name,
+      expiringDocs: expiringDocs.map((d) => ({
+        name: d.name,
         expiresAt: d.expiresAt!,
         isUrgent: d.expiresAt! <= in7,
       })),
-      overdueTasks: overdueTasks.map(t => ({
-        title:    t.title,
-        dueDate:  t.dueDate!,
+      overdueTasks: overdueTasks.map((t) => ({
+        title: t.title,
+        dueDate: t.dueDate!,
         priority: t.priority,
       })),
-      overdueLoans: overdueLoans.map(l => ({
-        itemName:     l.stockItem.name,
+      overdueLoans: overdueLoans.map((l) => ({
+        itemName: l.stockItem.name,
         borrowerName: l.borrowerName,
         expectedReturnDate: l.expectedReturnDate!,
       })),
@@ -151,9 +161,19 @@ export class RemindersService {
 }
 
 export interface DigestData {
-  vehicleAlerts: { vehicleName: string; title: string; type: string; dueDate: Date | null; isUrgent: boolean }[];
+  vehicleAlerts: {
+    vehicleName: string;
+    title: string;
+    type: string;
+    dueDate: Date | null;
+    isUrgent: boolean;
+  }[];
   expiringDocs: { name: string; expiresAt: Date; isUrgent: boolean }[];
   overdueTasks: { title: string; dueDate: Date; priority: string }[];
-  overdueLoans: { itemName: string; borrowerName: string; expectedReturnDate: Date }[];
+  overdueLoans: {
+    itemName: string;
+    borrowerName: string;
+    expectedReturnDate: Date;
+  }[];
   hasItems: boolean;
 }

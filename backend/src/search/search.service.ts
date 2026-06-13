@@ -10,68 +10,71 @@ export class SearchService {
     if (!q) return { query: q, results: [] };
 
     const contains = { contains: q, mode: 'insensitive' as const };
-    const [documents, contacts, vehicles, properties, tasks, stockItems, transactions] =
-      await Promise.all([
-        this.prisma.document.findMany({
-          where: { ownerId, name: contains },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.contact.findMany({
-          where: {
-            ownerId,
-            OR: [
-              { displayName: contains },
-              { organization: contains },
-              { email: contains },
-              { phone: contains },
-              { city: contains },
-            ],
-          },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.vehicle.findMany({
-          where: {
-            ownerId,
-            OR: [
-              { name: contains },
-              { brand: contains },
-              { model: contains },
-              { registration: contains },
-            ],
-          },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.property.findMany({
-          where: {
-            ownerId,
-            OR: [
-              { name: contains },
-              { address: contains },
-              { city: contains },
-            ],
-          },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.task.findMany({
-          where: { ownerId, title: contains },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.stockItem.findMany({
-          where: { ownerId, name: contains },
-          take: 10,
-          orderBy: { updatedAt: 'desc' },
-        }),
-        this.prisma.financialTransaction.findMany({
-          where: { ownerId, label: contains },
-          take: 10,
-          orderBy: { operationDate: 'desc' },
-        }),
-      ]);
+    const [
+      documents,
+      contacts,
+      vehicles,
+      properties,
+      tasks,
+      stockItems,
+      transactions,
+    ] = await Promise.all([
+      this.prisma.document.findMany({
+        where: { ownerId, name: contains },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.contact.findMany({
+        where: {
+          ownerId,
+          OR: [
+            { displayName: contains },
+            { organization: contains },
+            { email: contains },
+            { phone: contains },
+            { city: contains },
+          ],
+        },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.vehicle.findMany({
+        where: {
+          ownerId,
+          OR: [
+            { name: contains },
+            { brand: contains },
+            { model: contains },
+            { registration: contains },
+          ],
+        },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.property.findMany({
+        where: {
+          ownerId,
+          OR: [{ name: contains }, { address: contains }, { city: contains }],
+        },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.task.findMany({
+        where: { ownerId, title: contains },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.stockItem.findMany({
+        where: { ownerId, name: contains },
+        take: 10,
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.prisma.financialTransaction.findMany({
+        where: { ownerId, label: contains },
+        take: 10,
+        orderBy: { operationDate: 'desc' },
+      }),
+    ]);
 
     return {
       query: q,
@@ -110,13 +113,13 @@ export class SearchService {
           type: 'stock',
           id: item.id,
           title: item.name,
-          subtitle: `${item.quantity} ${item.unit}`,
+          subtitle: `${Number(item.quantity)} ${item.unit}`,
         })),
         ...transactions.map((item) => ({
           type: 'finance',
           id: item.id,
           title: item.label,
-          subtitle: `${item.type} ${item.amount}`,
+          subtitle: `${item.type} ${Number(item.amount)}`,
         })),
       ],
     };

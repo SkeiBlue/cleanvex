@@ -1,4 +1,10 @@
-import { BadRequestException, Body, Controller, HttpCode, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  HttpCode,
+  Post,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { MailService } from '../mail/mail.service';
 import { SendContactDto } from './dto/send-contact.dto';

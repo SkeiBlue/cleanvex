@@ -120,7 +120,12 @@ export class CoreService {
   logAudit(
     userId: string | null,
     action: string,
-    meta: { ip?: string; userAgent?: string; targetType?: string; targetId?: string } = {},
+    meta: {
+      ip?: string;
+      userAgent?: string;
+      targetType?: string;
+      targetId?: string;
+    } = {},
   ) {
     return this.prisma.auditLog.create({
       data: {

@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateInterventionDto } from './dto/create-intervention.dto';
 import { CreateMileageLogDto } from './dto/create-mileage-log.dto';
@@ -36,9 +41,11 @@ export class VehiclesService {
         ownerId,
         ...rest,
         mileage: dto.mileage ?? 0,
-        purchaseDate:    purchaseDate    ? new Date(purchaseDate)    : undefined,
-        insuranceExpiry: insuranceExpiry ? new Date(insuranceExpiry) : undefined,
-        ctExpiry:        ctExpiry        ? new Date(ctExpiry)        : undefined,
+        purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
+        insuranceExpiry: insuranceExpiry
+          ? new Date(insuranceExpiry)
+          : undefined,
+        ctExpiry: ctExpiry ? new Date(ctExpiry) : undefined,
       },
     });
 
@@ -54,7 +61,11 @@ export class VehiclesService {
       });
     }
 
-    await this.autoCreateExpiryAlerts(vehicle.id, vehicle.insuranceExpiry, vehicle.ctExpiry);
+    await this.autoCreateExpiryAlerts(
+      vehicle.id,
+      vehicle.insuranceExpiry,
+      vehicle.ctExpiry,
+    );
 
     return vehicle;
   }
@@ -106,16 +117,28 @@ export class VehiclesService {
     await this.ensureVehicleExists(ownerId, id);
     const { purchaseDate, insuranceExpiry, ctExpiry, ...rest } = dto;
 
-    const insuranceDate = insuranceExpiry !== undefined ? (insuranceExpiry ? new Date(insuranceExpiry) : null) : undefined;
-    const ctDate        = ctExpiry        !== undefined ? (ctExpiry        ? new Date(ctExpiry)        : null) : undefined;
+    const insuranceDate =
+      insuranceExpiry !== undefined
+        ? insuranceExpiry
+          ? new Date(insuranceExpiry)
+          : null
+        : undefined;
+    const ctDate =
+      ctExpiry !== undefined
+        ? ctExpiry
+          ? new Date(ctExpiry)
+          : null
+        : undefined;
 
     const vehicle = await this.prisma.vehicle.update({
       where: { id },
       data: {
         ...rest,
-        ...(purchaseDate    !== undefined && { purchaseDate:    purchaseDate    ? new Date(purchaseDate)    : null }),
-        ...(insuranceDate   !== undefined && { insuranceExpiry: insuranceDate }),
-        ...(ctDate          !== undefined && { ctExpiry:        ctDate }),
+        ...(purchaseDate !== undefined && {
+          purchaseDate: purchaseDate ? new Date(purchaseDate) : null,
+        }),
+        ...(insuranceDate !== undefined && { insuranceExpiry: insuranceDate }),
+        ...(ctDate !== undefined && { ctExpiry: ctDate }),
       },
     });
 
@@ -124,7 +147,11 @@ export class VehiclesService {
     return vehicle;
   }
 
-  async addMileageLog(ownerId: string, vehicleId: string, dto: CreateMileageLogDto) {
+  async addMileageLog(
+    ownerId: string,
+    vehicleId: string,
+    dto: CreateMileageLogDto,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
 
@@ -145,7 +172,11 @@ export class VehiclesService {
     return log;
   }
 
-  async addIntervention(ownerId: string, vehicleId: string, dto: CreateInterventionDto) {
+  async addIntervention(
+    ownerId: string,
+    vehicleId: string,
+    dto: CreateInterventionDto,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
 
@@ -175,19 +206,21 @@ export class VehiclesService {
 
     // Pré-charge les items pour valider ownership + stock suffisant avant
     // d'ouvrir la transaction (réponse 400 propre plutôt que rollback).
-    const itemIds = Array.from(new Set(usages.map(u => u.stockItemId)));
+    const itemIds = Array.from(new Set(usages.map((u) => u.stockItemId)));
     const items = await this.prisma.stockItem.findMany({
       where: { id: { in: itemIds }, ownerId },
     });
-    const itemById = new Map(items.map(i => [i.id, i]));
+    const itemById = new Map(items.map((i) => [i.id, i]));
     for (const usage of usages) {
       const item = itemById.get(usage.stockItemId);
       if (!item) {
-        throw new NotFoundException(`Pièce stock introuvable : ${usage.stockItemId}`);
+        throw new NotFoundException(
+          `Pièce stock introuvable : ${usage.stockItemId}`,
+        );
       }
       if (Number(item.quantity) < usage.quantity) {
         throw new BadRequestException(
-          `Stock insuffisant pour "${item.name}" : ${item.quantity} ${item.unit} disponibles, ${usage.quantity} demandés.`,
+          `Stock insuffisant pour "${item.name}" : ${Number(item.quantity)} ${item.unit} disponibles, ${usage.quantity} demandés.`,
         );
       }
     }
@@ -220,7 +253,9 @@ export class VehiclesService {
             stockItemId: item.id,
             type: 'consume',
             quantity: usage.quantity,
-            valueAmount: item.valueAmount ? Number(item.valueAmount) * usage.quantity : undefined,
+            valueAmount: item.valueAmount
+              ? Number(item.valueAmount) * usage.quantity
+              : undefined,
             targetType: 'vehicle',
             targetId: vehicleId,
             interventionId: intervention.id,
@@ -233,7 +268,11 @@ export class VehiclesService {
     });
   }
 
-  async addAlert(ownerId: string, vehicleId: string, dto: CreateVehicleAlertDto) {
+  async addAlert(
+    ownerId: string,
+    vehicleId: string,
+    dto: CreateVehicleAlertDto,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
 
@@ -275,7 +314,12 @@ export class VehiclesService {
     });
   }
 
-  async updateAlert(ownerId: string, vehicleId: string, alertId: string, status: string) {
+  async updateAlert(
+    ownerId: string,
+    vehicleId: string,
+    alertId: string,
+    status: string,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.ensureAlertBelongs(vehicleId, alertId);
@@ -323,7 +367,12 @@ export class VehiclesService {
     });
   }
 
-  async updatePart(ownerId: string, vehicleId: string, partId: string, dto: UpdateVehiclePartDto) {
+  async updatePart(
+    ownerId: string,
+    vehicleId: string,
+    partId: string,
+    dto: UpdateVehiclePartDto,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.ensurePartBelongs(vehicleId, partId);
@@ -338,7 +387,9 @@ export class VehiclesService {
         ...(dto.priority !== undefined && { priority: dto.priority }),
         ...(dto.reference !== undefined && { reference: dto.reference }),
         ...(dto.dimension !== undefined && { dimension: dto.dimension }),
-        ...(dto.estimatedPrice !== undefined && { estimatedPrice: dto.estimatedPrice }),
+        ...(dto.estimatedPrice !== undefined && {
+          estimatedPrice: dto.estimatedPrice,
+        }),
         ...(dto.realPrice !== undefined && { realPrice: dto.realPrice }),
         ...(dto.link !== undefined && { link: dto.link }),
         ...(dto.comment !== undefined && { comment: dto.comment }),
@@ -363,7 +414,12 @@ export class VehiclesService {
     ownerId: string,
     vehicleId: string,
     interventionId: string,
-    dto: { status: string; mileage?: number; executor?: string; professionalName?: string },
+    dto: {
+      status: string;
+      mileage?: number;
+      executor?: string;
+      professionalName?: string;
+    },
   ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
@@ -377,16 +433,24 @@ export class VehiclesService {
         // sans toucher aux autres champs.
         ...(dto.mileage !== undefined && { mileage: dto.mileage }),
         ...(dto.executor !== undefined && { executor: dto.executor }),
-        ...(dto.professionalName !== undefined && { professionalName: dto.professionalName }),
+        ...(dto.professionalName !== undefined && {
+          professionalName: dto.professionalName,
+        }),
       },
     });
   }
 
-  async deleteIntervention(ownerId: string, vehicleId: string, interventionId: string) {
+  async deleteIntervention(
+    ownerId: string,
+    vehicleId: string,
+    interventionId: string,
+  ) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.ensureInterventionBelongs(vehicleId, interventionId);
-    await this.prisma.vehicleIntervention.delete({ where: { id: interventionId } });
+    await this.prisma.vehicleIntervention.delete({
+      where: { id: interventionId },
+    });
   }
 
   /**
@@ -398,8 +462,12 @@ export class VehiclesService {
     ctExpiry: Date | null | undefined,
   ) {
     const pairs = [
-      { type: 'insurance_expiry', title: 'Renouvellement assurance', date: insuranceExpiry },
-      { type: 'ct_expiry',        title: 'Contrôle technique',        date: ctExpiry },
+      {
+        type: 'insurance_expiry',
+        title: 'Renouvellement assurance',
+        date: insuranceExpiry,
+      },
+      { type: 'ct_expiry', title: 'Contrôle technique', date: ctExpiry },
     ] as const;
 
     for (const { type, title, date } of pairs) {
@@ -442,7 +510,10 @@ export class VehiclesService {
     if (!part) throw new NotFoundException('Part not found');
   }
 
-  private async ensureInterventionBelongs(vehicleId: string, interventionId: string) {
+  private async ensureInterventionBelongs(
+    vehicleId: string,
+    interventionId: string,
+  ) {
     const intervention = await this.prisma.vehicleIntervention.findFirst({
       where: { id: interventionId, vehicleId },
       select: { id: true },

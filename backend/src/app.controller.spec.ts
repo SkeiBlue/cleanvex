@@ -10,10 +10,7 @@ describe('AppController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [
-        AppService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
+      providers: [AppService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
 
     appController = app.get<AppController>(AppController);
@@ -22,13 +19,18 @@ describe('AppController', () => {
   describe('GET /health', () => {
     it('retourne status ok et le nom du service', () => {
       const result = appController.getHealth();
-      expect(result).toEqual({ status: 'ok', service: 'personal-platform-api' });
+      expect(result).toEqual({
+        status: 'ok',
+        service: 'personal-platform-api',
+      });
     });
   });
 
   describe('GET /health/full', () => {
-    it("retourne status ok quand la DB répond", async () => {
-      (prismaMock.$queryRaw as jest.Mock).mockResolvedValue([{ '?column?': 1 }]);
+    it('retourne status ok quand la DB répond', async () => {
+      (prismaMock.$queryRaw as jest.Mock).mockResolvedValue([
+        { '?column?': 1 },
+      ]);
       const result = await appController.getFullHealth();
       expect(result.status).toBe('ok');
       expect(result.service).toBe('personal-platform-api');

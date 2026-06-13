@@ -28,7 +28,10 @@ export class ModulesService {
         this.prisma.module.upsert({
           where: { key: module.key },
           update: {},
-          create: { ...module, isEnabled: ['dashboard', 'documents'].includes(module.key) },
+          create: {
+            ...module,
+            isEnabled: ['dashboard', 'documents'].includes(module.key),
+          },
         }),
       ),
     );

@@ -1,4 +1,11 @@
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 // Valeurs autorisées pour StockItem.status. Réexporté par les autres DTOs
 // (update) pour rester une source unique de vérité.
@@ -15,30 +22,42 @@ export class CreateStockItemDto {
   @IsString()
   unit!: string;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   quantity?: number;
 
-  @IsOptional() @IsIn(STOCK_ITEM_STATUSES)
+  @IsOptional()
+  @IsIn(STOCK_ITEM_STATUSES)
   status?: StockItemStatus;
 
-  @IsOptional() @IsBoolean()
+  @IsOptional()
+  @IsBoolean()
   thresholdEnabled?: boolean;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   threshold?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   location?: string;
 
-  @IsOptional() @IsNumber() @Min(0)
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   valueAmount?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   reference?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   supplier?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

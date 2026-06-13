@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     restore()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])  
 
   useEffect(() => {
     if (!accessToken) return

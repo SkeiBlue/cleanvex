@@ -62,7 +62,13 @@ export class AuthService {
       verification.raw,
     );
     await this.core.logAudit(user.id, 'auth.register', meta);
-    await this.core.logActivity(user.id, 'auth.register', 'core', 'user', user.id);
+    await this.core.logActivity(
+      user.id,
+      'auth.register',
+      'core',
+      'user',
+      user.id,
+    );
 
     return {
       user: this.publicUser(user),
@@ -71,7 +77,10 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(dto: VerifyEmailDto, meta: { ip?: string; userAgent?: string }) {
+  async verifyEmail(
+    dto: VerifyEmailDto,
+    meta: { ip?: string; userAgent?: string },
+  ) {
     const candidates = await this.prisma.emailVerificationToken.findMany({
       where: {
         consumedAt: null,
@@ -100,7 +109,13 @@ export class AuthService {
       data: { consumedAt: new Date() },
     });
     await this.core.logAudit(user.id, 'auth.email_verified', meta);
-    await this.core.logActivity(user.id, 'auth.email_verified', 'core', 'user', user.id);
+    await this.core.logActivity(
+      user.id,
+      'auth.email_verified',
+      'core',
+      'user',
+      user.id,
+    );
 
     return { user: this.publicUser(user) };
   }
@@ -180,7 +195,10 @@ export class AuthService {
     };
   }
 
-  async refresh(rawToken: string | undefined, meta: { ip?: string; userAgent?: string }) {
+  async refresh(
+    rawToken: string | undefined,
+    meta: { ip?: string; userAgent?: string },
+  ) {
     if (!rawToken) {
       throw new UnauthorizedException('Missing refresh token');
     }
@@ -222,7 +240,13 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
       await this.core.logAudit(current.userId, 'auth.logout');
-      await this.core.logActivity(current.userId, 'auth.logout', 'core', 'user', current.userId);
+      await this.core.logActivity(
+        current.userId,
+        'auth.logout',
+        'core',
+        'user',
+        current.userId,
+      );
     }
   }
 
@@ -232,16 +256,30 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     await this.core.logAudit(userId, 'auth.logout_all');
-    await this.core.logActivity(userId, 'auth.logout_all', 'core', 'user', userId);
+    await this.core.logActivity(
+      userId,
+      'auth.logout_all',
+      'core',
+      'user',
+      userId,
+    );
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('Utilisateur introuvable');
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!valid) throw new UnauthorizedException('Mot de passe actuel incorrect');
+    if (!valid)
+      throw new UnauthorizedException('Mot de passe actuel incorrect');
     const hash = await bcrypt.hash(newPassword, 12);
-    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hash },
+    });
     // Révoque les sessions actives : un changement de mot de passe doit
     // invalider les anciens refresh tokens (cohérent avec resetPassword).
     await this.prisma.refreshToken.updateMany({
@@ -249,13 +287,21 @@ export class AuthService {
       data: { revokedAt: new Date() },
     });
     await this.core.logAudit(userId, 'auth.password_changed');
-    await this.core.logActivity(userId, 'auth.password_changed', 'core', 'user', userId);
+    await this.core.logActivity(
+      userId,
+      'auth.password_changed',
+      'core',
+      'user',
+      userId,
+    );
     return { success: true };
   }
 
   async forgotPassword(email: string) {
     // Réponse identique que l'email existe ou non (anti-énumération)
-    const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+    });
     if (!user || !user.isActive || !user.emailVerified) return { sent: true };
 
     // Invalider les anciens tokens
@@ -284,11 +330,16 @@ export class AuthService {
       where: { consumedAt: null, expiresAt: { gt: new Date() } },
     });
 
-    const current = candidates.find(t => bcrypt.compareSync(token, t.tokenHash));
+    const current = candidates.find((t) =>
+      bcrypt.compareSync(token, t.tokenHash),
+    );
     if (!current) throw new BadRequestException('Token invalide ou expiré.');
 
     const hash = await bcrypt.hash(newPassword, 12);
-    await this.prisma.user.update({ where: { id: current.userId }, data: { passwordHash: hash } });
+    await this.prisma.user.update({
+      where: { id: current.userId },
+      data: { passwordHash: hash },
+    });
     await this.prisma.passwordResetToken.update({
       where: { id: current.id },
       data: { consumedAt: new Date() },
@@ -311,7 +362,9 @@ export class AuthService {
       where: { id: sessionId },
       data: { revokedAt: new Date() },
     });
-    await this.core.logAudit(userId, 'auth.session_revoked', { targetId: sessionId });
+    await this.core.logAudit(userId, 'auth.session_revoked', {
+      targetId: sessionId,
+    });
   }
 
   async me(userId: string) {
@@ -321,7 +374,11 @@ export class AuthService {
     return this.publicUser(user);
   }
 
-  private async signAccessToken(user: { id: string; email: string; role: string }) {
+  private async signAccessToken(user: {
+    id: string;
+    email: string;
+    role: string;
+  }) {
     const options: JwtSignOptions = {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
       expiresIn: this.config.get<string>(
@@ -441,34 +498,59 @@ export class AuthService {
     });
 
     const uri = totp.toString();
-    const qrDataUrl = await QRCode.toDataURL(uri, { width: 256, margin: 2, color: { dark: '#a78bfa', light: '#0c1029' } });
+    const qrDataUrl = await QRCode.toDataURL(uri, {
+      width: 256,
+      margin: 2,
+      color: { dark: '#a78bfa', light: '#0c1029' },
+    });
     return { secret: secret.base32, qrDataUrl, uri };
   }
 
   async enable2fa(userId: string, code: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpSecret) throw new BadRequestException('Setup 2FA first.');
-    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const totp = new OTPAuth.TOTP({
+      secret: OTPAuth.Secret.fromBase32(user.totpSecret),
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+    });
     const delta = totp.validate({ token: code, window: 1 });
     if (delta === null) throw new BadRequestException('Code invalide.');
-    await this.prisma.user.update({ where: { id: userId }, data: { totpEnabled: true } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: true },
+    });
     return { enabled: true };
   }
 
   async disable2fa(userId: string, code: string) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpSecret) throw new BadRequestException('2FA non configuré.');
-    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const totp = new OTPAuth.TOTP({
+      secret: OTPAuth.Secret.fromBase32(user.totpSecret),
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+    });
     const delta = totp.validate({ token: code, window: 1 });
     if (delta === null) throw new BadRequestException('Code invalide.');
-    await this.prisma.user.update({ where: { id: userId }, data: { totpEnabled: false, totpSecret: null } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { totpEnabled: false, totpSecret: null },
+    });
     return { enabled: false };
   }
 
   async verify2fa(userId: string, code: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpSecret || !user.totpEnabled) return true; // 2FA not active
-    const totp = new OTPAuth.TOTP({ secret: OTPAuth.Secret.fromBase32(user.totpSecret), algorithm: 'SHA1', digits: 6, period: 30 });
+    const totp = new OTPAuth.TOTP({
+      secret: OTPAuth.Secret.fromBase32(user.totpSecret),
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+    });
     return totp.validate({ token: code, window: 1 }) !== null;
   }
 

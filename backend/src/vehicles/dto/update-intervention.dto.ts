@@ -1,6 +1,12 @@
 import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { INTERVENTION_EXECUTORS, INTERVENTION_STATUSES } from './create-intervention.dto';
-import type { InterventionExecutor, InterventionStatus } from './create-intervention.dto';
+import {
+  INTERVENTION_EXECUTORS,
+  INTERVENTION_STATUSES,
+} from './create-intervention.dto';
+import type {
+  InterventionExecutor,
+  InterventionStatus,
+} from './create-intervention.dto';
 
 export class UpdateInterventionDto {
   @IsIn(INTERVENTION_STATUSES)

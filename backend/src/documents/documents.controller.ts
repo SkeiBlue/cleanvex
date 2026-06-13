@@ -26,23 +26,37 @@ const MAX_SIZE = 20 * 1024 * 1024; // 20 Mo
 
 const ALLOWED_MIMES = new Set([
   // Images
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
   // Documents
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain', 'text/csv',
+  'text/plain',
+  'text/csv',
   // Archives
-  'application/zip', 'application/x-zip-compressed',
+  'application/zip',
+  'application/x-zip-compressed',
 ]);
 
-function mimeFilter(_req: Request, file: Express.Multer.File, cb: FileFilterCallback) {
+function mimeFilter(
+  _req: Request,
+  file: Express.Multer.File,
+  cb: FileFilterCallback,
+) {
   if (ALLOWED_MIMES.has(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new BadRequestException(`Type de fichier non autorisé : ${file.mimetype}`));
+    cb(
+      new BadRequestException(
+        `Type de fichier non autorisé : ${file.mimetype}`,
+      ),
+    );
   }
 }
 
@@ -53,6 +67,7 @@ function mimeFilter(_req: Request, file: Express.Multer.File, cb: FileFilterCall
  * (guillemets, antislash, contrôle) ainsi qu'une variante UTF-8 (RFC 6266).
  */
 function contentDispositionHeader(filename: string): string {
+  // eslint-disable-next-line no-control-regex -- on neutralise volontairement les caractères de contrôle
   const ascii = filename.replace(/[\x00-\x1f"\\]/g, '_');
   const utf8 = encodeURIComponent(filename);
   return `attachment; filename="${ascii}"; filename*=UTF-8''${utf8}`;
@@ -73,7 +88,12 @@ export class DocumentsController {
   }
 
   @Post()
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_SIZE }, fileFilter: mimeFilter }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_SIZE },
+      fileFilter: mimeFilter,
+    }),
+  )
   upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadDocumentDto,

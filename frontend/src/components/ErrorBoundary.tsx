@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
     })
     // En dev, on garde la trace dans la console pour faciliter le debug.
     if (import.meta.env.DEV) {
-      // eslint-disable-next-line no-console
+       
       console.error('[ErrorBoundary]', error, info.componentStack)
     }
   }

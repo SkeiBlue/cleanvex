@@ -1,4 +1,11 @@
-import { IsBoolean, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { STOCK_ITEM_STATUSES } from './create-stock-item.dto';
 import type { StockItemStatus } from './create-stock-item.dto';
 

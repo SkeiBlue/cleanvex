@@ -27,9 +27,16 @@ export class FinancesService {
       this.prisma.financialTransaction.count({ where: { ownerId } }),
     ]);
 
-    const income  = Number(aggregate.find(r => r.type === 'income')?._sum.amount  ?? 0);
-    const expense = Number(aggregate.find(r => r.type === 'expense')?._sum.amount ?? 0);
-    const initialBalance = accounts.reduce((sum, a) => sum + Number(a.initialBalance), 0);
+    const income = Number(
+      aggregate.find((r) => r.type === 'income')?._sum.amount ?? 0,
+    );
+    const expense = Number(
+      aggregate.find((r) => r.type === 'expense')?._sum.amount ?? 0,
+    );
+    const initialBalance = accounts.reduce(
+      (sum, a) => sum + Number(a.initialBalance),
+      0,
+    );
 
     return {
       accountCount: accounts.length,
@@ -81,7 +88,10 @@ export class FinancesService {
     });
   }
 
-  async transactions(ownerId: string, { page = 1, limit = 20 }: PaginationDto = {}) {
+  async transactions(
+    ownerId: string,
+    { page = 1, limit = 20 }: PaginationDto = {},
+  ) {
     await this.ensureFinancesEnabled();
     const where = { ownerId };
     const [data, total] = await Promise.all([
@@ -112,7 +122,8 @@ export class FinancesService {
         where: { id: dto.categoryId, ownerId },
         select: { id: true },
       });
-      if (!category) throw new NotFoundException('Financial category not found');
+      if (!category)
+        throw new NotFoundException('Financial category not found');
     }
 
     if (dto.sourceModule === 'vehicles' && dto.sourceType && dto.sourceId) {
@@ -155,7 +166,11 @@ export class FinancesService {
     });
   }
 
-  async updateTransaction(ownerId: string, id: string, dto: UpdateFinancialTransactionDto) {
+  async updateTransaction(
+    ownerId: string,
+    id: string,
+    dto: UpdateFinancialTransactionDto,
+  ) {
     await this.ensureFinancesEnabled();
     const tx = await this.prisma.financialTransaction.findFirst({
       where: { id, ownerId },
@@ -176,17 +191,22 @@ export class FinancesService {
         where: { id: dto.categoryId, ownerId },
         select: { id: true },
       });
-      if (!category) throw new NotFoundException('Financial category not found');
+      if (!category)
+        throw new NotFoundException('Financial category not found');
     }
 
     return this.prisma.financialTransaction.update({
       where: { id },
       data: {
         ...(dto.accountId !== undefined && { accountId: dto.accountId }),
-        ...(dto.categoryId !== undefined && { categoryId: dto.categoryId || null }),
+        ...(dto.categoryId !== undefined && {
+          categoryId: dto.categoryId || null,
+        }),
         ...(dto.label !== undefined && { label: dto.label }),
         ...(dto.note !== undefined && { note: dto.note }),
-        ...(dto.operationDate !== undefined && { operationDate: new Date(dto.operationDate) }),
+        ...(dto.operationDate !== undefined && {
+          operationDate: new Date(dto.operationDate),
+        }),
       },
       include: { account: true, category: true },
     });
@@ -194,7 +214,9 @@ export class FinancesService {
 
   async deleteAccount(ownerId: string, id: string) {
     await this.ensureFinancesEnabled();
-    const account = await this.prisma.financialAccount.findFirst({ where: { id, ownerId } });
+    const account = await this.prisma.financialAccount.findFirst({
+      where: { id, ownerId },
+    });
     if (!account) throw new NotFoundException('Account not found');
     await this.prisma.financialAccount.delete({ where: { id } });
     return { deleted: true };
@@ -202,7 +224,9 @@ export class FinancesService {
 
   async deleteCategory(ownerId: string, id: string) {
     await this.ensureFinancesEnabled();
-    const cat = await this.prisma.financialCategory.findFirst({ where: { id, ownerId } });
+    const cat = await this.prisma.financialCategory.findFirst({
+      where: { id, ownerId },
+    });
     if (!cat) throw new NotFoundException('Category not found');
     await this.prisma.financialCategory.delete({ where: { id } });
     return { deleted: true };
@@ -210,7 +234,9 @@ export class FinancesService {
 
   async deleteTransaction(ownerId: string, id: string) {
     await this.ensureFinancesEnabled();
-    const tx = await this.prisma.financialTransaction.findFirst({ where: { id, ownerId } });
+    const tx = await this.prisma.financialTransaction.findFirst({
+      where: { id, ownerId },
+    });
     if (!tx) throw new NotFoundException('Transaction not found');
     await this.prisma.financialTransaction.delete({ where: { id } });
     return { deleted: true };

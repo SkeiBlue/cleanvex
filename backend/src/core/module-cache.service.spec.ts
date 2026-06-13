@@ -5,9 +5,11 @@ import { ModuleCacheService } from './module-cache.service';
 function makePrisma(isEnabled: boolean | null) {
   return {
     module: {
-      findUnique: jest.fn().mockResolvedValue(
-        isEnabled === null ? null : { key: 'test', isEnabled },
-      ),
+      findUnique: jest
+        .fn()
+        .mockResolvedValue(
+          isEnabled === null ? null : { key: 'test', isEnabled },
+        ),
     },
   };
 }

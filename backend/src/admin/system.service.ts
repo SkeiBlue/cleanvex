@@ -26,25 +26,36 @@ export class SystemService {
   async getInstalledSha(): Promise<string | null> {
     if (this.installedSha) return this.installedSha;
     try {
-      const { stdout } = await exec('git', ['rev-parse', 'HEAD'], { cwd: PROJECT_ROOT });
+      const { stdout } = await exec('git', ['rev-parse', 'HEAD'], {
+        cwd: PROJECT_ROOT,
+      });
       this.installedSha = stdout.trim();
       return this.installedSha;
     } catch (err) {
-      this.logger.warn(`Impossible de lire le SHA git: ${(err as Error).message}`);
+      this.logger.warn(
+        `Impossible de lire le SHA git: ${(err as Error).message}`,
+      );
       return null;
     }
   }
 
   async getRemoteInfo(force = false): Promise<RemoteCache | null> {
-    if (!force && this.remoteCache && Date.now() - this.remoteCache.fetchedAt < CACHE_TTL_MS) {
+    if (
+      !force &&
+      this.remoteCache &&
+      Date.now() - this.remoteCache.fetchedAt < CACHE_TTL_MS
+    ) {
       return this.remoteCache;
     }
     const installed = await this.getInstalledSha();
     if (!installed) return null;
     try {
       const compareUrl = `https://api.github.com/repos/${GITHUB_REPO}/compare/${installed}...${GITHUB_BRANCH}`;
-      const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
-      if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+      const headers: Record<string, string> = {
+        Accept: 'application/vnd.github+json',
+      };
+      if (process.env.GITHUB_TOKEN)
+        headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
       const res = await fetch(compareUrl, { headers });
       if (!res.ok) {
         this.logger.warn(`GitHub compare ${res.status} ${res.statusText}`);
@@ -52,9 +63,15 @@ export class SystemService {
       }
       const data = (await res.json()) as {
         ahead_by: number;
-        commits: { sha: string; commit: { message: string; author: { date: string } } }[];
+        commits: {
+          sha: string;
+          commit: { message: string; author: { date: string } };
+        }[];
       };
-      const headSha = data.commits.length > 0 ? data.commits[data.commits.length - 1].sha : installed;
+      const headSha =
+        data.commits.length > 0
+          ? data.commits[data.commits.length - 1].sha
+          : installed;
       this.remoteCache = {
         sha: headSha,
         fetchedAt: Date.now(),
@@ -76,7 +93,13 @@ export class SystemService {
     const installed = await this.getInstalledSha();
     const remote = await this.getRemoteInfo();
     if (!installed) {
-      return { installed: null, remote: null, upToDate: true, behindBy: 0, commits: [] };
+      return {
+        installed: null,
+        remote: null,
+        upToDate: true,
+        behindBy: 0,
+        commits: [],
+      };
     }
     if (!remote) {
       return {

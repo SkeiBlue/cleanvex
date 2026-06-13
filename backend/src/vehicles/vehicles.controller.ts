@@ -38,15 +38,38 @@ export class VehiclesController {
   @Get('export.csv')
   async exportCsv(@Req() req: AuthenticatedRequest, @Res() res: Response) {
     const vehicles = await this.vehicles.list(req.user.id);
-    const rows = vehicles.flatMap((v: Record<string, unknown> & { interventions?: unknown[] }) => {
-      const base = { id: v['id'], name: v['name'], type: v['type'], status: v['status'], brand: v['brand'] ?? '', model: v['model'] ?? '', year: v['year'] ?? '', mileage: v['mileage'], registration: v['registration'] ?? '' };
-      if (!Array.isArray(v['interventions']) || v['interventions'].length === 0) return [base];
-      return (v['interventions'] as Record<string, unknown>[]).map(i => ({
-        ...base, interv_title: i['title'], interv_date: i['date'], interv_status: i['status'], interv_cost: i['costAmount'] ?? '',
-      }));
-    });
+    const rows = vehicles.flatMap(
+      (v: Record<string, unknown> & { interventions?: unknown[] }) => {
+        const base = {
+          id: v['id'],
+          name: v['name'],
+          type: v['type'],
+          status: v['status'],
+          brand: v['brand'] ?? '',
+          model: v['model'] ?? '',
+          year: v['year'] ?? '',
+          mileage: v['mileage'],
+          registration: v['registration'] ?? '',
+        };
+        if (
+          !Array.isArray(v['interventions']) ||
+          v['interventions'].length === 0
+        )
+          return [base];
+        return (v['interventions'] as Record<string, unknown>[]).map((i) => ({
+          ...base,
+          interv_title: i['title'],
+          interv_date: i['date'],
+          interv_status: i['status'],
+          interv_cost: i['costAmount'] ?? '',
+        }));
+      },
+    );
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="vehicules_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="vehicules_${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
     res.send('﻿' + toCsv(rows));
   }
 
@@ -107,7 +130,12 @@ export class VehiclesController {
     @Body() dto: LinkVehicleDocumentDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.vehicles.linkDocument(req.user.id, id, dto.documentId, dto.context);
+    return this.vehicles.linkDocument(
+      req.user.id,
+      id,
+      dto.documentId,
+      dto.context,
+    );
   }
 
   @Patch(':id/alerts/:alertId')
@@ -136,7 +164,11 @@ export class VehiclesController {
   }
 
   @Post(':id/parts')
-  addPart(@Param('id') id: string, @Body() dto: CreateVehiclePartDto, @Req() req: AuthenticatedRequest) {
+  addPart(
+    @Param('id') id: string,
+    @Body() dto: CreateVehiclePartDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
     return this.vehicles.addPart(req.user.id, id, dto);
   }
 
@@ -173,7 +205,12 @@ export class VehiclesController {
     @Body() dto: UpdateInterventionDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.vehicles.updateIntervention(req.user.id, id, interventionId, dto);
+    return this.vehicles.updateIntervention(
+      req.user.id,
+      id,
+      interventionId,
+      dto,
+    );
   }
 
   @Delete(':id/interventions/:interventionId')

@@ -21,7 +21,6 @@ export function createPrismaClientOptions() {
 
   // Ne pas crasher le process Node sur erreur de pool (le pool retentera)
   pool.on('error', (err) => {
-    // eslint-disable-next-line no-console
     console.error('[pg-pool] connection error (handled):', err.message);
   });
 

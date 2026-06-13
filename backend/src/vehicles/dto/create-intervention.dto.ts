@@ -1,4 +1,14 @@
-import { IsArray, IsDateString, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsDateString,
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 /**
@@ -20,8 +30,12 @@ export class InterventionStockUsageDto {
 // isDone côté front), 'a-faire' / 'planned' aussi, 'en-cours' est utilisé
 // uniquement côté UI nouveau.
 export const INTERVENTION_STATUSES = [
-  'planned', 'done', 'fait', 'bloque',
-  'a-faire', 'en-cours',
+  'planned',
+  'done',
+  'fait',
+  'bloque',
+  'a-faire',
+  'en-cours',
 ] as const;
 
 // V1 — Carnet d'entretien : qui a réalisé le travail.

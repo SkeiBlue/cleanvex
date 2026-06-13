@@ -23,7 +23,10 @@ export class SystemPublicController {
     const current = this.updates.current();
 
     // Cas principal : un job tracké en mémoire/disque est encore en cours.
-    if (current && (current.status === 'pending' || current.status === 'running')) {
+    if (
+      current &&
+      (current.status === 'pending' || current.status === 'running')
+    ) {
       return { active: true, since: current.startedAt };
     }
 

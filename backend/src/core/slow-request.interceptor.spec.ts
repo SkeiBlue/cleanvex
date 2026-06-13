@@ -19,7 +19,9 @@ describe('SlowRequestInterceptor', () => {
   beforeEach(() => {
     process.env.SLOW_REQUEST_THRESHOLD_MS = '50';
     interceptor = new SlowRequestInterceptor();
-    warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
+    warnSpy = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -27,15 +29,17 @@ describe('SlowRequestInterceptor', () => {
     delete process.env.SLOW_REQUEST_THRESHOLD_MS;
   });
 
-  it("ne log rien quand la requête est sous le seuil", async () => {
+  it('ne log rien quand la requête est sous le seuil', async () => {
     const handler: CallHandler = { handle: () => of('ok') };
     await lastValueFrom(interceptor.intercept(makeContext(), handler));
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it("log un warn quand la requête dépasse le seuil", async () => {
+  it('log un warn quand la requête dépasse le seuil', async () => {
     const handler: CallHandler = { handle: () => of('ok').pipe(delay(80)) };
-    await lastValueFrom(interceptor.intercept(makeContext('POST', '/api/heavy'), handler));
+    await lastValueFrom(
+      interceptor.intercept(makeContext('POST', '/api/heavy'), handler),
+    );
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0][0]).toMatch(/POST \/api\/heavy \d+ms/);
   });

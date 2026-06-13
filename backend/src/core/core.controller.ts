@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,7 +30,10 @@ export class CoreController {
   }
 
   @Patch('profile')
-  updateProfile(@Req() req: AuthenticatedRequest, @Body() dto: UpdateProfileDto) {
+  updateProfile(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: UpdateProfileDto,
+  ) {
     return this.core.updateProfile(req.user.id, dto);
   }
 

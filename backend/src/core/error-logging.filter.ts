@@ -49,7 +49,7 @@ export class ErrorLoggingFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
       if (typeof response === 'object' && response && 'message' in response) {
-        const message = (response as { message: unknown }).message;
+        const message = response.message;
         return Array.isArray(message) ? message.join(', ') : String(message);
       }
       return exception.message;

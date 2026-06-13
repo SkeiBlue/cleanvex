@@ -1,6 +1,18 @@
-import { ConflictException, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -48,7 +60,10 @@ export class UpdateJobService implements OnModuleInit {
   start(userEmail: string): UpdateJob {
     if (this.currentJobId) {
       const current = this.jobs.get(this.currentJobId);
-      if (current && (current.status === 'pending' || current.status === 'running')) {
+      if (
+        current &&
+        (current.status === 'pending' || current.status === 'running')
+      ) {
         throw new ConflictException('Une mise à jour est déjà en cours.');
       }
     }
@@ -62,9 +77,15 @@ export class UpdateJobService implements OnModuleInit {
     if (existsSync(LOCK_FILE)) {
       if (this.isLockStale()) {
         this.logger.warn(`Lock orphelin détecté (PID mort) — suppression`);
-        try { unlinkSync(LOCK_FILE); } catch { /* ignore */ }
+        try {
+          unlinkSync(LOCK_FILE);
+        } catch {
+          /* ignore */
+        }
       } else {
-        throw new ConflictException('Lock file présent : une mise à jour est déjà en cours.');
+        throw new ConflictException(
+          'Lock file présent : une mise à jour est déjà en cours.',
+        );
       }
     }
 
@@ -119,7 +140,9 @@ export class UpdateJobService implements OnModuleInit {
       job.exitCode = code;
       job.status = code === 0 ? 'success' : 'error';
       job.finishedAt = new Date().toISOString();
-      this.logger.log(`Update job ${job.id} terminé: ${job.status} (exit ${code})`);
+      this.logger.log(
+        `Update job ${job.id} terminé: ${job.status} (exit ${code})`,
+      );
       if (this.currentJobId === job.id) this.currentJobId = null;
       this.persistNow(job);
     });
@@ -217,17 +240,23 @@ export class UpdateJobService implements OnModuleInit {
         job.exitCode = job.exitCode ?? 0;
         job.finishedAt = job.finishedAt ?? new Date().toISOString();
         job.logs.push(
-          '[backend redémarré] Le script update.sh s\'est terminé pendant que le backend était down (OOM ou restart). ' +
-          'Résultat inféré : success (lock libéré).',
+          "[backend redémarré] Le script update.sh s'est terminé pendant que le backend était down (OOM ou restart). " +
+            'Résultat inféré : success (lock libéré).',
         );
         this.persistNow(job);
-        this.logger.log(`Update job ${job.id} restauré → success (script terminé pendant downtime)`);
+        this.logger.log(
+          `Update job ${job.id} restauré → success (script terminé pendant downtime)`,
+        );
       } else if (wasInFlight) {
         // Lock encore présent → le script tourne probablement encore. On le
         // remet en 'running' pour qu'un éventuel poll de l'overlay continue.
-        this.logger.log(`Update job ${job.id} restauré → ${job.status} (lock présent, script en cours)`);
+        this.logger.log(
+          `Update job ${job.id} restauré → ${job.status} (lock présent, script en cours)`,
+        );
       } else {
-        this.logger.log(`Update job ${job.id} restauré → ${job.status} (terminal)`);
+        this.logger.log(
+          `Update job ${job.id} restauré → ${job.status} (terminal)`,
+        );
       }
 
       this.jobs.set(job.id, job);

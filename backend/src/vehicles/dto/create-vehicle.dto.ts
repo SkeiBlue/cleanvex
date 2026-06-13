@@ -1,4 +1,11 @@
-import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CreateVehicleDto {
   @IsString()
@@ -10,45 +17,63 @@ export class CreateVehicleDto {
   @IsString()
   status!: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   brand?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   model?: string;
 
-  @IsOptional() @IsInt() @Min(1886) @Max(2100)
+  @IsOptional()
+  @IsInt()
+  @Min(1886)
+  @Max(2100)
   year?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   registration?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   vin?: string;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   mileage?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   fuelType?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   color?: string;
 
-  @IsOptional() @IsInt() @Min(0)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
   power?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   purchaseDate?: string;
 
-  @IsOptional() @IsNumber()
+  @IsOptional()
+  @IsNumber()
   purchasePrice?: number;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   insuranceExpiry?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   ctExpiry?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   notes?: string;
 }

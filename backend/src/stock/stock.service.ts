@@ -30,7 +30,10 @@ export class StockService {
     });
   }
 
-  async movements(ownerId: string, { page = 1, limit = 20 }: PaginationDto = {}) {
+  async movements(
+    ownerId: string,
+    { page = 1, limit = 20 }: PaginationDto = {},
+  ) {
     await this.ensureStockEnabled();
     const where = { ownerId };
     const [data, total] = await Promise.all([
@@ -187,7 +190,9 @@ export class StockService {
         ...(dto.unit !== undefined && { unit: dto.unit }),
         ...(dto.location !== undefined && { location: dto.location }),
         ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.thresholdEnabled !== undefined && { thresholdEnabled: dto.thresholdEnabled }),
+        ...(dto.thresholdEnabled !== undefined && {
+          thresholdEnabled: dto.thresholdEnabled,
+        }),
         ...(dto.threshold !== undefined && { threshold: dto.threshold }),
         ...(dto.valueAmount !== undefined && { valueAmount: dto.valueAmount }),
         ...(dto.reference !== undefined && { reference: dto.reference }),
@@ -223,7 +228,9 @@ export class StockService {
         stockItemId: item.id,
         borrowerName: dto.borrowerName,
         loanDate: dto.loanDate ? new Date(dto.loanDate) : new Date(),
-        expectedReturnDate: dto.expectedReturnDate ? new Date(dto.expectedReturnDate) : undefined,
+        expectedReturnDate: dto.expectedReturnDate
+          ? new Date(dto.expectedReturnDate)
+          : undefined,
         notes: dto.notes,
       },
       include: { stockItem: { select: { id: true, name: true, unit: true } } },
@@ -232,7 +239,9 @@ export class StockService {
 
   async returnLoan(ownerId: string, loanId: string) {
     await this.ensureStockEnabled();
-    const loan = await this.prisma.toolLoan.findFirst({ where: { id: loanId, ownerId } });
+    const loan = await this.prisma.toolLoan.findFirst({
+      where: { id: loanId, ownerId },
+    });
     if (!loan) throw new NotFoundException('Loan not found');
     if (loan.returnedAt) throw new BadRequestException('Already returned');
     return this.prisma.toolLoan.update({
@@ -244,7 +253,9 @@ export class StockService {
 
   async deleteLoan(ownerId: string, loanId: string) {
     await this.ensureStockEnabled();
-    const loan = await this.prisma.toolLoan.findFirst({ where: { id: loanId, ownerId } });
+    const loan = await this.prisma.toolLoan.findFirst({
+      where: { id: loanId, ownerId },
+    });
     if (!loan) throw new NotFoundException('Loan not found');
     await this.prisma.toolLoan.delete({ where: { id: loanId } });
   }

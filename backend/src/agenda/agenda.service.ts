@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { CreateSubtaskDto } from './dto/create-subtask.dto';
@@ -169,7 +173,9 @@ export class AgendaService {
 
   async deleteNotification(ownerId: string, id: string) {
     await this.ensureAgendaEnabled();
-    const notification = await this.prisma.notification.findFirst({ where: { id, ownerId } });
+    const notification = await this.prisma.notification.findFirst({
+      where: { id, ownerId },
+    });
     if (!notification) throw new NotFoundException('Notification not found');
     await this.prisma.notification.delete({ where: { id } });
     return { deleted: true };
@@ -188,7 +194,9 @@ export class AgendaService {
       where: { id: interactionId, contact: { ownerId } },
     });
     if (!interaction) throw new NotFoundException('Interaction not found');
-    await this.prisma.contactInteraction.delete({ where: { id: interactionId } });
+    await this.prisma.contactInteraction.delete({
+      where: { id: interactionId },
+    });
     return { deleted: true };
   }
 

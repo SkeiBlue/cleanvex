@@ -21,3 +21,6 @@ frontend/dev-dist/
 
 .claude/
 frontend/dev-dist/
+
+# Fichiers de données lourds (exports, dumps)
+*.zip

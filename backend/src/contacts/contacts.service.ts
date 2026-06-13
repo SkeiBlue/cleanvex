@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateContactInteractionDto } from './dto/create-contact-interaction.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
@@ -91,7 +95,11 @@ export class ContactsService {
     });
   }
 
-  async addInteraction(ownerId: string, contactId: string, dto: CreateContactInteractionDto) {
+  async addInteraction(
+    ownerId: string,
+    contactId: string,
+    dto: CreateContactInteractionDto,
+  ) {
     await this.ensureContactsEnabled();
     await this.ensureOwnedContact(ownerId, contactId);
 
@@ -136,14 +144,20 @@ export class ContactsService {
     await this.prisma.contact.delete({ where: { id } });
   }
 
-  async deleteInteraction(ownerId: string, contactId: string, interactionId: string) {
+  async deleteInteraction(
+    ownerId: string,
+    contactId: string,
+    interactionId: string,
+  ) {
     await this.ensureContactsEnabled();
     await this.ensureOwnedContact(ownerId, contactId);
     const interaction = await this.prisma.contactInteraction.findFirst({
       where: { id: interactionId, contactId },
     });
     if (!interaction) throw new NotFoundException('Interaction not found');
-    await this.prisma.contactInteraction.delete({ where: { id: interactionId } });
+    await this.prisma.contactInteraction.delete({
+      where: { id: interactionId },
+    });
   }
 
   private async ensureOwnedContact(ownerId: string, id: string) {

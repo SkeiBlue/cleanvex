@@ -34,7 +34,13 @@ export class SystemController {
   async update(@Req() req: AuthRequest) {
     const job = this.updates.start(req.user?.email ?? 'unknown');
     if (req.user?.id) {
-      await this.core.logActivity(req.user.id, 'system.update.start', 'admin', 'update-job', job.id);
+      await this.core.logActivity(
+        req.user.id,
+        'system.update.start',
+        'admin',
+        'update-job',
+        job.id,
+      );
     }
     // Renvoie `id` (pas `jobId`) pour rester cohérent avec GET /update/current
     // et GET /update/:id qui renvoient l'objet UpdateJob complet (avec `id`).

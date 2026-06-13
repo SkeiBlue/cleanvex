@@ -1,4 +1,20 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -21,32 +37,55 @@ export class StockController {
   constructor(private readonly stock: StockService) {}
 
   @Post('items/import.csv')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
-  async importCsv(@Req() req: AuthenticatedRequest, @UploadedFile() file: Express.Multer.File) {
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
+  )
+  async importCsv(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const content = file.buffer.toString('utf-8').replace(/^﻿/, '');
-    const lines = content.split(/\r?\n/).filter(l => l.trim());
+    const content = file.buffer.toString('utf-8').replace(/^\uFEFF/, '');
+    const lines = content.split(/\r?\n/).filter((l) => l.trim());
     if (lines.length < 2) throw new BadRequestException('Empty CSV');
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/["\s]/g, ''));
+    const headers = lines[0]
+      .split(',')
+      .map((h) => h.trim().toLowerCase().replace(/["\s]/g, ''));
     const col = (row: string[], key: string) => {
       const i = headers.indexOf(key);
-      return i >= 0 ? row[i]?.trim().replace(/^"|"$/g, '') ?? '' : '';
+      return i >= 0 ? (row[i]?.trim().replace(/^"|"$/g, '') ?? '') : '';
     };
-    let created = 0; const errors: string[] = [];
+    let created = 0;
+    const errors: string[] = [];
     for (let i = 1; i < lines.length; i++) {
       const row = lines[i].split(',');
       const name = col(row, 'name') || col(row, 'nom');
-      if (!name) { errors.push(`Ligne ${i + 1}: nom manquant`); continue; }
+      if (!name) {
+        errors.push(`Ligne ${i + 1}: nom manquant`);
+        continue;
+      }
       try {
         await this.stock.createItem(req.user.id, {
           name,
           category: col(row, 'category') || col(row, 'categorie') || 'autre',
           unit: col(row, 'unit') || col(row, 'unite') || 'unit',
-          quantity: col(row, 'quantity') || col(row, 'quantite') ? Number(col(row, 'quantity') || col(row, 'quantite')) : 0,
-          valueAmount: col(row, 'value') || col(row, 'valeur') || col(row, 'valueamount') ? Number(col(row, 'value') || col(row, 'valeur') || col(row, 'valueamount')) : undefined,
-          location: col(row, 'location') || col(row, 'localisation') || undefined,
+          quantity:
+            col(row, 'quantity') || col(row, 'quantite')
+              ? Number(col(row, 'quantity') || col(row, 'quantite'))
+              : 0,
+          valueAmount:
+            col(row, 'value') || col(row, 'valeur') || col(row, 'valueamount')
+              ? Number(
+                  col(row, 'value') ||
+                    col(row, 'valeur') ||
+                    col(row, 'valueamount'),
+                )
+              : undefined,
+          location:
+            col(row, 'location') || col(row, 'localisation') || undefined,
           reference: col(row, 'reference') || col(row, 'ref') || undefined,
-          supplier: col(row, 'supplier') || col(row, 'fournisseur') || undefined,
+          supplier:
+            col(row, 'supplier') || col(row, 'fournisseur') || undefined,
           notes: col(row, 'notes') || col(row, 'note') || undefined,
           thresholdEnabled: false,
         });
@@ -60,14 +99,24 @@ export class StockController {
 
   @Get('items/export.csv')
   async exportCsv(@Req() req: AuthenticatedRequest, @Res() res: Response) {
-    const items = await this.stock.items(req.user.id) as Record<string, unknown>[];
-    const rows = items.map(i => ({
-      name: i['name'], category: i['category'], unit: i['unit'],
-      quantity: i['quantity'], location: i['location'] ?? '',
-      value: i['valueAmount'] ?? '', threshold: i['threshold'] ?? '',
+    const items = (await this.stock.items(req.user.id)) as Record<
+      string,
+      unknown
+    >[];
+    const rows = items.map((i) => ({
+      name: i['name'],
+      category: i['category'],
+      unit: i['unit'],
+      quantity: i['quantity'],
+      location: i['location'] ?? '',
+      value: i['valueAmount'] ?? '',
+      threshold: i['threshold'] ?? '',
     }));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="stock_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="stock_${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
     res.send('﻿' + toCsv(rows));
   }
 
@@ -77,12 +126,18 @@ export class StockController {
   }
 
   @Post('items')
-  createItem(@Req() req: AuthenticatedRequest, @Body() dto: CreateStockItemDto) {
+  createItem(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateStockItemDto,
+  ) {
     return this.stock.createItem(req.user.id, dto);
   }
 
   @Get('movements')
-  movements(@Req() req: AuthenticatedRequest, @Query() pagination: PaginationDto) {
+  movements(
+    @Req() req: AuthenticatedRequest,
+    @Query() pagination: PaginationDto,
+  ) {
     return this.stock.movements(req.user.id, pagination);
   }
 

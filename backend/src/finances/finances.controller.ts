@@ -1,4 +1,19 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Res,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -43,43 +58,65 @@ export class FinancesController {
   }
 
   @Post('categories')
-  createCategory(@Req() req: AuthenticatedRequest, @Body() dto: CreateFinancialCategoryDto) {
+  createCategory(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: CreateFinancialCategoryDto,
+  ) {
     return this.finances.createCategory(req.user.id, dto);
   }
 
   @Post('transactions/import.csv')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }),
+  )
   async importCsv(
     @Req() req: AuthenticatedRequest,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('Aucun fichier reçu.');
-    const text = file.buffer.toString('utf-8').replace(/^﻿/, ''); // strip BOM
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    if (lines.length < 2) throw new BadRequestException('CSV vide ou sans données.');
+    const text = file.buffer.toString('utf-8').replace(/^\uFEFF/, ''); // strip BOM
+    const lines = text.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 2)
+      throw new BadRequestException('CSV vide ou sans données.');
 
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const rows = lines.slice(1).map(line => {
+    const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
+    const rows = lines.slice(1).map((line) => {
       const vals = line.split(',');
-      return Object.fromEntries(headers.map((h, i) => [h, (vals[i] ?? '').trim()]));
+      return Object.fromEntries(
+        headers.map((h, i) => [h, (vals[i] ?? '').trim()]),
+      );
     });
 
     const accounts = await this.finances.accounts(req.user.id);
     const categories = await this.finances.categories(req.user.id);
 
-    let created = 0; const errors: string[] = [];
+    let created = 0;
+    const errors: string[] = [];
     for (const row of rows) {
       try {
-        const account = accounts.find(a => a.name.toLowerCase() === (row['account'] ?? '').toLowerCase());
-        if (!account) { errors.push(`Compte inconnu: "${row['account']}"`); continue; }
-        const category = categories.find(c => c.name.toLowerCase() === (row['category'] ?? '').toLowerCase());
+        const account = accounts.find(
+          (a) => a.name.toLowerCase() === (row['account'] ?? '').toLowerCase(),
+        );
+        if (!account) {
+          errors.push(`Compte inconnu: "${row['account']}"`);
+          continue;
+        }
+        const category = categories.find(
+          (c) => c.name.toLowerCase() === (row['category'] ?? '').toLowerCase(),
+        );
         const amount = parseFloat(row['amount'] ?? '0');
-        if (isNaN(amount) || amount <= 0) { errors.push(`Montant invalide: "${row['amount']}"`); continue; }
+        if (isNaN(amount) || amount <= 0) {
+          errors.push(`Montant invalide: "${row['amount']}"`);
+          continue;
+        }
         const type = (row['type'] ?? '').toLowerCase();
-        if (type !== 'income' && type !== 'expense') { errors.push(`Type invalide: "${row['type']}"`); continue; }
+        if (type !== 'income' && type !== 'expense') {
+          errors.push(`Type invalide: "${row['type']}"`);
+          continue;
+        }
         await this.finances.createTransaction(req.user.id, {
           label: row['label'] || row['libellé'] || 'Sans libellé',
-          type: type as 'income' | 'expense',
+          type: type,
           amount,
           accountId: account.id,
           categoryId: category?.id,
@@ -87,7 +124,7 @@ export class FinancesController {
           note: row['note'] || undefined,
         });
         created++;
-      } catch (e) {
+      } catch {
         errors.push(`Ligne ignorée: ${JSON.stringify(row)}`);
       }
     }
@@ -96,21 +133,35 @@ export class FinancesController {
 
   @Get('transactions/export.csv')
   async exportCsv(@Req() req: AuthenticatedRequest, @Res() res: Response) {
-    const { data: txs } = await this.finances.transactions(req.user.id, { page: 1, limit: 10_000 });
+    const { data: txs } = await this.finances.transactions(req.user.id, {
+      page: 1,
+      limit: 10_000,
+    });
     const txsTyped = txs as Record<string, unknown>[];
-    const rows = txsTyped.map(t => ({
-      date: t['operationDate'], type: t['type'], label: t['label'], amount: t['amount'],
-      category: (t['category'] as Record<string, unknown> | null)?.['name'] ?? '',
-      account:  (t['account']  as Record<string, unknown>)?.['name'] ?? '',
-      status: t['status'], note: t['note'] ?? '',
+    const rows = txsTyped.map((t) => ({
+      date: t['operationDate'],
+      type: t['type'],
+      label: t['label'],
+      amount: t['amount'],
+      category:
+        (t['category'] as Record<string, unknown> | null)?.['name'] ?? '',
+      account: (t['account'] as Record<string, unknown>)?.['name'] ?? '',
+      status: t['status'],
+      note: t['note'] ?? '',
     }));
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="transactions_${new Date().toISOString().slice(0,10)}.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="transactions_${new Date().toISOString().slice(0, 10)}.csv"`,
+    );
     res.send('﻿' + toCsv(rows));
   }
 
   @Get('transactions')
-  transactions(@Req() req: AuthenticatedRequest, @Query() pagination: PaginationDto) {
+  transactions(
+    @Req() req: AuthenticatedRequest,
+    @Query() pagination: PaginationDto,
+  ) {
     return this.finances.transactions(req.user.id, pagination);
   }
 

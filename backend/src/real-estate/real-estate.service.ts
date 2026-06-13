@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreatePropertyEventDto } from './dto/create-property-event.dto';
 import { CreatePropertyDto } from './dto/create-property.dto';
@@ -80,7 +84,11 @@ export class RealEstateService {
     });
   }
 
-  async addEvent(ownerId: string, propertyId: string, dto: CreatePropertyEventDto) {
+  async addEvent(
+    ownerId: string,
+    propertyId: string,
+    dto: CreatePropertyEventDto,
+  ) {
     await this.ensureRealEstateEnabled();
     await this.ensureOwnedProperty(ownerId, propertyId);
 

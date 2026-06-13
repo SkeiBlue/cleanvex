@@ -21,14 +21,25 @@ export class DocumentsService {
     private readonly moduleCache: ModuleCacheService,
     config: ConfigService,
   ) {
-    this.storageRoot = resolve(config.get<string>('PRIVATE_FILES_DIR', 'private-files'));
+    this.storageRoot = resolve(
+      config.get<string>('PRIVATE_FILES_DIR', 'private-files'),
+    );
     mkdirSync(this.storageRoot, { recursive: true });
   }
 
   async list(ownerId: string, { page = 1, limit = 50 }: PaginationDto = {}) {
     await this.ensureDocumentsEnabled();
     const where = { ownerId };
-    const select = { id: true, name: true, type: true, visibility: true, mimeType: true, size: true, expiresAt: true, createdAt: true };
+    const select = {
+      id: true,
+      name: true,
+      type: true,
+      visibility: true,
+      mimeType: true,
+      size: true,
+      expiresAt: true,
+      createdAt: true,
+    };
     const [data, total] = await Promise.all([
       this.prisma.document.findMany({
         where,
@@ -111,7 +122,9 @@ export class DocumentsService {
 
   async delete(id: string, ownerId: string) {
     await this.ensureDocumentsEnabled();
-    const document = await this.prisma.document.findFirst({ where: { id, ownerId } });
+    const document = await this.prisma.document.findFirst({
+      where: { id, ownerId },
+    });
     if (!document) throw new NotFoundException('Document not found');
 
     await this.prisma.documentLink.deleteMany({ where: { documentId: id } });

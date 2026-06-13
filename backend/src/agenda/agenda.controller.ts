@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AgendaService } from './agenda.service';
@@ -91,7 +102,10 @@ export class AgendaController {
 
   @Delete('notifications/:id')
   @HttpCode(204)
-  deleteNotification(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+  deleteNotification(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     return this.agenda.deleteNotification(req.user.id, id);
   }
 
