@@ -41,6 +41,35 @@ export class ModulesService {
     return this.prisma.module.findMany({ orderBy: { title: 'asc' } });
   }
 
+  /**
+   * Sprint 3 — liste des modules vue par un utilisateur :
+   * - tous les modules globaux (avec leur isEnabled admin) ;
+   * - augmentés du champ `isVisible` reflétant la préférence personnelle.
+   * Un module désactivé globalement reste retourné mais `isEnabled=false` ;
+   * la sidebar/dashboard décide de l'afficher ou non.
+   */
+  async listForUser(userId: string) {
+    const [modules, prefs] = await Promise.all([
+      this.prisma.module.findMany({ orderBy: { title: 'asc' } }),
+      this.prisma.userModulePreference.findMany({ where: { userId } }),
+    ]);
+    const byKey = new Map(prefs.map((p) => [p.moduleKey, p.isVisible]));
+    return modules.map((m) => ({
+      ...m,
+      isVisible: byKey.get(m.key) ?? true,
+    }));
+  }
+
+  async setUserPreference(userId: string, moduleKey: string, isVisible: boolean) {
+    const exists = await this.prisma.module.findUnique({ where: { key: moduleKey } });
+    if (!exists) return null;
+    return this.prisma.userModulePreference.upsert({
+      where: { userId_moduleKey: { userId, moduleKey } },
+      create: { userId, moduleKey, isVisible },
+      update: { isVisible },
+    });
+  }
+
   async update(key: string, isEnabled: boolean, userId?: string) {
     const module = await this.prisma.module.update({
       where: { key },

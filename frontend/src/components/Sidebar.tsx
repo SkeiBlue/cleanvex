@@ -91,7 +91,14 @@ export function Sidebar({
         <div className="nav-label" data-tour="sidebar-modules">Modules</div>
         {/* Le backend liste "dashboard" comme module mais il a déjà son entrée
             "Principal" plus haut — on évite le doublon en le filtrant ici. */}
-        {modules.filter(m => m.key !== 'dashboard').map((module) => {
+        {modules
+          .filter(m => m.key !== 'dashboard')
+          // Sprint 3 — masquage côté utilisateur. Un module désactivé
+          // globalement (isEnabled=false) reste affiché avec un badge "Off"
+          // pour rappeler à l'admin qu'il est OFF ; un module masqué par
+          // l'utilisateur (isVisible=false) disparaît complètement.
+          .filter(m => m.isVisible !== false)
+          .map((module) => {
           const Icon = MODULE_ICONS[module.key] ?? Settings
           return (
             <NavLink

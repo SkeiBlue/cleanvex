@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity, CheckCircle2, Copy, FileText, KeyRound, MailCheck, Pencil, RefreshCw, Search,
-  ShieldCheck, ShieldOff, UserCog, Users, X, XCircle,
+  ShieldCheck, ShieldOff, UserCog, UserPlus, Users, X, XCircle,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
@@ -670,6 +670,9 @@ export function AdminDashboardPage() {
             </div>
           </section>
 
+          {/* Sprint 3 — Inscription publique (toggle global) */}
+          <SignupEnabledPanel />
+
           {/* System (réutilise le panel existant) */}
           <section className="panel" style={{ padding: 0 }}>
             <div className="panel-header">
@@ -738,3 +741,65 @@ export function AdminDashboardPage() {
     </div>
   )
 }
+
+/* ── Sprint 3 — Inscription publique (réglage global admin) ──────── */
+function SignupEnabledPanel() {
+  const { authedFetch } = useAuth()
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    authedFetch('/admin/app-settings/signup-enabled').then(async r => {
+      if (r.ok) { const d = await r.json(); setEnabled(!!d.enabled) }
+    })
+  }, [authedFetch])
+
+  async function toggle() {
+    if (enabled === null) return
+    setSaving(true)
+    const next = !enabled
+    const r = await authedFetch('/admin/app-settings/signup-enabled', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: next }),
+    })
+    if (r.ok) setEnabled(next)
+    setSaving(false)
+  }
+
+  return (
+    <section className="panel" style={{ padding: 0 }}>
+      <div className="panel-header">
+        <div><span className="panel-kicker">Accès</span><h2>Inscription publique</h2></div>
+        <UserPlus size={20} />
+      </div>
+      <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, color: 'var(--text)' }}>
+            Autoriser n'importe quel visiteur à créer un compte depuis la page de connexion.
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+            Désactivée par défaut. Lorsqu'elle est OFF, seuls les détenteurs d'un code
+            d'invitation peuvent s'inscrire (variable d'env SIGNUP_INVITE_CODE).
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={saving || enabled === null}
+          style={{
+            padding: '8px 16px', fontSize: 13, fontWeight: 600,
+            background: enabled ? 'rgba(74,222,128,0.1)' : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${enabled ? 'rgba(74,222,128,0.3)' : 'var(--border)'}`,
+            borderRadius: 8, cursor: saving ? 'wait' : 'pointer',
+            color: enabled ? '#4ade80' : 'var(--text2)',
+            minWidth: 110,
+          }}
+        >
+          {enabled === null ? '…' : enabled ? 'Activée' : 'Désactivée'}
+        </button>
+      </div>
+    </section>
+  )
+}
+

@@ -13,6 +13,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes } from 'crypto';
 import * as OTPAuth from 'otpauth';
 import * as QRCode from 'qrcode';
+import { AppSettingsService } from '../app-settings/app-settings.service';
 import { CoreService } from '../core/core.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly core: CoreService,
     private readonly mail: MailService,
+    private readonly appSettings: AppSettingsService,
   ) {}
 
   get refreshCookieName() {
@@ -38,7 +40,16 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto, meta: { ip?: string; userAgent?: string }) {
-    this.assertInviteCode(dto.inviteCode);
+    // Sprint 3 — l'inscription publique est désactivée par défaut. Un
+    // utilisateur ne peut s'inscrire que si l'admin a explicitement activé
+    // le flag dans Administration → Réglages. Le code d'invitation reste
+    // accepté en plus (mode "lien d'invitation" historique).
+    const signupOpen = await this.appSettings.isSignupEnabled();
+    if (!signupOpen) {
+      this.assertInviteCode(dto.inviteCode);
+    } else if (dto.inviteCode !== undefined) {
+      this.assertInviteCode(dto.inviteCode);
+    }
     const email = dto.email.toLowerCase();
     const existing = await this.prisma.user.findUnique({ where: { email } });
     if (existing) {

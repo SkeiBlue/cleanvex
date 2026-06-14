@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessToken, refreshAccessToken])
 
   const refreshModules = useCallback(async () => {
-    const r = await authedFetch('/modules')
+    const r = await authedFetch('/modules/me')
     if (r.ok) setModules(await r.json())
   }, [authedFetch])
 
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!accessToken) return
-    authedFetch('/modules').then(async r => { if (r.ok) setModules(await r.json()) })
+    authedFetch('/modules/me').then(async r => { if (r.ok) setModules(await r.json()) })
     authedFetch('/agenda/dashboard').then(async r => {
       if (r.ok) { const d = await r.json(); setUnreadNotifications(d.unreadNotifications ?? 0) }
     })

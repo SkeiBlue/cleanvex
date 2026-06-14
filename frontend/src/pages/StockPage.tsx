@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { SkeletonGridPage } from '../components/Skeleton'
 import { useToast } from '../contexts/ToastContext'
 import { parseApiError } from '../hooks/useApiError'
-import type { FinancialAccount, StockItem, StockMovement, ToolLoan, VehicleItem } from '../types'
+import type { FinancialAccount, StockItem, StockMovement, ToolLoan, UnitItem, VehicleItem } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
 type View = 'list' | 'detail'
@@ -46,6 +46,8 @@ export function StockPage() {
   const [showCreateLoan, setShowCreateLoan] = useState(false)
   // Sprint 2 — Contacts (dégradable).
   const [contacts, setContacts] = useState<{ id: string; displayName: string; organization: string | null }[]>([])
+  // Sprint 3 — liste d'unités personnalisables (defaults + user, actives).
+  const [units, setUnits] = useState<UnitItem[]>([])
 
   /* ── Data ── */
   const reload = useCallback(async () => {
@@ -61,14 +63,16 @@ export function StockPage() {
 
   useEffect(() => {
     async function load() {
-      const [v, a, c] = await Promise.all([
+      const [v, a, c, u] = await Promise.all([
         authedFetch('/vehicles'),
         authedFetch('/finances/accounts'),
         authedFetch('/contacts'),
+        authedFetch('/units'),
       ])
       if (v.ok) setVehicles(await v.json())
       if (a.ok) setAccounts(await a.json())
       if (c.ok) setContacts(await c.json())
+      if (u.ok) setUnits((await u.json() as UnitItem[]).filter(x => x.isActive))
       await reload()
       setIsLoading(false)
     }
@@ -285,8 +289,12 @@ export function StockPage() {
                 <option value="autre">📦 Autre</option>
               </select>
             </FieldTip>
-            <FieldTip label="Unité" hint="L'unité de mesure : 'unit', 'L' (litres), 'kg', 'paire', 'rouleau'… Sera affiché à côté de chaque quantité." required>
-              <input name="unit" defaultValue="unit" required className="modal-input" placeholder="Ex : unit, L, kg, paire" />
+            <FieldTip label="Unité" hint="L'unité de mesure (litre, pièce, kg, mètre…). Gère la liste dans Paramètres → Unités." required>
+              <select name="unit" defaultValue="pièce" required className="modal-input">
+                {units.map(u => (
+                  <option key={u.id} value={u.label}>{u.label} ({u.symbol})</option>
+                ))}
+              </select>
             </FieldTip>
             <FieldTip label="Quantité initiale" hint="Le stock actuel au moment où vous créez l'article. Mettez 0 si c'est un article que vous souhaitez acheter mais que vous n'avez pas encore.">
               <input name="quantity" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 10" />
@@ -532,8 +540,14 @@ export function StockPage() {
                         <option value="autre">📦 Autre</option>
                       </select>
                     </FieldTip>
-                    <FieldTip label="Unité" hint="L'unité de mesure : 'unit', 'L', 'kg', 'paire'… Affiché à côté des quantités." required>
-                      <input name="unit" defaultValue={sv.unit} required className="modal-input" placeholder="Ex : unit, L, kg" />
+                    <FieldTip label="Unité" hint="L'unité de mesure. Gère la liste dans Paramètres → Unités." required>
+                      <select name="unit" defaultValue={sv.unit} required className="modal-input">
+                        {/* Inclut l'unité courante même si désactivée, pour ne pas perdre la valeur. */}
+                        {units.some(u => u.label === sv.unit) ? null : <option value={sv.unit}>{sv.unit}</option>}
+                        {units.map(u => (
+                          <option key={u.id} value={u.label}>{u.label} ({u.symbol})</option>
+                        ))}
+                      </select>
                     </FieldTip>
                     <FieldTip label="Statut" hint="Bascule entre « En stock » et « À acheter » (wishlist). Quand l'article arrive, repassez-le en « En stock ».">
                       <select name="status" defaultValue={sv.status ?? 'in-stock'} className="modal-select">

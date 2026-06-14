@@ -6,6 +6,8 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { SlowRequestInterceptor } from './core/slow-request.interceptor';
 import { AdminModule } from './admin/admin.module';
 import { AgendaModule } from './agenda/agenda.module';
+import { AppSettingsModule } from './app-settings/app-settings.module';
+import { UnitsModule } from './units/units.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -36,9 +38,11 @@ import { VehiclesModule } from './vehicles/vehicles.module';
       },
     ]),
     PrismaModule,
+    AppSettingsModule,
     AdminModule,
     AuthModule,
     ModulesModule,
+    UnitsModule,
     CoreModule,
     ContactModule,
     ContactsModule,

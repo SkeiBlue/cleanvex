@@ -30,6 +30,8 @@ model User {
   refreshTokens      RefreshToken[]
   passwordResetTokens PasswordResetToken[]
   settings      UserSetting[]
+  modulePreferences UserModulePreference[]
+  units             Unit[]
   auditLogs     AuditLog[]
   activityLogs  ActivityLog[]
   financialAccounts     FinancialAccount[]
@@ -104,6 +106,56 @@ model Module {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("modules")
+}
+
+// Sprint 3 — préférence d'affichage par utilisateur. Le module reste
+// utilisable côté API tant que Module.isEnabled = true ; cette table
+// ne sert qu'à masquer l'item dans la sidebar/dashboard de l'utilisateur.
+model UserModulePreference {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  moduleKey String   @map("module_key")
+  isVisible Boolean  @default(true) @map("is_visible")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, moduleKey])
+  @@index([userId])
+  @@map("user_module_preferences")
+}
+
+// Sprint 3 — unités personnalisées. userId = null pour les unités par
+// défaut globales. isActive = false pour désactiver sans supprimer
+// (cas d'une unité utilisée par un article stock).
+model Unit {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  label     String
+  symbol    String
+  type      String   @default("quantity")
+  isDefault Boolean  @default(false) @map("is_default")
+  isActive  Boolean  @default(true)  @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, label])
+  @@index([userId])
+  @@map("units")
+}
+
+// Sprint 3 — réglages globaux (admin). Clé/valeur JSON, une seule
+// ligne par clé. Utilisé pour l'inscription publique.
+model AppSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  valueJson Json     @map("value_json")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
 }
 
 model UserSetting {

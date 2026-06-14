@@ -21,6 +21,18 @@ export type ModuleItem = {
   title: string
   version: string
   isEnabled: boolean
+  /** Sprint 3 — préférence utilisateur (présent seulement sur /modules/me). */
+  isVisible?: boolean
+}
+
+export type UnitItem = {
+  id: string
+  userId: string | null
+  label: string
+  symbol: string
+  type: string
+  isDefault: boolean
+  isActive: boolean
 }
 
 export type ProfileInfo = {

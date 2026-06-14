@@ -11,6 +11,7 @@ import type { Request } from 'express';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateModuleDto } from './dto/update-module.dto';
+import { UpdateUserModulePreferenceDto } from './dto/update-user-module-preference.dto';
 import { ModulesService } from './modules.service';
 
 type AuthenticatedRequest = Request & {
@@ -22,9 +23,26 @@ type AuthenticatedRequest = Request & {
 export class ModulesController {
   constructor(private readonly modules: ModulesService) {}
 
+  // Vue brute des modules globaux (utilisée par l'admin).
   @Get()
   list() {
     return this.modules.list();
+  }
+
+  // Sprint 3 — vue par utilisateur, augmentée du flag isVisible (préférence
+  // personnelle d'affichage). Utilisée par la sidebar et le dashboard.
+  @Get('me')
+  listForMe(@Req() req: AuthenticatedRequest) {
+    return this.modules.listForUser(req.user.id);
+  }
+
+  @Patch('me/:key')
+  setMyPreference(
+    @Param('key') key: string,
+    @Body() dto: UpdateUserModulePreferenceDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.modules.setUserPreference(req.user.id, key, dto.isVisible);
   }
 
   // Modifier l'état global d'un module est une action d'administration :

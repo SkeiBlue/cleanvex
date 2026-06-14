@@ -6,10 +6,13 @@ import { startOnboardingTour } from '../components/OnboardingTour'
 import { useDensity } from '../hooks/useDensity'
 import { useTheme } from '../hooks/useTheme'
 import type { ActivityLog, AuditLog, ErrorLog, ProfileInfo, UserSetting } from '../types'
+import { SettingsModulesTab } from './SettingsModulesTab'
+import { SettingsUnitsTab } from './SettingsUnitsTab'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
-// "modules" et "systeme" ont été déplacés vers /admin (réservés aux administrateurs).
-type Tab = 'profil' | 'securite' | 'logs'
+// Sprint 3 — onglets "modules" et "unites" ajoutés : préférences utilisateur
+// (≠ activation globale qui reste dans /admin).
+type Tab = 'profil' | 'securite' | 'modules' | 'unites' | 'logs'
 
 function TabBtn({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -47,7 +50,7 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = ((): Tab => {
     const t = searchParams.get('tab') as Tab | null
-    const allowed: Tab[] = ['profil', 'securite', 'logs']
+    const allowed: Tab[] = ['profil', 'securite', 'modules', 'unites', 'logs']
     return t && allowed.includes(t) ? t : 'profil'
   })()
   const [activeTab, setActiveTab] = useState<Tab>(initialTab)
@@ -177,8 +180,13 @@ export function SettingsPage() {
       <div className="tabs-bar">
         <TabBtn label="Profil" active={activeTab === 'profil'} onClick={() => setActiveTab('profil')} />
         <TabBtn label="Sécurité" active={activeTab === 'securite'} onClick={() => setActiveTab('securite')} />
+        <TabBtn label="Modules" active={activeTab === 'modules'} onClick={() => setActiveTab('modules')} />
+        <TabBtn label="Unités" active={activeTab === 'unites'} onClick={() => setActiveTab('unites')} />
         <TabBtn label="Logs" active={activeTab === 'logs'} onClick={() => setActiveTab('logs')} />
       </div>
+
+      {activeTab === 'modules' && <SettingsModulesTab />}
+      {activeTab === 'unites' && <SettingsUnitsTab />}
 
       {message && (
         <p style={{

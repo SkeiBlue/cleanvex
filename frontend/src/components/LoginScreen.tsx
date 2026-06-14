@@ -260,6 +260,21 @@ export function LoginScreen({
   const [tab, setTab] = useState<'login' | 'signup'>('login')
   const [showForgot, setShowForgot] = useState(false)
   const [showVerify, setShowVerify] = useState(false)
+  // Sprint 3 — l'inscription publique est désactivée par défaut. On lit le
+  // flag exposé publiquement par /system/signup-enabled pour décider si on
+  // affiche l'onglet "Créer un compte". null = inconnu (afficher par défaut
+  // pour ne pas bloquer en cas d'erreur réseau ; le backend re-bloque côté
+  // serveur de toute façon).
+  const [signupEnabled, setSignupEnabled] = useState<boolean | null>(null)
+  useEffect(() => {
+    fetch(`${API_URL}/system/signup-enabled`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setSignupEnabled(!!d.enabled) })
+      .catch(() => { /* ignore */ })
+  }, [])
+  useEffect(() => {
+    if (signupEnabled === false && tab === 'signup') setTab('login')
+  }, [signupEnabled, tab])
   // Garde-fou : certains environnements (tests, SSR) n'exposent pas localStorage
   function safeStorage() {
     try {
@@ -393,13 +408,13 @@ export function LoginScreen({
           alignSelf: 'center', width: '100%', maxWidth: 460, justifySelf: 'center',
           boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
         }}>
-          {/* Tabs Connexion / Inscription */}
+          {/* Tabs Connexion / Inscription — inscription masquée si désactivée par admin */}
           <div role="tablist" aria-label="Mode d'accès" style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4,
+            display: 'grid', gridTemplateColumns: signupEnabled === false ? '1fr' : '1fr 1fr', gap: 4,
             background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
             borderRadius: 999, padding: 4,
           }}>
-            {(['login', 'signup'] as const).map(t => (
+            {(signupEnabled === false ? ['login'] as const : ['login', 'signup'] as const).map(t => (
               <button
                 key={t}
                 role="tab"
