@@ -165,6 +165,8 @@ export function VehiclesPage() {
   const [stockItems, setStockItems] = useState<{ id: string; name: string; unit: string; quantity: string }[]>([])
   const [usePartsFromStock, setUsePartsFromStock] = useState(false)
   const [stockUsages, setStockUsages] = useState<{ stockItemId: string; quantity: number }[]>([])
+  // Modal "Ajouter une pièce" : choix article du stock pour pré-remplir la fiche pièce
+  const [addPartFromStockId, setAddPartFromStockId] = useState<string>('')
 
   // V1 — Executor du travail (qui l'a fait). 'self' par défaut → masque
   // le champ "Nom du pro" ; 'pro' → l'affiche pour saisie optionnelle.
@@ -443,16 +445,26 @@ export function VehiclesPage() {
   async function handleAddPart(event: FormEv) {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget; const data = new FormData(form)
+    // Si une pièce du stock a été choisie, on encode l'id dans `reference`
+    // au format `stock:<id>` (pas de migration nécessaire). Le statut par
+    // défaut devient "recu" (déjà en stock) au lieu de "a-acheter".
+    const stockItem = addPartFromStockId
+      ? stockItems.find(s => s.id === addPartFromStockId)
+      : null
+    const userRef = (data.get('reference') as string) || ''
+    const reference = stockItem
+      ? `stock:${stockItem.id}${userRef ? ` ${userRef}` : ''}`
+      : (userRef || undefined)
     const r = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: data.get('name'),
         quantity: data.get('quantity') ? Number(data.get('quantity')) : 1,
         category: data.get('category') || 'autre',
-        status: data.get('status') || 'a-acheter',
+        status: data.get('status') || (stockItem ? 'recu' : 'a-acheter'),
         urgency: data.get('urgency') || 'normal',
         priority: data.get('priority') || 'fiabilite',
-        reference: data.get('reference') || undefined,
+        reference,
         dimension: data.get('dimension') || undefined,
         estimatedPrice: data.get('estimatedPrice') ? Number(data.get('estimatedPrice')) : undefined,
         realPrice: data.get('realPrice') ? Number(data.get('realPrice')) : undefined,
@@ -461,7 +473,8 @@ export function VehiclesPage() {
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Ajout de la pièce refusé.')); return }
-    form.reset(); setShowAddPart(false); toast.ok('Pièce ajoutée.')
+    form.reset(); setShowAddPart(false); setAddPartFromStockId('')
+    toast.ok(stockItem ? `Pièce « ${stockItem.name} » assignée depuis le stock.` : 'Pièce ajoutée.')
     const pr = await authedFetch(`/vehicles/${selectedVehicle.id}/parts`); if (pr.ok) setParts(await pr.json())
   }
 
@@ -1552,11 +1565,34 @@ export function VehiclesPage() {
                 </button>
               </div>
 
-              <Modal open={showAddPart} onClose={() => setShowAddPart(false)} title="Ajouter une pièce" subtitle={sv.name} icon={<Settings2 size={20} />} maxWidth={580}>
-                <form onSubmit={handleAddPart}>
+              <Modal open={showAddPart} onClose={() => { setShowAddPart(false); setAddPartFromStockId('') }} title="Ajouter une pièce" subtitle={sv.name} icon={<Settings2 size={20} />} maxWidth={580}>
+                <form onSubmit={handleAddPart} key={addPartFromStockId}>
+                  {/* Sélecteur "Assigner depuis le stock" — visible si module Stock actif */}
+                  {stockItems.length > 0 && (
+                    <div style={{ marginBottom: 14, padding: '10px 12px', borderRadius: 10, background: addPartFromStockId ? 'rgba(167,139,250,0.06)' : 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                      <Package size={15} style={{ color: '#a78bfa', flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>Assigner depuis le stock</span>
+                      <select
+                        value={addPartFromStockId}
+                        onChange={e => setAddPartFromStockId(e.target.value)}
+                        className="modal-select"
+                        style={{ flex: 1, minWidth: 180 }}
+                      >
+                        <option value="">— Pièce libre (saisie manuelle) —</option>
+                        {stockItems.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.name} ({Number(s.quantity).toLocaleString('fr-FR')} {s.unit} en stock)
+                          </option>
+                        ))}
+                      </select>
+                      {addPartFromStockId && (
+                        <button type="button" className="btn-ghost" style={{ fontSize: 11 }} onClick={() => setAddPartFromStockId('')}>Annuler</button>
+                      )}
+                    </div>
+                  )}
                   <div className="modal-grid">
                     <FieldTip label="Nom de la pièce" hint="Le nom exact de la pièce : 'Plaquettes de frein AV', 'Filtre à huile', 'Courroie de distribution'… Plus c'est précis, plus c'est utile." required style={{ gridColumn: '1/-1' }}>
-                      <input name="name" required className="modal-input" placeholder="Ex : Plaquettes de frein avant, Filtre à huile…" style={{ width: '100%', boxSizing: 'border-box' }} />
+                      <input name="name" required defaultValue={addPartFromStockId ? (stockItems.find(s => s.id === addPartFromStockId)?.name ?? '') : ''} className="modal-input" placeholder="Ex : Plaquettes de frein avant, Filtre à huile…" style={{ width: '100%', boxSizing: 'border-box' }} />
                     </FieldTip>
                     <FieldTip label="Quantité" hint="Le nombre d'exemplaires nécessaires. Ex : 1 filtre, 4 bougies, 2 plaquettes (jeu).">
                       <input name="quantity" type="number" min="1" defaultValue="1" className="modal-input" />
@@ -1677,6 +1713,11 @@ export function VehiclesPage() {
               {filteredParts.length === 0 ? <p className="muted">Aucune pièce.</p> : filteredParts.map((part) => {
                 const urgencyColors: Record<string, string> = { bloquant: '#f43f5e', important: '#fbbf24', normal: 'var(--border)', optionnel: 'var(--border)' }
                 const isEditing = editingPart?.id === part.id
+                // Pièce assignée depuis le stock : reference au format "stock:<id> [info libre]"
+                const stockMatch = part.reference?.match(/^stock:([0-9a-f-]{36})(?:\s+(.*))?$/i)
+                const linkedStockId = stockMatch?.[1] ?? null
+                const linkedStockItem = linkedStockId ? stockItems.find(s => s.id === linkedStockId) : null
+                const userReference = stockMatch ? (stockMatch[2] ?? '') : (part.reference ?? '')
                 return (
                   <div key={part.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', borderLeft: `3px solid ${urgencyColors[part.urgency] ?? 'var(--border)'}` }}>
                     {isEditing ? null : (
@@ -1688,10 +1729,16 @@ export function VehiclesPage() {
                             <span style={{ fontSize: '9px', fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: `${statusColors[part.status] ?? '#7b82a8'}20`, color: statusColors[part.status] ?? '#7b82a8', border: `1px solid ${statusColors[part.status] ?? '#7b82a8'}40` }}>
                               {statusLabels[part.status] ?? part.status}
                             </span>
+                            {linkedStockId && (
+                              <span title={linkedStockItem ? `Pièce du stock : ${linkedStockItem.name} (${Number(linkedStockItem.quantity).toLocaleString('fr-FR')} ${linkedStockItem.unit} dispo)` : 'Pièce assignée depuis le stock'} style={{ fontSize: '9px', fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.35)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Package size={10} /> STOCK
+                              </span>
+                            )}
                             <span style={{ fontSize: '9px', color: 'var(--text3)' }}>{part.category}</span>
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            {part.reference && <span>Réf: <strong style={{ color: 'var(--text2)' }}>{part.reference}</strong></span>}
+                            {linkedStockItem && <span style={{ color: '#a78bfa' }}>📦 {linkedStockItem.name} — {Number(linkedStockItem.quantity).toLocaleString('fr-FR')} {linkedStockItem.unit} en stock</span>}
+                            {userReference && <span>Réf: <strong style={{ color: 'var(--text2)' }}>{userReference}</strong></span>}
                             {part.estimatedPrice && <span>Estimé: <strong style={{ color: '#fbbf24' }}>{Number(part.estimatedPrice).toFixed(2)} €</strong></span>}
                             {part.realPrice && <span>Réel: <strong style={{ color: '#4ade80' }}>{Number(part.realPrice).toFixed(2)} €</strong></span>}
                           </div>
