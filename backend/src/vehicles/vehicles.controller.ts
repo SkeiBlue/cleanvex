@@ -249,4 +249,15 @@ export class VehiclesController {
       dto.documentId,
     );
   }
+
+  // Lot C — annuler une sortie de stock (remet la pièce en stock).
+  @Delete(':id/stock-movements/:movementId')
+  @HttpCode(200)
+  reverseStockMovement(
+    @Param('id') id: string,
+    @Param('movementId') movementId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.reverseStockMovement(req.user.id, id, movementId);
+  }
 }

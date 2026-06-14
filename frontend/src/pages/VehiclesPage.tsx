@@ -355,6 +355,15 @@ export function VehiclesPage() {
     toast.ok('Pièce jointe ajoutée.'); await loadVehicleDetail(selectedVehicle.id)
   }
 
+  // Lot C — annule une sortie de stock (remet la pièce en stock).
+  async function handleReverseStockMovement(movementId: string) {
+    if (!selectedVehicle) return
+    if (!window.confirm('Annuler cette sortie et remettre la pièce en stock ?')) return
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/stock-movements/${movementId}`, { method: 'DELETE' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Annulation refusée.')); return }
+    toast.ok('Pièce remise en stock.'); await loadVehicleDetail(selectedVehicle.id)
+  }
+
   async function handleSetIntervStatus(interventionId: string, status: string) {
     if (!selectedVehicle) return
     // V3 — Quand l'utilisateur passe un travail à "fait", on ouvre d'abord
@@ -1370,6 +1379,22 @@ export function VehiclesPage() {
                           )}
                         </div>
                         {i.notes && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px', fontStyle: 'italic' }}>{i.notes}</div>}
+                        {/* Lot C — pièces du stock consommées par CE travail */}
+                        {(() => {
+                          const parts = sv.stockMovements.filter(m => m.interventionId === i.id)
+                          if (parts.length === 0) return null
+                          return (
+                            <div style={{ marginTop: '8px', padding: '8px 10px', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ fontSize: '10px', color: '#a78bfa', fontFamily: 'var(--mono)', fontWeight: 700 }}>📦 PIÈCES DU STOCK CONSOMMÉES</div>
+                              {parts.map(m => (
+                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text2)' }}>
+                                  <span style={{ flex: 1 }}>{m.stockItem.name} — {Number(m.quantity).toLocaleString('fr-FR')} {m.stockItem.unit}{m.valueAmount ? ` · ${Number(m.valueAmount).toFixed(2)} €` : ''}</span>
+                                  <button className="btn-ghost" style={{ fontSize: '10px', padding: '2px 6px', color: '#fbbf24' }} title="Remettre la pièce en stock" onClick={() => handleReverseStockMovement(m.id)}>↩ Annuler</button>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        })()}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
                         <select value={i.status === 'planned' ? 'a-faire' : i.status === 'done' ? 'fait' : i.status} onChange={e => handleSetIntervStatus(i.id, e.target.value)} style={{ ...SELECT_STYLE, fontSize: '11px', padding: '4px 8px', border: `1px solid ${s.color}40` }}>
@@ -1702,21 +1727,46 @@ export function VehiclesPage() {
                 </div>
               )}
 
-              {/* Sorties stock */}
+              {/* Sorties stock — Lot C : regroupées par travail + annulation */}
               {sv.stockMovements.length > 0 && (
                 <div>
                   <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>📦 PIÈCES & CONSOMMABLES (sorties stock)</div>
-                  {sv.stockMovements.map(m => (
-                    <div key={m.id} className="document-row">
-                      <span style={{ fontSize: '15px' }}>📦</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 500 }}>{m.stockItem.name}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{Number(m.quantity).toLocaleString('fr-FR')} {m.stockItem.unit} · {new Date(m.createdAt).toLocaleDateString('fr-FR')}</div>
-                        {m.note && <div style={{ fontSize: '10px', color: 'var(--text3)', fontStyle: 'italic' }}>{m.note}</div>}
+                  {(() => {
+                    type Mv = (typeof sv.stockMovements)[number]
+                    const byInterv = new Map<string, Mv[]>()
+                    const manual: Mv[] = []
+                    for (const m of sv.stockMovements) {
+                      if (m.interventionId) {
+                        const arr = byInterv.get(m.interventionId) ?? []
+                        arr.push(m); byInterv.set(m.interventionId, arr)
+                      } else manual.push(m)
+                    }
+                    const groups: { key: string; label: string; items: Mv[] }[] = []
+                    for (const [iid, items] of byInterv) {
+                      const interv = sv.interventions.find(x => x.id === iid)
+                      groups.push({ key: iid, label: interv ? `🔧 ${interv.title}` : '🔧 Travail supprimé', items })
+                    }
+                    if (manual.length > 0) groups.push({ key: 'manual', label: '✋ Sorties manuelles', items: manual })
+                    const renderMovement = (m: Mv) => (
+                      <div key={m.id} className="document-row">
+                        <span style={{ fontSize: '15px' }}>📦</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 500 }}>{m.stockItem.name}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{Number(m.quantity).toLocaleString('fr-FR')} {m.stockItem.unit} · {new Date(m.createdAt).toLocaleDateString('fr-FR')}</div>
+                        </div>
+                        {m.valueAmount && <span style={{ fontSize: '13px', fontWeight: 600, color: '#fbbf24', fontFamily: 'var(--mono)' }}>{Number(m.valueAmount).toFixed(2)} €</span>}
+                        <button className="btn-ghost" style={{ fontSize: '10px', padding: '2px 6px', color: '#fbbf24' }} title="Remettre en stock" onClick={() => handleReverseStockMovement(m.id)}>↩</button>
                       </div>
-                      {m.valueAmount && <span style={{ fontSize: '13px', fontWeight: 600, color: '#fbbf24', fontFamily: 'var(--mono)' }}>{Number(m.valueAmount).toFixed(2)} €</span>}
-                    </div>
-                  ))}
+                    )
+                    return groups.map(g => (
+                      <div key={g.key} style={{ marginBottom: '10px' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, margin: '4px 0' }}>
+                          {g.label}<span style={{ color: 'var(--text3)', fontWeight: 400 }}> — {g.items.reduce((s, m) => s + Number(m.valueAmount ?? 0), 0).toFixed(2)} €</span>
+                        </div>
+                        {g.items.map(renderMovement)}
+                      </div>
+                    ))
+                  })()}
                 </div>
               )}
 

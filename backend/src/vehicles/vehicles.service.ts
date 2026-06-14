@@ -637,6 +637,40 @@ export class VehiclesService {
     });
   }
 
+  // Lot C — annule une sortie de stock imputée à ce véhicule (remet la
+  // quantité en stock + supprime le mouvement). Sécurisé : seul un mouvement
+  // de type 'consume' appartenant au user ET ciblant ce véhicule est annulable.
+  async reverseStockMovement(
+    ownerId: string,
+    vehicleId: string,
+    movementId: string,
+  ) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, vehicleId);
+    const movement = await this.prisma.stockMovement.findFirst({
+      where: {
+        id: movementId,
+        ownerId,
+        targetType: 'vehicle',
+        targetId: vehicleId,
+      },
+    });
+    if (!movement) throw new NotFoundException('Mouvement introuvable.');
+    if (movement.type !== 'consume') {
+      throw new BadRequestException(
+        'Seules les sorties (consommations) peuvent être annulées.',
+      );
+    }
+    return this.prisma.$transaction(async (tx) => {
+      await tx.stockItem.update({
+        where: { id: movement.stockItemId },
+        data: { quantity: { increment: movement.quantity } },
+      });
+      await tx.stockMovement.delete({ where: { id: movementId } });
+      return { restored: true };
+    });
+  }
+
   /**
    * Auto-create CT / assurance alerts if dates are provided and no open alert exists yet.
    */

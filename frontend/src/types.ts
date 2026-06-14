@@ -146,7 +146,7 @@ export type VehicleDetail = VehicleItem & {
   }>
   stockMovements: Array<{
     id: string; type: string; quantity: string; valueAmount: string | null
-    note: string | null; createdAt: string
+    note: string | null; createdAt: string; interventionId: string | null
     stockItem: { name: string; unit: string }
   }>
 }
