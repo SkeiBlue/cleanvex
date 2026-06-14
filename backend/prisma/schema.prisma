@@ -45,6 +45,8 @@ model User {
   contacts              Contact[]
   tasks                 Task[]
   notifications         Notification[]
+  budgets               Budget[]
+  propertyRentalIncomes PropertyRentalIncome[]
 
   @@map("users")
 }
@@ -183,14 +185,20 @@ model Document {
   size        Int
   hash        String
   tagsJson    Json?    @map("tags_json")
+  // Sprint 5 — catégorie de classement. Auto-assignée lors d'un upload
+  // depuis un module (Vehicles, Real Estate, Finances, Stock, Contacts).
+  // Modifiable manuellement par l'utilisateur via PATCH /documents/:id.
+  categoryId  String?  @map("category_id")
   expiresAt   DateTime? @map("expires_at")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  owner User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  links DocumentLink[]
+  owner    User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  links    DocumentLink[]
+  category DocumentCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
+  @@index([categoryId])
   @@map("documents")
 }
 
@@ -211,8 +219,14 @@ model DocumentLink {
 model DocumentCategory {
   id        String  @id @default(uuid())
   name      String
+  // Sprint 5 — slug stable utilisé pour mapper module -> catégorie auto
+  // (ex: 'vehicles', 'real-estate', 'finances', 'stock', 'contacts', 'general').
+  slug      String  @unique
   moduleKey String? @map("module_key")
   color     String?
+  isSystem  Boolean @default(false) @map("is_system")
+
+  documents Document[]
 
   @@map("document_categories")
 }
@@ -358,11 +372,106 @@ model Property {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  owner  User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  events PropertyEvent[]
+  owner          User                   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  events         PropertyEvent[]
+  zones          PropertyZone[]
+  works          PropertyWork[]
+  rentalIncomes  PropertyRentalIncome[]
 
   @@index([ownerId])
   @@map("properties")
+}
+
+// Sprint 5 — pièce/zone d'un bien (Cuisine, Salon, Garage…). Sert à
+// regrouper les travaux et photos par zone.
+model PropertyZone {
+  id         String   @id @default(uuid())
+  propertyId String   @map("property_id")
+  name       String
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  property Property       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  works    PropertyWork[]
+
+  @@index([propertyId])
+  @@map("property_zones")
+}
+
+// Sprint 5 — travaux immobiliers. Budget prévu vs coût réel, statut,
+// priorité, dates, optionnellement liés à une zone ou un contact fournisseur.
+model PropertyWork {
+  id              String    @id @default(uuid())
+  propertyId      String    @map("property_id")
+  zoneId          String?   @map("zone_id")
+  title           String
+  description     String?
+  status          String    @default("planned")
+  priority        String    @default("normal")
+  budgetAmount    Decimal?  @map("budget_amount") @db.Decimal(12, 2)
+  actualAmount    Decimal?  @map("actual_amount") @db.Decimal(12, 2)
+  startDate       DateTime? @map("start_date")
+  endDate         DateTime? @map("end_date")
+  supplierContactId String? @map("supplier_contact_id")
+  notes           String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  property Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  zone     PropertyZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+
+  @@index([propertyId])
+  @@index([zoneId])
+  @@map("property_works")
+}
+
+// Sprint 5 — revenus locatifs. Optionnellement liés à un contact (locataire)
+// et à une transaction financière (lien via sourceModule='real-estate').
+model PropertyRentalIncome {
+  id          String   @id @default(uuid())
+  ownerId     String   @map("owner_id")
+  propertyId  String   @map("property_id")
+  amount      Decimal  @db.Decimal(12, 2)
+  receivedAt  DateTime @map("received_at")
+  tenantName  String?  @map("tenant_name")
+  notes       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  owner    User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([propertyId])
+  @@map("property_rental_incomes")
+}
+
+// Sprint 5 — budgets finances. Période (week/month/year/custom),
+// optionnellement liés à une catégorie financière ou à une cible
+// (targetType='vehicle'|'property'|'global'). Le calcul dépensé vs
+// restant se fait à la lecture depuis les transactions correspondantes.
+model Budget {
+  id          String    @id @default(uuid())
+  ownerId     String    @map("owner_id")
+  name        String
+  amount      Decimal   @db.Decimal(12, 2)
+  period      String    @default("month")
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  categoryId  String?   @map("category_id")
+  targetType  String?   @map("target_type")
+  targetId    String?   @map("target_id")
+  alertThreshold Int    @default(100) @map("alert_threshold")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([categoryId])
+  @@index([targetType, targetId])
+  @@map("budgets")
 }
 
 model PropertyEvent {

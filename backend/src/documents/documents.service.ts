@@ -27,9 +27,14 @@ export class DocumentsService {
     mkdirSync(this.storageRoot, { recursive: true });
   }
 
-  async list(ownerId: string, { page = 1, limit = 50 }: PaginationDto = {}) {
+  async list(
+    ownerId: string,
+    { page = 1, limit = 50 }: PaginationDto = {},
+    categoryId?: string,
+  ) {
     await this.ensureDocumentsEnabled();
-    const where = { ownerId };
+    const where: Record<string, unknown> = { ownerId };
+    if (categoryId) where.categoryId = categoryId;
     const select = {
       id: true,
       name: true,
@@ -38,6 +43,7 @@ export class DocumentsService {
       mimeType: true,
       size: true,
       expiresAt: true,
+      categoryId: true,
       createdAt: true,
     };
     const [data, total] = await Promise.all([
@@ -53,10 +59,37 @@ export class DocumentsService {
     return paginate(data, total, page, limit);
   }
 
+  async listCategories() {
+    await this.ensureDocumentsEnabled();
+    return this.prisma.documentCategory.findMany({
+      orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+    });
+  }
+
+  async setCategory(ownerId: string, id: string, categoryId: string | null) {
+    await this.ensureDocumentsEnabled();
+    const document = await this.prisma.document.findFirst({
+      where: { id, ownerId },
+    });
+    if (!document) throw new NotFoundException('Document not found');
+    if (categoryId) {
+      const cat = await this.prisma.documentCategory.findUnique({
+        where: { id: categoryId },
+      });
+      if (!cat) throw new BadRequestException('Catégorie inconnue');
+    }
+    return this.prisma.document.update({
+      where: { id },
+      data: { categoryId },
+    });
+  }
+
   async store(
     file: Express.Multer.File | undefined,
     ownerId: string,
     expiresAt?: string,
+    sourceModule?: string,
+    categoryId?: string,
   ) {
     await this.ensureDocumentsEnabled();
 
@@ -70,6 +103,10 @@ export class DocumentsService {
     const absolutePath = join(this.storageRoot, storedName);
     await writeFile(absolutePath, file.buffer);
     const expirationDate = this.parseExpirationDate(expiresAt);
+    const resolvedCategoryId = await this.resolveCategoryId(
+      categoryId,
+      sourceModule,
+    );
 
     const document = await this.prisma.document.create({
       data: {
@@ -82,6 +119,7 @@ export class DocumentsService {
         size: file.size,
         hash,
         expiresAt: expirationDate,
+        categoryId: resolvedCategoryId,
       },
     });
 
@@ -136,6 +174,29 @@ export class DocumentsService {
 
   private ensureDocumentsEnabled(): Promise<void> {
     return this.moduleCache.assertEnabled('documents');
+  }
+
+  // Si un categoryId explicite est fourni → on l'utilise (après vérif d'existence).
+  // Sinon on tente le slug du module source. Sinon "general".
+  private async resolveCategoryId(
+    categoryId?: string,
+    sourceModule?: string,
+  ): Promise<string | null> {
+    if (categoryId) {
+      const cat = await this.prisma.documentCategory.findUnique({
+        where: { id: categoryId },
+      });
+      if (cat) return cat.id;
+    }
+    const slug = sourceModule ?? 'general';
+    const auto = await this.prisma.documentCategory.findUnique({
+      where: { slug },
+    });
+    if (auto) return auto.id;
+    const fallback = await this.prisma.documentCategory.findUnique({
+      where: { slug: 'general' },
+    });
+    return fallback ? fallback.id : null;
   }
 
   private parseExpirationDate(expiresAt?: string) {

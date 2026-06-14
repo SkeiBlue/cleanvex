@@ -6,6 +6,7 @@ import {
   Get,
   HttpCode,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -83,8 +84,17 @@ export class DocumentsController {
   constructor(private readonly documents: DocumentsService) {}
 
   @Get()
-  list(@Req() req: AuthenticatedRequest, @Query() pagination: PaginationDto) {
-    return this.documents.list(req.user.id, pagination);
+  list(
+    @Req() req: AuthenticatedRequest,
+    @Query() pagination: PaginationDto,
+    @Query('categoryId') categoryId?: string,
+  ) {
+    return this.documents.list(req.user.id, pagination, categoryId);
+  }
+
+  @Get('categories')
+  categories() {
+    return this.documents.listCategories();
   }
 
   @Post()
@@ -99,7 +109,22 @@ export class DocumentsController {
     @Body() dto: UploadDocumentDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.documents.store(file, req.user.id, dto.expiresAt);
+    return this.documents.store(
+      file,
+      req.user.id,
+      dto.expiresAt,
+      dto.sourceModule,
+      dto.categoryId,
+    );
+  }
+
+  @Patch(':id/category')
+  setCategory(
+    @Param('id') id: string,
+    @Body('categoryId') categoryId: string | null,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.documents.setCategory(req.user.id, id, categoryId ?? null);
   }
 
   @Delete(':id')
