@@ -9,6 +9,12 @@ export function setupApp(app: INestApplication) {
     .split(',')
     .map((origin) => origin.trim());
 
+  // Derrière Nginx (un seul reverse-proxy), on fait confiance au premier hop
+  // pour récupérer l'IP réelle du client (X-Forwarded-For) : rate-limit, logs
+  // d'audit et page Sessions s'appuient dessus. Ajuster la valeur si plusieurs
+  // proxies sont chaînés.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
   app.setGlobalPrefix('api');
   app.use(helmet());
   app.use(cookieParser());

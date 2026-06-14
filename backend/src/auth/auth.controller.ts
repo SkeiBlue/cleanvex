@@ -15,6 +15,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Disable2faDto } from './dto/disable-2fa.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -37,12 +38,16 @@ export class AuthController {
     return this.auth.register(dto, this.meta(req));
   }
 
+  // Rate-limit anti brute-force : la vérification compare un token, on borne
+  // les tentatives par IP (cf. LOT 3, protège aussi du DoS CPU côté bcrypt).
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('verify-email')
   @HttpCode(200)
   verifyEmail(@Body() dto: VerifyEmailDto, @Req() req: Request) {
     return this.auth.verifyEmail(dto, this.meta(req));
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('resend-verification')
   @HttpCode(200)
   resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request) {
@@ -153,8 +158,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Post('2fa/disable')
   @HttpCode(200)
-  disable2fa(@Req() req: AuthenticatedRequest, @Body('code') code: string) {
-    return this.auth.disable2fa(req.user.id, code);
+  disable2fa(@Req() req: AuthenticatedRequest, @Body() dto: Disable2faDto) {
+    return this.auth.disable2fa(
+      req.user.id,
+      dto.password,
+      dto.code,
+      this.meta(req),
+    );
   }
 
   private meta(req: Request) {
@@ -165,10 +175,13 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string) {
-    // `secure` est lu depuis l'env (COOKIE_SECURE). Par défaut OFF, car beaucoup
-    // d'installs tournent encore en HTTP (LAN/intranet). Active à `true` dès que
-    // le site est servi en HTTPS — sinon le cookie ne sera jamais transmis.
-    const secure = (process.env.COOKIE_SECURE ?? 'false') === 'true';
+    // `secure` est piloté par COOKIE_SECURE si la variable est définie ; sinon
+    // on l'active automatiquement en production (NODE_ENV=production) pour ne
+    // jamais envoyer le refresh token en clair si la variable est oubliée.
+    // En HTTP pur (LAN/intranet), forcer explicitement COOKIE_SECURE=false.
+    const secure = process.env.COOKIE_SECURE
+      ? process.env.COOKIE_SECURE === 'true'
+      : process.env.NODE_ENV === 'production';
     const days = Number(process.env.JWT_REFRESH_DAYS ?? '14');
     res.cookie(this.auth.refreshCookieName, token, {
       httpOnly: true,

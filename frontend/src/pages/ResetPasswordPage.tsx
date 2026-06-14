@@ -25,7 +25,11 @@ export function ResetPasswordPage() {
     if (busy) return
     setMsg('')
     if (!token) { setMsg('Lien invalide ou expiré. Refais une demande de réinitialisation.'); return }
-    if (password.length < 8) { setMsg('Le mot de passe doit faire au moins 8 caractères.'); return }
+    // Doit rester aligné sur la politique backend (IsStrongPassword).
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$/.test(password)) {
+      setMsg('Le mot de passe doit contenir au moins 8 caractères, une minuscule, une majuscule, un chiffre et un caractère spécial.')
+      return
+    }
     if (password !== confirm) { setMsg('Les deux mots de passe ne correspondent pas.'); return }
 
     setBusy(true)
@@ -77,7 +81,7 @@ export function ResetPasswordPage() {
                   className="modal-input" type="password" autoComplete="new-password"
                   style={{ paddingLeft: 32 }} value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Au moins 8 caractères" required minLength={8}
+                  placeholder="Au moins 8 caractères" required minLength={8} maxLength={72}
                 />
               </span>
             </label>

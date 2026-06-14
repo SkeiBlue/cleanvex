@@ -244,9 +244,13 @@ export class AdminUsersController {
     @Body() body: { newPassword: string },
     @Req() req: AuthRequest,
   ) {
-    if (!body.newPassword || body.newPassword.length < 8) {
+    // Même politique que les DTO d'auth (IsStrongPassword) : 8-72 caractères
+    // avec minuscule, majuscule, chiffre et caractère spécial.
+    const strongPassword =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$/;
+    if (!body.newPassword || !strongPassword.test(body.newPassword)) {
       throw new BadRequestException(
-        'Le mot de passe doit faire au moins 8 caractères',
+        'Le mot de passe doit contenir au moins 8 caractères, une minuscule, une majuscule, un chiffre et un caractère spécial.',
       );
     }
     const hash = await bcrypt.hash(body.newPassword, 12);

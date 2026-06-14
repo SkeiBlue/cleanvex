@@ -25,18 +25,19 @@ import { DocumentsService } from './documents.service';
 
 const MAX_SIZE = 20 * 1024 * 1024; // 20 Mo
 
+// Pré-filtre grossier basé sur le mimetype *annoncé* par le client. NE constitue
+// PAS la sécurité : il évite juste de bufferiser des types manifestement non
+// supportés. La vraie validation (magic bytes + extension + blocage SVG) est
+// faite après réception dans DocumentsService.store() via validateUpload().
 const ALLOWED_MIMES = new Set([
   // Images
   'image/jpeg',
   'image/png',
   'image/gif',
   'image/webp',
-  'image/svg+xml',
   // Documents
   'application/pdf',
-  'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
   'text/csv',
@@ -141,6 +142,10 @@ export class DocumentsController {
   ) {
     const file = await this.documents.getDownload(id, req.user.id);
     res.setHeader('Content-Type', file.mimeType);
+    // Empêche le navigateur de "sniffer" et réinterpréter le contenu, et force
+    // le téléchargement plutôt que l'affichage inline (défense en profondeur si
+    // un fichier dangereux passait malgré la validation à l'upload).
+    res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', contentDispositionHeader(file.name));
     return res.sendFile(file.absolutePath);
   }

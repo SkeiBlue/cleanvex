@@ -41,6 +41,7 @@ export function SettingsPage() {
   const [totpSecret, setTotpSecret] = useState<string | null>(null)
   const [totpEnabled, setTotpEnabled] = useState(false)
   const [totpCode, setTotpCode] = useState('')
+  const [disablePassword, setDisablePassword] = useState('')
   const [totpMsg, setTotpMsg] = useState<{ text: string; ok: boolean } | null>(null)
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([])
@@ -83,9 +84,9 @@ export function SettingsPage() {
   }
 
   async function handle2faDisable() {
-    const r = await authedFetch('/auth/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: totpCode }) })
-    if (!r.ok) { setTotpMsg({ text: 'Code invalide.', ok: false }); return }
-    setTotpEnabled(false); setTotpCode(''); setTotpMsg({ text: '2FA désactivé.', ok: true })
+    const r = await authedFetch('/auth/2fa/disable', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: disablePassword, code: totpCode }) })
+    if (!r.ok) { setTotpMsg({ text: 'Mot de passe ou code incorrect.', ok: false }); return }
+    setTotpEnabled(false); setTotpCode(''); setDisablePassword(''); setTotpMsg({ text: '2FA désactivé.', ok: true })
   }
 
   async function load() {
@@ -120,7 +121,11 @@ export function SettingsPage() {
     const newPassword = data.get('newPassword')?.toString() ?? ''
     const confirmPassword = data.get('confirmPassword')?.toString() ?? ''
     if (newPassword !== confirmPassword) { setErr('Les mots de passe ne correspondent pas.'); return }
-    if (newPassword.length < 8) { setErr('Le nouveau mot de passe doit contenir au moins 8 caractères.'); return }
+    // Doit rester aligné sur la politique backend (IsStrongPassword).
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$/.test(newPassword)) {
+      setErr('Le mot de passe doit contenir au moins 8 caractères, une minuscule, une majuscule, un chiffre et un caractère spécial.')
+      return
+    }
     const r = await authedFetch('/auth/password', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword: data.get('currentPassword'), newPassword }),
@@ -402,8 +407,8 @@ export function SettingsPage() {
                 <input name="currentPassword" type="password" placeholder="••••••••" style={INPUT_STYLE} required />
               </div>
               <div>
-                <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '6px' }}>NOUVEAU MOT DE PASSE (min. 8 caractères)</div>
-                <input name="newPassword" type="password" placeholder="••••••••" style={INPUT_STYLE} required minLength={8} />
+                <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '6px' }}>NOUVEAU MOT DE PASSE</div>
+                <input name="newPassword" type="password" placeholder="8+ car., maj., min., chiffre, spécial" style={INPUT_STYLE} required minLength={8} maxLength={72} />
               </div>
               <div>
                 <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '6px' }}>CONFIRMER LE NOUVEAU MOT DE PASSE</div>
@@ -467,8 +472,14 @@ export function SettingsPage() {
               {totpEnabled && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <p style={{ fontSize: '12px', color: 'var(--text3)' }}>
-                    Pour désactiver le 2FA, entre ton code actuel.
+                    Pour désactiver le 2FA, entre ton mot de passe et ton code actuel.
                   </p>
+                  <input
+                    type="password"
+                    value={disablePassword} onChange={e => setDisablePassword(e.target.value)}
+                    placeholder="Mot de passe actuel" autoComplete="current-password"
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 12px', color: 'var(--text)', fontSize: '14px', fontFamily: 'var(--font)', outline: 'none' }}
+                  />
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input
                       value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
@@ -478,7 +489,7 @@ export function SettingsPage() {
                     <button
                       onClick={handle2faDisable}
                       style={{ padding: '8px 16px', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.3)', borderRadius: '8px', color: '#f87171', cursor: 'pointer', fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font)' }}
-                      disabled={totpCode.length !== 6}
+                      disabled={totpCode.length !== 6 || disablePassword.length < 8}
                     >
                       Désactiver
                     </button>

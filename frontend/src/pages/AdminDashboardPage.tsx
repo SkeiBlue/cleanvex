@@ -137,7 +137,9 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
   }
 
   async function resetPassword() {
-    if (newPwd.length < 8) { setMsg({ text: 'Mot de passe trop court (8 min).', ok: false }); return }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,72}$/.test(newPwd)) {
+      setMsg({ text: 'Mot de passe : 8+ caractères, minuscule, majuscule, chiffre et caractère spécial.', ok: false }); return
+    }
     if (newPwd !== confirmPwd) { setMsg({ text: 'Les mots de passe ne correspondent pas.', ok: false }); return }
     if (!confirm('Réinitialiser le mot de passe ? Toutes les sessions de l\'utilisateur seront révoquées.')) return
     setBusy('pwd'); setMsg(null)

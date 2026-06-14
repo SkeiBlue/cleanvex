@@ -11,6 +11,7 @@ import { mkdirSync, unlink } from 'fs';
 import { writeFile } from 'fs/promises';
 import { extname, join, resolve } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
+import { validateUpload } from './file-validation';
 
 @Injectable()
 export class DocumentsService {
@@ -93,9 +94,13 @@ export class DocumentsService {
   ) {
     await this.ensureDocumentsEnabled();
 
-    if (!file) {
-      throw new BadRequestException('Missing file');
-    }
+    // Validation réelle (magic bytes + extension + blocage SVG) : on ne se fie
+    // pas au mimetype client. `validateUpload` lève une BadRequestException si
+    // le fichier est interdit, et retourne le vrai mime à stocker.
+    const { mime } = await validateUpload(file);
+    // validateUpload lève si le fichier est absent ; ce garde-fou aide aussi le
+    // typage TS à savoir que `file` est défini dans la suite.
+    if (!file) throw new BadRequestException('Missing file');
 
     const hash = createHash('sha256').update(file.buffer).digest('hex');
     const extension = extname(file.originalname);
@@ -115,7 +120,7 @@ export class DocumentsService {
         type: 'upload',
         visibility: 'private',
         storagePath: storedName,
-        mimeType: file.mimetype,
+        mimeType: mime,
         size: file.size,
         hash,
         expiresAt: expirationDate,

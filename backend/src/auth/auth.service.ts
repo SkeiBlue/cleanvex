@@ -92,16 +92,7 @@ export class AuthService {
     dto: VerifyEmailDto,
     meta: { ip?: string; userAgent?: string },
   ) {
-    const candidates = await this.prisma.emailVerificationToken.findMany({
-      where: {
-        consumedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    const current = candidates.find((token) =>
-      bcrypt.compareSync(dto.token, token.tokenHash),
-    );
+    const current = await this.resolveEmailVerificationToken(dto.token);
 
     if (!current) {
       throw new BadRequestException('Invalid verification token');
@@ -321,9 +312,9 @@ export class AuthService {
       data: { consumedAt: new Date() },
     });
 
-    const raw = randomBytes(32).toString('base64url');
-    const tokenHash = await bcrypt.hash(raw, 12);
-    await this.prisma.passwordResetToken.create({
+    const secret = randomBytes(32).toString('base64url');
+    const tokenHash = await bcrypt.hash(secret, 12);
+    const token = await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
         tokenHash,
@@ -331,19 +322,14 @@ export class AuthService {
       },
     });
 
-    await this.mail.sendPasswordResetEmail(user.email, raw);
+    // Format `<id>.<secret>` → lookup O(1) au reset (cf. createEmailVerificationToken).
+    await this.mail.sendPasswordResetEmail(user.email, `${token.id}.${secret}`);
     await this.core.logAudit(user.id, 'auth.forgot_password');
     return { sent: true };
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const candidates = await this.prisma.passwordResetToken.findMany({
-      where: { consumedAt: null, expiresAt: { gt: new Date() } },
-    });
-
-    const current = candidates.find((t) =>
-      bcrypt.compareSync(token, t.tokenHash),
-    );
+    const current = await this.resolvePasswordResetToken(token);
     if (!current) throw new BadRequestException('Token invalide ou expiré.');
 
     const hash = await bcrypt.hash(newPassword, 12);
@@ -465,8 +451,8 @@ export class AuthService {
   }
 
   private async createEmailVerificationToken(userId: string) {
-    const raw = randomBytes(32).toString('base64url');
-    const tokenHash = await bcrypt.hash(raw, 12);
+    const secret = randomBytes(32).toString('base64url');
+    const tokenHash = await bcrypt.hash(secret, 12);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const token = await this.prisma.emailVerificationToken.create({
@@ -477,7 +463,73 @@ export class AuthService {
       },
     });
 
-    return { ...token, raw };
+    // Format `<id>.<secret>` (comme les refresh tokens) → lookup O(1) en base
+    // via l'id public, puis un seul bcrypt.compare sur le secret. Évite la
+    // boucle bcrypt sur tous les tokens valides (amplification CPU / DoS).
+    return { ...token, raw: `${token.id}.${secret}` };
+  }
+
+  /**
+   * Résout un token email-verification (`<id>.<secret>` ou ancien format brut)
+   * vers son enregistrement. Retourne null si invalide/expiré/consommé.
+   */
+  private async resolveEmailVerificationToken(rawToken: string) {
+    const now = new Date();
+    const dotIdx = rawToken.indexOf('.');
+    if (dotIdx > 0) {
+      const id = rawToken.slice(0, dotIdx);
+      const secret = rawToken.slice(dotIdx + 1);
+      const token = await this.prisma.emailVerificationToken.findUnique({
+        where: { id },
+      });
+      if (
+        token &&
+        !token.consumedAt &&
+        token.expiresAt > now &&
+        (await bcrypt.compare(secret, token.tokenHash))
+      ) {
+        return token;
+      }
+      return null;
+    }
+    // Legacy : ancien token sans id encodé → balayage O(N) (transitoire).
+    const candidates = await this.prisma.emailVerificationToken.findMany({
+      where: { consumedAt: null, expiresAt: { gt: now } },
+    });
+    return (
+      candidates.find((t) => bcrypt.compareSync(rawToken, t.tokenHash)) ?? null
+    );
+  }
+
+  /**
+   * Résout un token password-reset (`<id>.<secret>` ou ancien format brut).
+   * Retourne null si invalide/expiré/consommé.
+   */
+  private async resolvePasswordResetToken(rawToken: string) {
+    const now = new Date();
+    const dotIdx = rawToken.indexOf('.');
+    if (dotIdx > 0) {
+      const id = rawToken.slice(0, dotIdx);
+      const secret = rawToken.slice(dotIdx + 1);
+      const token = await this.prisma.passwordResetToken.findUnique({
+        where: { id },
+      });
+      if (
+        token &&
+        !token.consumedAt &&
+        token.expiresAt > now &&
+        (await bcrypt.compare(secret, token.tokenHash))
+      ) {
+        return token;
+      }
+      return null;
+    }
+    const candidates = await this.prisma.passwordResetToken.findMany({
+      where: { consumedAt: null, expiresAt: { gt: now } },
+    });
+    return (
+      candidates.find((t) => bcrypt.compareSync(rawToken, t.tokenHash)) ?? null
+    );
   }
 
   private assertInviteCode(inviteCode?: string) {
@@ -535,9 +587,23 @@ export class AuthService {
     return { enabled: true };
   }
 
-  async disable2fa(userId: string, code: string) {
+  async disable2fa(
+    userId: string,
+    password: string,
+    code: string,
+    meta: { ip?: string; userAgent?: string } = {},
+  ) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user?.totpSecret) throw new BadRequestException('2FA non configuré.');
+
+    // Double validation : on exige le mot de passe actuel ET le code TOTP, pour
+    // qu'une session volée (avec code TOTP connu) ne suffise pas à désactiver
+    // le 2FA. La désactivation est refusée si l'un des deux est incorrect.
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!validPassword) {
+      throw new UnauthorizedException('Mot de passe actuel incorrect');
+    }
+
     const totp = new OTPAuth.TOTP({
       secret: OTPAuth.Secret.fromBase32(user.totpSecret),
       algorithm: 'SHA1',
@@ -546,10 +612,12 @@ export class AuthService {
     });
     const delta = totp.validate({ token: code, window: 1 });
     if (delta === null) throw new BadRequestException('Code invalide.');
+
     await this.prisma.user.update({
       where: { id: userId },
       data: { totpEnabled: false, totpSecret: null },
     });
+    await this.core.logAudit(userId, 'auth.2fa.disabled', meta);
     return { enabled: false };
   }
 

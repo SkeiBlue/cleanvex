@@ -534,6 +534,9 @@ export function LoginScreen({
                 placeholder="ex: clement" autoComplete="username" />
               <PasswordField label="Mot de passe" value={signupPassword} onChange={onSignupPasswordChange}
                 placeholder="8 caractères minimum" autoComplete="new-password" />
+              <p style={{ margin: '-4px 0 0', fontSize: 11, color: 'var(--text3)', lineHeight: 1.4 }}>
+                Au moins 8 caractères, une minuscule, une majuscule, un chiffre et un caractère spécial.
+              </p>
               <Field label="Code d'invitation (optionnel)" icon={<Sparkles size={14} />}
                 value={signupInviteCode} onChange={onSignupInviteCodeChange}
                 placeholder="Laisse vide si l'instance est ouverte" />
