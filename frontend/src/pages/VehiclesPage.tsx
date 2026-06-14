@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, Bell, Car, FileText,
-  FileLock2, Gauge, Package, Pencil, Plus, Settings2, Trash2, TrendingUp,
+  FileLock2, Gauge, Image, Package, Pencil, Plus, Settings2, Trash2, TrendingUp,
   Truck, Upload, Wallet, Wrench,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
@@ -14,24 +14,53 @@ import type { DocumentItem, VehicleDetail, VehicleItem, VehiclePart } from '../t
 import { generateVehiclePDF } from '../utils/pdf'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
-type Tab = 'resume' | 'pieces' | 'interventions' | 'alertes' | 'budget' | 'documents' | 'historique'
+type Tab = 'resume' | 'pieces' | 'interventions' | 'alertes' | 'budget' | 'documents' | 'photos' | 'historique'
 
 /* ─── constantes ─── */
-const STATUS_COLORS: Record<string, { color: string; label: string }> = {
-  active: { color: '#4ade80', label: 'Actif' },
-  repair: { color: '#fbbf24', label: 'En réparation' },
-  sold:   { color: '#f87171', label: 'Vendu' },
-  parked: { color: '#7b82a8', label: 'Garé' },
+// Sprint 1 — Types de véhicules officiels (CDC). Les valeurs techniques
+// restent en anglais ; l'UI affiche les labels FR.
+export const VEHICLE_TYPE_LABELS: Record<string, string> = {
+  car:        'Voiture',
+  motorcycle: 'Moto',
+  utility:    'Utilitaire',
+  truck:      'Camion',
+  tractor:    'Tracteur',
+  trailer:    'Remorque',
+  boat:       'Bateau',
+  other:      'Autre',
+  // alias rétro-compat (au cas où une vue passe encore l'ancienne valeur)
+  moto: 'Moto',
+  van:  'Utilitaire',
 }
 
+// Sprint 1 — Statuts véhicule officiels (CDC).
+const STATUS_COLORS: Record<string, { color: string; label: string }> = {
+  in_use:           { color: '#4ade80', label: 'En fonction' },
+  restoration:      { color: '#fbbf24', label: 'En restauration' },
+  sold:             { color: '#f87171', label: 'Vendu' },
+  planned_purchase: { color: '#67e8f9', label: 'Achat prévu' },
+  donor:            { color: '#a78bfa', label: 'Donneuse' },
+  // alias rétro-compat (anciens véhicules non migrés)
+  active: { color: '#4ade80', label: 'En fonction' },
+  repair: { color: '#fbbf24', label: 'En restauration' },
+  parked: { color: '#4ade80', label: 'En fonction' },
+}
+
+// Sprint 1 — Labels FR officiels pour les statuts d'intervention.
+// Code interne en anglais : planned / todo / in_progress / waiting / done / cancelled.
+// Aliases conservés pour compat avec les anciennes valeurs ('a-faire', 'fait', etc.).
 const INTERV_STATUS: Record<string, { color: string; label: string }> = {
-  'a-faire':     { color: '#7b82a8', label: 'À faire' },
-  'en-cours':    { color: '#67e8f9', label: 'En cours' },
-  'bloque':      { color: '#f87171', label: 'Bloqué' },
-  'fait':        { color: '#4ade80', label: 'Fait' },
-  'planned':     { color: '#7b82a8', label: 'À faire' },
-  'done':        { color: '#4ade80', label: 'Fait' },
-  'in_progress': { color: '#67e8f9', label: 'En cours' },
+  planned:     { color: '#7b82a8', label: 'Planifié' },
+  todo:        { color: '#7b82a8', label: 'À faire' },
+  in_progress: { color: '#67e8f9', label: 'En cours' },
+  waiting:     { color: '#fbbf24', label: 'En attente' },
+  done:        { color: '#4ade80', label: 'Terminé' },
+  cancelled:   { color: '#f87171', label: 'Annulé' },
+  // aliases rétro-compat
+  'a-faire':  { color: '#7b82a8', label: 'À faire' },
+  'en-cours': { color: '#67e8f9', label: 'En cours' },
+  'bloque':   { color: '#f87171', label: 'Bloqué' },
+  'fait':     { color: '#4ade80', label: 'Terminé' },
 }
 
 const SELECT_STYLE: React.CSSProperties = {
@@ -42,11 +71,12 @@ const SELECT_STYLE: React.CSSProperties = {
 
 const NAV_ITEMS: { tab: Tab; icon: React.ReactNode; label: string }[] = [
   { tab: 'resume',        icon: <Gauge size={16} />,         label: 'Résumé' },
-  { tab: 'interventions', icon: <Wrench size={16} />,        label: 'Travaux' },
+  { tab: 'interventions', icon: <Wrench size={16} />,        label: 'Interventions' },
   { tab: 'pieces',        icon: <Settings2 size={16} />,     label: 'Pièces' },
   { tab: 'alertes',       icon: <Bell size={16} />,          label: 'Alertes' },
   { tab: 'budget',        icon: <Wallet size={16} />,        label: 'Budget' },
   { tab: 'documents',     icon: <FileText size={16} />,      label: 'Documents' },
+  { tab: 'photos',        icon: <Image size={16} />,         label: 'Photos' },
   { tab: 'historique',    icon: <TrendingUp size={16} />,    label: 'Historique km' },
 ]
 
@@ -92,12 +122,14 @@ function alertUrgency(dueDate: string | null) {
   return { color: '#4ade80', label: `J-${days}` }
 }
 
-function isDone(status: string) { return status === 'fait' || status === 'done' }
+function isDone(status: string) { return status === 'done' || status === 'fait' }
 
 function VehicleTypeIcon({ type }: { type: string }) {
   const size = 28
-  if (type === 'moto') return <Gauge size={size} style={{ color: 'var(--text3)' }} />
-  if (type === 'truck' || type === 'van') return <Truck size={size} style={{ color: 'var(--text3)' }} />
+  if (type === 'motorcycle' || type === 'moto') return <Gauge size={size} style={{ color: 'var(--text3)' }} />
+  if (type === 'truck' || type === 'utility' || type === 'van' || type === 'tractor' || type === 'trailer') {
+    return <Truck size={size} style={{ color: 'var(--text3)' }} />
+  }
   return <Car size={size} style={{ color: 'var(--text3)' }} />
 }
 
@@ -305,15 +337,15 @@ export function VehiclesPage() {
         stockUsages: usagesPayload.length > 0 ? usagesPayload : undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Création du travail refusée.')); return }
+    if (!r.ok) { toast.err(await parseApiError(r, "Création de l'intervention refusée.")); return }
     form.reset()
     setShowAddIntervention(false)
     setUsePartsFromStock(false)
     setStockUsages([])
     setRecordInFinance(false)
     toast.ok(usagesPayload.length > 0
-      ? `Travail ajouté (${usagesPayload.length} pièce${usagesPayload.length > 1 ? 's' : ''} du stock consommée${usagesPayload.length > 1 ? 's' : ''}).`
-      : 'Travail ajouté.',
+      ? `Intervention ajoutée (${usagesPayload.length} pièce${usagesPayload.length > 1 ? 's' : ''} du stock consommée${usagesPayload.length > 1 ? 's' : ''}).`
+      : 'Intervention ajoutée.',
     )
     await loadVehicleDetail(selectedVehicle.id)
   }
@@ -341,7 +373,7 @@ export function VehiclesPage() {
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Modification refusée.')); return }
-    setEditingIntervention(null); toast.ok('Travail mis à jour.')
+    setEditingIntervention(null); toast.ok('Intervention mise à jour.')
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -395,9 +427,9 @@ export function VehiclesPage() {
         mileage: mileageRaw ? Number(mileageRaw) : undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Validation du travail refusée.')); return }
+    if (!r.ok) { toast.err(await parseApiError(r, "Validation de l'intervention refusée.")); return }
     setValidatingIntervention(null)
-    toast.ok('Travail validé.')
+    toast.ok('Intervention validée.')
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -534,6 +566,55 @@ export function VehiclesPage() {
     form.reset(); setShowUploadDoc(false); toast.ok('Document ajouté.'); await reload(); await loadVehicleDetail(selectedVehicle.id)
   }
 
+  // Sprint 1 — Onglet Photos : upload d'une image liée au véhicule
+  // (réutilise le système Documents, contexte = 'vehicle_photo').
+  async function handleUploadPhoto(event: FormEv) {
+    event.preventDefault(); if (!selectedVehicle) return
+    const form = event.currentTarget
+    const input = form.elements.namedItem('vehiclePhoto') as HTMLInputElement
+    const file = input.files?.[0]; if (!file) { toast.err('Sélectionne une image.'); return }
+    if (!file.type.startsWith('image/')) { toast.err('Format non supporté : ce n\'est pas une image.'); return }
+    const body = new FormData(); body.append('file', file)
+    const upload = await authedFetch('/documents', { method: 'POST', body })
+    if (!upload.ok) { toast.err(await parseApiError(upload, 'Upload refusé.')); return }
+    const doc = await upload.json()
+    const link = await authedFetch(`/vehicles/${selectedVehicle.id}/documents`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ documentId: doc.id, context: 'vehicle_photo' }),
+    })
+    if (!link.ok) { toast.err(await parseApiError(link, 'Liaison au véhicule refusée.')); return }
+    form.reset(); toast.ok('Photo ajoutée.'); await reload(); await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  async function handleDeletePhoto(documentId: string) {
+    if (!window.confirm('Supprimer cette photo ?')) return
+    const r = await authedFetch(`/documents/${documentId}`, { method: 'DELETE' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); return }
+    toast.ok('Photo supprimée.'); await reload(); if (selectedVehicle) await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  // Génère un blob URL pour afficher l'image privée (download avec auth)
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({})
+  useEffect(() => {
+    if (!selectedVehicle || activeTab !== 'photos') return
+    const photoDocs = selectedVehicle.documents.filter(d =>
+      d.context === 'vehicle_photo' || (d.document.mimeType?.startsWith('image/') && d.context !== 'document')
+    )
+    let cancelled = false
+    const urls: Record<string, string> = {}
+    Promise.all(photoDocs.map(async (l) => {
+      if (photoUrls[l.document.id]) return
+      const r = await authedFetch(`/documents/${l.document.id}/download`)
+      if (!r.ok) return
+      const blob = await r.blob()
+      urls[l.document.id] = URL.createObjectURL(blob)
+    })).then(() => {
+      if (!cancelled && Object.keys(urls).length > 0) setPhotoUrls(prev => ({ ...prev, ...urls }))
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVehicle?.id, activeTab])
+
   async function handleLinkDoc(event: FormEv) {
     event.preventDefault(); if (!selectedVehicle) return
     const form = event.currentTarget; const data = new FormData(form)
@@ -588,10 +669,20 @@ export function VehiclesPage() {
     return matchSearch && (statusFilter === 'all' || v.status === statusFilter)
   })
 
+  // Sprint 1 — Le filtre prend les valeurs anglaises officielles. On
+  // accepte aussi les anciennes valeurs FR pour compat ('a-faire', 'fait',
+  // 'en-cours', 'bloque') ainsi que les équivalences techniques (planned).
+  const STATUS_ALIASES: Record<string, string[]> = {
+    todo:        ['todo', 'planned', 'a-faire'],
+    in_progress: ['in_progress', 'en-cours'],
+    waiting:     ['waiting'],
+    done:        ['done', 'fait'],
+    cancelled:   ['cancelled', 'bloque'],
+  }
   const filteredInterv = (sv?.interventions ?? []).filter(i =>
-    intervStatusFilter === 'all' || i.status === intervStatusFilter
-    || (intervStatusFilter === 'a-faire' && i.status === 'planned')
-    || (intervStatusFilter === 'fait' && i.status === 'done')
+    intervStatusFilter === 'all'
+    || i.status === intervStatusFilter
+    || (STATUS_ALIASES[intervStatusFilter] ?? []).includes(i.status)
   )
 
   // Tout ce qui n'est PAS dans une catégorie photo va dans "Documents",
@@ -638,17 +729,21 @@ export function VehiclesPage() {
             <FieldTip label="Type" hint="La catégorie du véhicule — influence l'icône affichée et certaines statistiques.">
               <select name="type" defaultValue="car" className="modal-select">
                 <option value="car">🚗 Voiture</option>
-                <option value="moto">🏍 Moto</option>
+                <option value="motorcycle">🏍 Moto</option>
+                <option value="utility">🚐 Utilitaire</option>
                 <option value="truck">🚚 Camion</option>
-                <option value="van">🚐 Utilitaire</option>
+                <option value="tractor">🚜 Tracteur</option>
+                <option value="trailer">🛻 Remorque</option>
+                <option value="boat">⛵ Bateau</option>
                 <option value="other">Autre</option>
               </select>
             </FieldTip>
-            <FieldTip label="Statut" hint="L'état opérationnel actuel. 'Actif' = en service quotidien. 'En réparation' = immobilisé au garage. Modifiable à tout moment.">
-              <select name="status" defaultValue="active" className="modal-select">
-                <option value="active">Actif</option>
-                <option value="repair">En réparation</option>
-                <option value="parked">Garé</option>
+            <FieldTip label="Statut" hint="L'état opérationnel actuel. 'En fonction' = en service. 'En restauration' = en chantier. 'Achat prévu' = futur. 'Donneuse' = pièces. Modifiable à tout moment.">
+              <select name="status" defaultValue="in_use" className="modal-select">
+                <option value="in_use">En fonction</option>
+                <option value="restoration">En restauration</option>
+                <option value="planned_purchase">Achat prévu</option>
+                <option value="donor">Donneuse</option>
                 <option value="sold">Vendu</option>
               </select>
             </FieldTip>
@@ -713,7 +808,7 @@ export function VehiclesPage() {
           placeholder="Rechercher nom, marque, immat..."
           style={{ flex: 1, minWidth: 'min(200px, 100%)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '10px 14px', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--font)', outline: 'none' }}
         />
-        {(['all', 'active', 'repair', 'parked', 'sold'] as const).map(s => {
+        {(['all', 'in_use', 'restoration', 'planned_purchase', 'donor', 'sold'] as const).map(s => {
           const label = s === 'all' ? 'Tous' : STATUS_COLORS[s]?.label ?? s
           const color = s === 'all' ? 'var(--text2)' : STATUS_COLORS[s]?.color ?? 'var(--text2)'
           return (
@@ -927,9 +1022,10 @@ export function VehiclesPage() {
                     </FieldTip>
                     <FieldTip label="Statut" hint="L'état opérationnel actuel. Affecte les filtres et l'affichage dans la liste.">
                       <select name="status" defaultValue={sv.status} className="modal-select">
-                        <option value="active">Actif</option>
-                        <option value="repair">En réparation</option>
-                        <option value="parked">Garé</option>
+                        <option value="in_use">En fonction</option>
+                        <option value="restoration">En restauration</option>
+                        <option value="planned_purchase">Achat prévu</option>
+                        <option value="donor">Donneuse</option>
                         <option value="sold">Vendu</option>
                       </select>
                     </FieldTip>
@@ -979,7 +1075,7 @@ export function VehiclesPage() {
                 <ProgressBar value={progressPct} color={progressPct >= 80 ? '#4ade80' : progressPct >= 40 ? '#fbbf24' : '#a78bfa'} label={`${doneItems}/${totalItems} éléments terminés`} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '8px', marginTop: '12px' }}>
                   {[
-                    { label: 'Travaux faits', value: `${doneInterv}/${totalInterv}`, color: '#4ade80' },
+                    { label: 'Interventions faites', value: `${doneInterv}/${totalInterv}`, color: '#4ade80' },
                     { label: 'Bloqués',       value: blockedInterv, color: blockedInterv > 0 ? '#f87171' : 'var(--text3)' },
                     { label: 'Alertes open',  value: openAlerts,    color: openAlerts > 0 ? '#fbbf24' : 'var(--text3)' },
                   ].map(s => (
@@ -1026,9 +1122,9 @@ export function VehiclesPage() {
           {activeTab === 'interventions' && (
             <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text2)' }}>Travaux & interventions</span>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text2)' }}>Interventions</span>
                 <button className="primary-action" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }} onClick={() => setShowAddIntervention(true)}>
-                  <Plus size={13} /> Ajouter un travail
+                  <Plus size={13} /> Ajouter une intervention
                 </button>
               </div>
               <Modal open={showAddIntervention} onClose={() => setShowAddIntervention(false)} title="Nouvelle intervention" subtitle={sv.name} icon={<Wrench size={20} />} maxWidth={520}>
@@ -1037,12 +1133,14 @@ export function VehiclesPage() {
                     <FieldTip label="Titre" hint="Le nom de l'intervention : 'Changement de plaquettes', 'Révision 60 000 km'… Soyez précis pour retrouver facilement." required style={{ gridColumn: '1/-1' }}>
                       <input name="title" required className="modal-input" placeholder="Ex : Changement plaquettes, Révision…" style={{ width: '100%', boxSizing: 'border-box' }} />
                     </FieldTip>
-                    <FieldTip label="Statut" hint="L'avancement de ce travail. 'À faire' = planifié. 'En cours' = en atelier. 'Fait' = terminé.">
-                      <select name="status" defaultValue="a-faire" className="modal-select">
-                        <option value="a-faire">À faire</option>
-                        <option value="en-cours">En cours</option>
-                        <option value="bloque">Bloqué</option>
-                        <option value="fait">Fait</option>
+                    <FieldTip label="Statut" hint="L'avancement de cette intervention.">
+                      <select name="status" defaultValue="planned" className="modal-select">
+                        <option value="planned">Planifié</option>
+                        <option value="todo">À faire</option>
+                        <option value="in_progress">En cours</option>
+                        <option value="waiting">En attente</option>
+                        <option value="done">Terminé</option>
+                        <option value="cancelled">Annulé</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Date" hint="La date de réalisation ou la date prévue si c'est planifié." required>
@@ -1051,7 +1149,7 @@ export function VehiclesPage() {
                     <FieldTip label="Coût (€)" hint="Le montant dépensé pour cette intervention (pièces + main d'œuvre). Alimentera le budget total du véhicule.">
                       <input name="costAmount" type="number" min="0" step="0.01" className="modal-input" placeholder="Ex : 250" />
                     </FieldTip>
-                    <FieldTip label="Qui réalise le travail ?" hint="Sert au carnet d'entretien : permet de tracer ce qui est fait soi-même et ce qui est délégué à un pro.">
+                    <FieldTip label="Qui réalise l'intervention ?" hint="Sert au carnet d'entretien : permet de tracer ce qui est fait soi-même et ce qui est délégué à un pro.">
                       <select
                         name="executor"
                         value={interventionExecutor}
@@ -1072,7 +1170,7 @@ export function VehiclesPage() {
                     </FieldTip>
 
                     {/* Lot A — catégorie / garantie / prochaine échéance */}
-                    <FieldTip label="Catégorie" hint="Le type de travail (vidange, freinage, pneus…). Aide à filtrer le carnet d'entretien.">
+                    <FieldTip label="Catégorie" hint="Le type d'intervention (vidange, freinage, pneus…). Aide à filtrer le carnet d'entretien.">
                       <select name="category" defaultValue="" className="modal-select">
                         <option value="">—</option>
                         <option value="vidange">Vidange</option>
@@ -1085,7 +1183,7 @@ export function VehiclesPage() {
                         <option value="autre">Autre</option>
                       </select>
                     </FieldTip>
-                    <FieldTip label="Garantie (km)" hint="Kilométrage jusqu'auquel la pièce / le travail est garanti.">
+                    <FieldTip label="Garantie (km)" hint="Kilométrage jusqu'auquel la pièce / l'intervention est garantie.">
                       <input name="warrantyMileage" type="number" min="0" className="modal-input" placeholder="Ex : 15000" />
                     </FieldTip>
                     <FieldTip label="Garantie jusqu'au" hint="Date de fin de garantie (optionnel).">
@@ -1212,7 +1310,7 @@ export function VehiclesPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => { setShowAddIntervention(false); setUsePartsFromStock(false); setStockUsages([]) }}>Annuler</button>
-                    <button type="submit" className="primary-action"><Wrench size={13} /> Ajouter le travail</button>
+                    <button type="submit" className="primary-action"><Wrench size={13} /> Ajouter l'intervention</button>
                   </div>
                 </form>
               </Modal>
@@ -1223,16 +1321,16 @@ export function VehiclesPage() {
               <Modal
                 open={validatingIntervention !== null}
                 onClose={() => setValidatingIntervention(null)}
-                title="Valider le travail"
+                title="Valider l'intervention"
                 subtitle={validatingIntervention?.title}
                 icon={<Wrench size={20} />}
                 maxWidth={420}
               >
                 <form onSubmit={handleValidateIntervention}>
                   <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--text2)' }}>
-                    Le travail va passer en « Fait ✓ ». Note le kilométrage si tu le connais — c'est utile pour le carnet d'entretien et les intervalles de maintenance.
+                    L'intervention va passer en « Terminé ✓ ». Note le kilométrage si tu le connais — c'est utile pour le carnet d'entretien et les intervalles de maintenance.
                   </p>
-                  <FieldTip label="Kilométrage actuel" hint="Optionnel. Le compteur du véhicule au moment où ce travail est terminé.">
+                  <FieldTip label="Kilométrage actuel" hint="Optionnel. Le compteur du véhicule au moment où cette intervention est terminée.">
                     <input
                       name="mileage"
                       type="number"
@@ -1246,7 +1344,7 @@ export function VehiclesPage() {
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setValidatingIntervention(null)}>Annuler</button>
                     <button type="submit" className="primary-action">
-                      <Wrench size={13} /> Valider le travail
+                      <Wrench size={13} /> Valider l'intervention
                     </button>
                   </div>
                 </form>
@@ -1254,18 +1352,20 @@ export function VehiclesPage() {
 
               {/* Lot A — modal d'édition complète d'un travail */}
               {editingIntervention && (
-                <Modal open={!!editingIntervention} onClose={() => setEditingIntervention(null)} title="Modifier le travail" subtitle={sv.name} icon={<Pencil size={20} />} maxWidth={520}>
+                <Modal open={!!editingIntervention} onClose={() => setEditingIntervention(null)} title="Modifier l'intervention" subtitle={sv.name} icon={<Pencil size={20} />} maxWidth={520}>
                   <form onSubmit={handleEditIntervention} key={editingIntervention.id}>
                     <div className="modal-grid">
                       <FieldTip label="Titre" required hint="Le nom de l'intervention." style={{ gridColumn: '1/-1' }}>
                         <input name="title" required defaultValue={editingIntervention.title} className="modal-input" style={{ width: '100%', boxSizing: 'border-box' }} />
                       </FieldTip>
-                      <FieldTip label="Statut" hint="L'avancement du travail.">
-                        <select name="status" defaultValue={editingIntervention.status === 'planned' ? 'a-faire' : editingIntervention.status === 'done' ? 'fait' : editingIntervention.status} className="modal-select">
-                          <option value="a-faire">À faire</option>
-                          <option value="en-cours">En cours</option>
-                          <option value="bloque">Bloqué</option>
-                          <option value="fait">Fait</option>
+                      <FieldTip label="Statut" hint="L'avancement de l'intervention.">
+                        <select name="status" defaultValue={editingIntervention.status} className="modal-select">
+                          <option value="planned">Planifié</option>
+                          <option value="todo">À faire</option>
+                          <option value="in_progress">En cours</option>
+                          <option value="waiting">En attente</option>
+                          <option value="done">Terminé</option>
+                          <option value="cancelled">Annulé</option>
                         </select>
                       </FieldTip>
                       <FieldTip label="Date" hint="Date de réalisation ou prévue.">
@@ -1274,13 +1374,13 @@ export function VehiclesPage() {
                       <FieldTip label="Coût (€)" hint="Montant dépensé (pièces + main d'œuvre).">
                         <input name="costAmount" type="number" min="0" step="0.01" defaultValue={editingIntervention.costAmount ?? ''} className="modal-input" />
                       </FieldTip>
-                      <FieldTip label="Kilométrage" hint="Km du véhicule au moment du travail.">
+                      <FieldTip label="Kilométrage" hint="Km du véhicule au moment de l'intervention.">
                         <input name="mileage" type="number" min="0" defaultValue={editingIntervention.mileage ?? ''} className="modal-input" />
                       </FieldTip>
-                      <FieldTip label="Durée (min)" hint="Temps passé sur le travail.">
+                      <FieldTip label="Durée (min)" hint="Temps passé sur l'intervention.">
                         <input name="timeMinutes" type="number" min="0" defaultValue={editingIntervention.timeMinutes ?? ''} className="modal-input" />
                       </FieldTip>
-                      <FieldTip label="Catégorie" hint="Type de travail.">
+                      <FieldTip label="Catégorie" hint="Type d'intervention.">
                         <select name="category" defaultValue={editingIntervention.category ?? ''} className="modal-select">
                           <option value="">—</option>
                           <option value="vidange">Vidange</option>
@@ -1318,7 +1418,7 @@ export function VehiclesPage() {
                         <textarea name="notes" rows={3} defaultValue={editingIntervention.notes ?? ''} className="modal-input" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
                       </FieldTip>
                       {documents.length > 0 && (
-                        <FieldTip label="Joindre un document" hint="Associe une facture/photo déjà importée à ce travail." style={{ gridColumn: '1/-1' }}>
+                        <FieldTip label="Joindre un document" hint="Associe une facture/photo déjà importée à cette intervention." style={{ gridColumn: '1/-1' }}>
                           <select defaultValue="" className="modal-select" onChange={e => { if (e.target.value) { handleAttachInterventionDoc(editingIntervention.id, e.target.value); e.currentTarget.value = '' } }}>
                             <option value="">+ Choisir un document…</option>
                             {documents.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -1335,7 +1435,7 @@ export function VehiclesPage() {
               )}
 
               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {[['all','Tous','var(--text2)'],['a-faire','À faire','#7b82a8'],['en-cours','En cours','#67e8f9'],['bloque','Bloqué','#f87171'],['fait','Fait (carnet)','#4ade80']].map(([val, label, color]) => (
+                {[['all','Tous','var(--text2)'],['todo','À faire','#7b82a8'],['in_progress','En cours','#67e8f9'],['waiting','En attente','#fbbf24'],['done','Terminé (carnet)','#4ade80'],['cancelled','Annulé','#f87171']].map(([val, label, color]) => (
                   <button key={val} onClick={() => setIntervStatusFilter(val)} style={{ padding: '4px 12px', borderRadius: '20px', border: `1px solid ${intervStatusFilter === val ? color : 'var(--border)'}`, background: intervStatusFilter === val ? `${color}18` : 'none', color: intervStatusFilter === val ? color : 'var(--text3)', fontSize: '11px', fontFamily: 'var(--mono)', cursor: 'pointer', fontWeight: 600 }}>
                     {label}
                   </button>
@@ -1345,7 +1445,7 @@ export function VehiclesPage() {
                 </span>
               </div>
 
-              {filteredInterv.length === 0 ? <p className="muted">Aucun travail.</p> : filteredInterv.map((i) => {
+              {filteredInterv.length === 0 ? <p className="muted">Aucune intervention.</p> : filteredInterv.map((i) => {
                 const s = INTERV_STATUS[i.status] ?? { color: '#7b82a8', label: i.status }
                 return (
                   <div key={i.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 16px', borderLeft: `3px solid ${s.color}` }}>
@@ -1397,13 +1497,15 @@ export function VehiclesPage() {
                         })()}
                       </div>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
-                        <select value={i.status === 'planned' ? 'a-faire' : i.status === 'done' ? 'fait' : i.status} onChange={e => handleSetIntervStatus(i.id, e.target.value)} style={{ ...SELECT_STYLE, fontSize: '11px', padding: '4px 8px', border: `1px solid ${s.color}40` }}>
-                          <option value="a-faire">À faire</option>
-                          <option value="en-cours">En cours</option>
-                          <option value="bloque">Bloqué</option>
-                          <option value="fait">Fait</option>
+                        <select value={i.status} onChange={e => handleSetIntervStatus(i.id, e.target.value)} style={{ ...SELECT_STYLE, fontSize: '11px', padding: '4px 8px', border: `1px solid ${s.color}40` }}>
+                          <option value="planned">Planifié</option>
+                          <option value="todo">À faire</option>
+                          <option value="in_progress">En cours</option>
+                          <option value="waiting">En attente</option>
+                          <option value="done">Terminé</option>
+                          <option value="cancelled">Annulé</option>
                         </select>
-                        <button className="btn-ghost" style={{ padding: '4px 8px' }} title="Modifier le travail" onClick={() => setEditingIntervention(i)}><Pencil size={13} /></button>
+                        <button className="btn-ghost" style={{ padding: '4px 8px' }} title="Modifier l'intervention" onClick={() => setEditingIntervention(i)}><Pencil size={13} /></button>
                         <button className="btn-ghost" style={{ color: '#f87171', padding: '4px 8px' }} onClick={() => handleDeleteIntervention(i.id)}>✕</button>
                       </div>
                     </div>
@@ -1699,7 +1801,7 @@ export function VehiclesPage() {
                 const grandTotal = totalCost + stockCost
                 return (
                   <div className="detail-grid">
-                    <span>Travaux (interv.)<strong style={{ color: '#f87171' }}>{totalCost.toLocaleString('fr-FR')} €</strong></span>
+                    <span>Interventions<strong style={{ color: '#f87171' }}>{totalCost.toLocaleString('fr-FR')} €</strong></span>
                     <span>Pièces / consommables<strong style={{ color: '#fbbf24' }}>{stockCost.toLocaleString('fr-FR')} €</strong></span>
                     <span>Total engagé<strong style={{ color: '#f87171', fontSize: '16px' }}>{grandTotal.toLocaleString('fr-FR')} €</strong></span>
                     <span>Déjà réalisé<strong style={{ color: '#4ade80' }}>{doneCost.toLocaleString('fr-FR')} €</strong></span>
@@ -1712,7 +1814,7 @@ export function VehiclesPage() {
               {/* Coûts interventions */}
               {sv.interventions.filter(i => Number(i.costAmount) > 0).length > 0 && (
                 <div>
-                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>🔧 TRAVAUX</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>🔧 INTERVENTIONS</div>
                   {sv.interventions.filter(i => Number(i.costAmount) > 0).sort((a, b) => Number(b.costAmount) - Number(a.costAmount)).map(i => {
                     const s = INTERV_STATUS[i.status] ?? { color: '#7b82a8' }
                     return (
@@ -1744,7 +1846,7 @@ export function VehiclesPage() {
                     const groups: { key: string; label: string; items: Mv[] }[] = []
                     for (const [iid, items] of byInterv) {
                       const interv = sv.interventions.find(x => x.id === iid)
-                      groups.push({ key: iid, label: interv ? `🔧 ${interv.title}` : '🔧 Travail supprimé', items })
+                      groups.push({ key: iid, label: interv ? `🔧 ${interv.title}` : '🔧 Intervention supprimée', items })
                     }
                     if (manual.length > 0) groups.push({ key: 'manual', label: '✋ Sorties manuelles', items: manual })
                     const renderMovement = (m: Mv) => (
@@ -1861,6 +1963,64 @@ export function VehiclesPage() {
               {sv.documents.length === 0 && <p className="muted">Aucun document ou photo lié.</p>}
             </div>
           )}
+
+          {/* ══ PHOTOS ══ Sprint 1 */}
+          {activeTab === 'photos' && (() => {
+            const photos = sv.documents.filter(d =>
+              d.context === 'vehicle_photo' || (d.document.mimeType?.startsWith('image/') && d.context !== 'document')
+            )
+            return (
+              <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text2)' }}>Photos du véhicule</span>
+                  <form onSubmit={handleUploadPhoto} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      name="vehiclePhoto" type="file" accept="image/*" required
+                      className="modal-input"
+                      style={{ maxWidth: 220, fontSize: 12, padding: '6px 8px' }}
+                    />
+                    <button type="submit" className="primary-action" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <Upload size={13} /> Ajouter
+                    </button>
+                  </form>
+                </div>
+                {photos.length === 0 ? (
+                  <p className="muted" style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <Image size={32} style={{ opacity: 0.3, marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
+                    Aucune photo pour ce véhicule. Les photos restent privées.
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                    {photos.map(p => {
+                      const url = photoUrls[p.document.id]
+                      return (
+                        <div key={p.id} style={{ position: 'relative', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--card)', aspectRatio: '1' }}>
+                          {url ? (
+                            <a href={url} target="_blank" rel="noreferrer" style={{ display: 'block', width: '100%', height: '100%' }}>
+                              <img src={url} alt={p.document.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                            </a>
+                          ) : (
+                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text3)', fontSize: 11 }}>Chargement…</div>
+                          )}
+                          <button
+                            onClick={() => handleDeletePhoto(p.document.id)}
+                            title="Supprimer la photo"
+                            aria-label="Supprimer la photo"
+                            style={{ position: 'absolute', top: 6, right: 6, width: 26, height: 26, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,0.55)', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '4px 8px', fontSize: 10, color: '#fff', background: 'linear-gradient(transparent, rgba(0,0,0,0.6))', fontFamily: 'var(--mono)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {p.document.name}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
 
           {/* ══ HISTORIQUE KM ══ */}
           {activeTab === 'historique' && (

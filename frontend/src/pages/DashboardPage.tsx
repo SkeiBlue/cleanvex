@@ -137,7 +137,8 @@ export function DashboardPage() {
   /* ── dérivés ── */
   const overdueTasks  = agenda?.overdueTasks ?? 0
   const openAlerts    = vehicles.reduce((s, v) => s + (v._count?.alerts ?? 0), 0)
-  const vehiclesInRepair = vehicles.filter(v => v.status === 'repair')
+  // Sprint 1 — Statut officiel = 'restoration' ; on accepte 'repair' pour compat.
+  const vehiclesInRepair = vehicles.filter(v => v.status === 'restoration' || v.status === 'repair')
   const soon30        = new Date(Date.now() + 30 * 86400000)
   const expiringDocs  = documents.filter(d => d.expiresAt && new Date(d.expiresAt) <= soon30 && new Date(d.expiresAt) > new Date()).length
   const upcomingTasks = agenda?.upcomingTasks ?? []
@@ -223,7 +224,17 @@ export function DashboardPage() {
             ) : vehicles.filter(v => v.status !== 'sold').slice(0, 5).map(v => {
               const alerts = v._count?.alerts ?? 0
               const interv = v._count?.interventions ?? 0
-              const statusColors: Record<string, string> = { active: '#4ade80', repair: '#fbbf24', parked: '#7b82a8' }
+              // Sprint 1 — statuts officiels + alias rétro-compat.
+              const statusColors: Record<string, string> = {
+                in_use: '#4ade80', restoration: '#fbbf24', planned_purchase: '#67e8f9',
+                donor: '#a78bfa', sold: '#f87171',
+                active: '#4ade80', repair: '#fbbf24', parked: '#7b82a8',
+              }
+              const statusLabels: Record<string, string> = {
+                in_use: 'En fonction', restoration: 'En restauration',
+                planned_purchase: 'Achat prévu', donor: 'Donneuse', sold: 'Vendu',
+                active: 'En fonction', repair: 'En restauration', parked: 'En fonction',
+              }
               return (
                 <div key={v.id} className="document-row">
                   <span style={{ fontSize: '16px' }}>🚗</span>
@@ -235,7 +246,7 @@ export function DashboardPage() {
                     {alerts > 0 && <span style={{ fontSize: '11px', background: '#fbbf2420', color: '#fbbf24', padding: '2px 6px', borderRadius: '20px', border: '1px solid #fbbf2440', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔔 {alerts}</span>}
                     {interv > 0 && <span style={{ fontSize: '11px', background: '#a78bfa20', color: '#a78bfa', padding: '2px 6px', borderRadius: '20px', border: '1px solid #a78bfa40', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔧 {interv}</span>}
                     <span style={{ fontSize: '11px', background: `${statusColors[v.status] ?? '#7b82a8'}20`, color: statusColors[v.status] ?? '#7b82a8', padding: '2px 6px', borderRadius: '20px', border: `1px solid ${statusColors[v.status] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
-                      {v.status}
+                      {statusLabels[v.status] ?? v.status}
                     </span>
                   </div>
                 </div>
