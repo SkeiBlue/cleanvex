@@ -293,10 +293,33 @@ export class VehiclesService {
       }
     }
 
+    const wantAgenda = !!dto.scheduleOnAgenda;
+    const agendaOk = wantAgenda && (await this.isAgendaEnabled());
+    const vehicleForAgenda = agendaOk
+      ? await this.prisma.vehicle.findUniqueOrThrow({
+          where: { id: vehicleId },
+          select: { name: true },
+        })
+      : null;
+
     return this.prisma.$transaction(async (tx) => {
       const intervention = await tx.vehicleIntervention.create({
         data: this.interventionData(vehicleId, dto),
       });
+
+      if (agendaOk && vehicleForAgenda) {
+        await tx.task.create({
+          data: {
+            ownerId,
+            title: `${vehicleForAgenda.name} — ${dto.title}`,
+            dueDate: new Date(dto.date),
+            moduleKey: 'vehicles',
+            targetType: 'vehicle_intervention',
+            targetId: intervention.id,
+            priority: 'normal',
+          },
+        });
+      }
 
       for (const usage of usages) {
         const item = itemById.get(usage.stockItemId)!;

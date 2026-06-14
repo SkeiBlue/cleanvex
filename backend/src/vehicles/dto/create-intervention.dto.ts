@@ -49,6 +49,11 @@ export const INTERVENTION_STATUSES = [
   'bloque',
   'a-faire',
   'en-cours',
+  // Vocabulaire EN utilisé côté front (Sprint 1).
+  'todo',
+  'in_progress',
+  'waiting',
+  'cancelled',
 ] as const;
 
 // V1 — Carnet d'entretien : qui a réalisé le travail.
@@ -138,6 +143,13 @@ export class CreateInterventionDto {
   @IsOptional()
   @IsString()
   financeCategoryId?: string;
+
+  // Crée en plus une tâche dans le module Agenda (dueDate = date de
+  // l'intervention). Dégradable : ignoré silencieusement si le module
+  // Agenda est désactivé.
+  @IsOptional()
+  @IsBoolean()
+  scheduleOnAgenda?: boolean;
 
   // S2 — liste optionnelle de pièces du stock à consommer pour ce travail.
   // Le backend les retire du stock + crée un StockMovement par usage dans

@@ -178,6 +178,7 @@ export function VehiclesPage() {
   // Lot A — édition d'un travail + option "enregistrer en Finances" (dégradable).
   const [editingIntervention, setEditingIntervention] = useState<VehicleDetail['interventions'][number] | null>(null)
   const [recordInFinance, setRecordInFinance] = useState(false)
+  const [scheduleOnAgenda, setScheduleOnAgenda] = useState(false)
   const [financeAccounts, setFinanceAccounts] = useState<{ id: string; name: string }[]>([])
   // Sprint 2 — Contacts pour assigner un pro/garage à une intervention (dégradable).
   const [contacts, setContacts] = useState<{ id: string; displayName: string; organization: string | null }[]>([])
@@ -342,6 +343,7 @@ export function VehiclesPage() {
         recordInFinance: recordInFinance || undefined,
         financeAccountId: recordInFinance ? (data.get('financeAccountId') || undefined) : undefined,
         financeCategoryId: recordInFinance ? (data.get('financeCategoryId') || undefined) : undefined,
+        scheduleOnAgenda: scheduleOnAgenda || undefined,
         stockUsages: usagesPayload.length > 0 ? usagesPayload : undefined,
       }),
     })
@@ -351,6 +353,7 @@ export function VehiclesPage() {
     setUsePartsFromStock(false)
     setStockUsages([])
     setRecordInFinance(false)
+    setScheduleOnAgenda(false)
     toast.ok(usagesPayload.length > 0
       ? `Intervention ajoutée (${usagesPayload.length} pièce${usagesPayload.length > 1 ? 's' : ''} du stock consommée${usagesPayload.length > 1 ? 's' : ''}).`
       : 'Intervention ajoutée.',
@@ -1231,6 +1234,19 @@ export function VehiclesPage() {
                       <input name="nextDueDate" type="date" className="modal-input" />
                     </FieldTip>
 
+                    {/* Option : créer aussi une tâche dans le module Agenda
+                        (due date = date de l'intervention). Cachée si le
+                        module Agenda est désactivé. */}
+                    {agendaEnabled && (
+                      <div style={{ gridColumn: '1/-1' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: scheduleOnAgenda ? 'rgba(167,139,250,0.08)' : 'rgba(255,255,255,0.02)' }}>
+                          <input type="checkbox" checked={scheduleOnAgenda} onChange={e => setScheduleOnAgenda(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#a78bfa', cursor: 'pointer' }} />
+                          <span style={{ fontWeight: 600 }}>📅 Ajouter une tâche dans l'agenda</span>
+                          <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>(échéance : date de l'intervention)</span>
+                        </label>
+                      </div>
+                    )}
+
                     {/* Lot A — option « enregistrer la dépense en Finances » (affichée
                         seulement si le module Finances est actif → comptes chargés). */}
                     {financeAccounts.length > 0 && (
@@ -1344,7 +1360,7 @@ export function VehiclesPage() {
                     )}
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn-ghost" onClick={() => { setShowAddIntervention(false); setUsePartsFromStock(false); setStockUsages([]) }}>Annuler</button>
+                    <button type="button" className="btn-ghost" onClick={() => { setShowAddIntervention(false); setUsePartsFromStock(false); setStockUsages([]); setScheduleOnAgenda(false) }}>Annuler</button>
                     <button type="submit" className="primary-action"><Wrench size={13} /> Ajouter l'intervention</button>
                   </div>
                 </form>
