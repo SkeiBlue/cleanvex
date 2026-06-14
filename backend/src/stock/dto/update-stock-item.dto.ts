@@ -20,5 +20,7 @@ export class UpdateStockItemDto {
   @IsOptional() @IsNumber() @Min(0) valueAmount?: number;
   @IsOptional() @IsString() reference?: string;
   @IsOptional() @IsString() supplier?: string;
+  // Sprint 2 — lien Contact (fournisseur). Chaîne vide accepté pour vider.
+  @IsOptional() @IsString() supplierContactId?: string;
   @IsOptional() @IsString() notes?: string;
 }

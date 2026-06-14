@@ -57,6 +57,12 @@ export class CreateStockItemDto {
   @IsString()
   supplier?: string;
 
+  // Sprint 2 — lien Contact (fournisseur). Optionnel ; coexiste avec
+  // `supplier` (texte libre conservé).
+  @IsOptional()
+  @IsString()
+  supplierContactId?: string;
+
   @IsOptional()
   @IsString()
   notes?: string;

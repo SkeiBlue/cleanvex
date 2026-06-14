@@ -179,6 +179,8 @@ export function VehiclesPage() {
   const [editingIntervention, setEditingIntervention] = useState<VehicleDetail['interventions'][number] | null>(null)
   const [recordInFinance, setRecordInFinance] = useState(false)
   const [financeAccounts, setFinanceAccounts] = useState<{ id: string; name: string }[]>([])
+  // Sprint 2 — Contacts pour assigner un pro/garage à une intervention (dégradable).
+  const [contacts, setContacts] = useState<{ id: string; displayName: string; organization: string | null }[]>([])
   const [financeCategories, setFinanceCategories] = useState<{ id: string; name: string; type: string }[]>([])
   // Filtre carnet d'entretien : seulement les travaux faits (utilisé via
   // intervStatusFilter, on ajoute juste une option dédiée).
@@ -224,6 +226,9 @@ export function VehiclesPage() {
       ])
       if (ar.ok) setFinanceAccounts(await ar.json())
       if (cr.ok) setFinanceCategories(await cr.json())
+      // Sprint 2 — Contacts (403 si module désactivé → on ignore).
+      const cntR = await authedFetch('/contacts')
+      if (cntR.ok) setContacts(await cntR.json())
     }
     load()
   }, [authedFetch])
@@ -326,6 +331,7 @@ export function VehiclesPage() {
         status: data.get('status') || 'a-faire',
         executor: data.get('executor') || 'self',
         professionalName: data.get('professionalName') || undefined,
+        professionalContactId: data.get('professionalContactId') || undefined,
         // Lot A — enrichissements
         category: data.get('category') || undefined,
         warrantyMileage: data.get('warrantyMileage') ? Number(data.get('warrantyMileage')) : undefined,
@@ -366,6 +372,7 @@ export function VehiclesPage() {
         mileage: data.get('mileage') ? Number(data.get('mileage')) : undefined,
         executor: data.get('executor') || undefined,
         professionalName: data.get('professionalName') || undefined,
+        professionalContactId: data.get('professionalContactId') !== null ? (data.get('professionalContactId') || '') : undefined,
         notes: data.get('notes') || undefined,
         category: data.get('category') || undefined,
         warrantyMileage: data.get('warrantyMileage') ? Number(data.get('warrantyMileage')) : undefined,
@@ -1174,9 +1181,24 @@ export function VehiclesPage() {
                       </select>
                     </FieldTip>
                     {interventionExecutor === 'pro' && (
-                      <FieldTip label="Nom du professionnel" hint="Optionnel. Nom du garage, atelier ou concessionnaire qui réalise l'intervention." style={{ gridColumn: '1/-1' }}>
-                        <input name="professionalName" type="text" maxLength={120} className="modal-input" placeholder="Ex : Garage Dupont, Renault Centre-ville…" />
-                      </FieldTip>
+                      <>
+                        {/* Sprint 2 — Choisir un contact existant (optionnel) */}
+                        {contacts.length > 0 && (
+                          <FieldTip label="Pro / contact existant" hint="Optionnel. Lie l'intervention à un contact (garage, mécanicien, carrossier…) déjà enregistré." style={{ gridColumn: '1/-1' }}>
+                            <select name="professionalContactId" defaultValue="" className="modal-select">
+                              <option value="">— Aucun contact (saisie texte ci-dessous) —</option>
+                              {contacts.map(c => (
+                                <option key={c.id} value={c.id}>
+                                  {c.displayName}{c.organization ? ` — ${c.organization}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </FieldTip>
+                        )}
+                        <FieldTip label="Nom du professionnel (texte libre)" hint="Optionnel. Si tu n'as pas créé de contact, écris juste le nom ici." style={{ gridColumn: '1/-1' }}>
+                          <input name="professionalName" type="text" maxLength={120} className="modal-input" placeholder="Ex : Garage Dupont, Renault Centre-ville…" />
+                        </FieldTip>
+                      </>
                     )}
                     <FieldTip label="Notes" hint="Détails supplémentaires : qui a réalisé les travaux, observations, pièces utilisées…" style={{ gridColumn: '1/-1' }}>
                       <textarea name="notes" className="modal-input" rows={3} placeholder="Détails, observations, références pièces…" style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical' }} />
@@ -1412,7 +1434,17 @@ export function VehiclesPage() {
                           <option value="pro">🏢 Professionnel</option>
                         </select>
                       </FieldTip>
-                      <FieldTip label="Nom du professionnel" hint="Optionnel." style={{ gridColumn: '1/-1' }}>
+                      {contacts.length > 0 && (
+                        <FieldTip label="Pro / contact" hint="Optionnel. Sélectionne un contact existant (garage, mécanicien…)." style={{ gridColumn: '1/-1' }}>
+                          <select name="professionalContactId" defaultValue={editingIntervention.professionalContactId ?? ''} className="modal-select">
+                            <option value="">— Aucun contact —</option>
+                            {contacts.map(c => (
+                              <option key={c.id} value={c.id}>{c.displayName}{c.organization ? ` — ${c.organization}` : ''}</option>
+                            ))}
+                          </select>
+                        </FieldTip>
+                      )}
+                      <FieldTip label="Nom du professionnel (texte libre)" hint="Optionnel." style={{ gridColumn: '1/-1' }}>
                         <input name="professionalName" defaultValue={editingIntervention.professionalName ?? ''} className="modal-input" style={{ width: '100%', boxSizing: 'border-box' }} />
                       </FieldTip>
                       <FieldTip label="Garantie (km)" hint="Km de fin de garantie.">
@@ -1468,8 +1500,8 @@ export function VehiclesPage() {
                           <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{i.title}</span>
                           {/* V1 — Badge carnet d'entretien : qui a fait le travail. */}
                           {i.executor === 'pro' ? (
-                            <span title={i.professionalName ?? undefined} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(103,232,249,0.12)', color: '#67e8f9', border: '1px solid rgba(103,232,249,0.3)' }}>
-                              🏢 PRO{i.professionalName ? ` · ${i.professionalName.slice(0, 18)}${i.professionalName.length > 18 ? '…' : ''}` : ''}
+                            <span title={i.professionalContact?.displayName ?? i.professionalName ?? undefined} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(103,232,249,0.12)', color: '#67e8f9', border: '1px solid rgba(103,232,249,0.3)' }}>
+                              🏢 PRO{(() => { const n = i.professionalContact?.displayName ?? i.professionalName; return n ? ` · ${n.slice(0, 18)}${n.length > 18 ? '…' : ''}` : '' })()}
                             </span>
                           ) : i.executor === 'self' ? (
                             <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>

@@ -26,6 +26,10 @@ export class StockService {
       orderBy: { name: 'asc' },
       include: {
         _count: { select: { movements: true } },
+        // Sprint 2 — inclut le contact fournisseur si présent.
+        supplierContact: {
+          select: { id: true, displayName: true, organization: true },
+        },
       },
     });
   }
@@ -51,6 +55,10 @@ export class StockService {
 
   async createItem(ownerId: string, dto: CreateStockItemDto) {
     await this.ensureStockEnabled();
+    // Sprint 2 — vérifie l'appartenance du contact si fourni.
+    if (dto.supplierContactId) {
+      await this.ensureOwnedContact(ownerId, dto.supplierContactId);
+    }
     return this.prisma.stockItem.create({
       data: {
         ownerId,
@@ -65,6 +73,7 @@ export class StockService {
         valueAmount: dto.valueAmount,
         reference: dto.reference,
         supplier: dto.supplier,
+        supplierContactId: dto.supplierContactId || null,
         notes: dto.notes,
       },
     });
@@ -182,6 +191,10 @@ export class StockService {
   async updateItem(ownerId: string, itemId: string, dto: UpdateStockItemDto) {
     await this.ensureStockEnabled();
     await this.ensureOwnedItem(ownerId, itemId);
+    // Sprint 2 — si on assigne un contact, vérifie l'appartenance.
+    if (dto.supplierContactId) {
+      await this.ensureOwnedContact(ownerId, dto.supplierContactId);
+    }
     return this.prisma.stockItem.update({
       where: { id: itemId },
       data: {
@@ -197,6 +210,9 @@ export class StockService {
         ...(dto.valueAmount !== undefined && { valueAmount: dto.valueAmount }),
         ...(dto.reference !== undefined && { reference: dto.reference }),
         ...(dto.supplier !== undefined && { supplier: dto.supplier }),
+        ...(dto.supplierContactId !== undefined && {
+          supplierContactId: dto.supplierContactId || null,
+        }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
       },
     });
@@ -214,7 +230,12 @@ export class StockService {
     await this.ensureStockEnabled();
     return this.prisma.toolLoan.findMany({
       where: { ownerId },
-      include: { stockItem: { select: { id: true, name: true, unit: true } } },
+      include: {
+        stockItem: { select: { id: true, name: true, unit: true } },
+        borrowerContact: {
+          select: { id: true, displayName: true, organization: true },
+        },
+      },
       orderBy: { loanDate: 'desc' },
     });
   }
@@ -222,18 +243,34 @@ export class StockService {
   async createLoan(ownerId: string, dto: CreateToolLoanDto) {
     await this.ensureStockEnabled();
     const item = await this.ensureOwnedItem(ownerId, dto.stockItemId);
+    // Sprint 2 — au moins l'un des deux est requis.
+    const borrowerName = dto.borrowerName?.trim() || undefined;
+    if (!borrowerName && !dto.borrowerContactId) {
+      throw new BadRequestException(
+        'Nom de l’emprunteur ou contact requis.',
+      );
+    }
+    if (dto.borrowerContactId) {
+      await this.ensureOwnedContact(ownerId, dto.borrowerContactId);
+    }
     return this.prisma.toolLoan.create({
       data: {
         ownerId,
         stockItemId: item.id,
-        borrowerName: dto.borrowerName,
+        borrowerName: borrowerName ?? null,
+        borrowerContactId: dto.borrowerContactId || null,
         loanDate: dto.loanDate ? new Date(dto.loanDate) : new Date(),
         expectedReturnDate: dto.expectedReturnDate
           ? new Date(dto.expectedReturnDate)
           : undefined,
         notes: dto.notes,
       },
-      include: { stockItem: { select: { id: true, name: true, unit: true } } },
+      include: {
+        stockItem: { select: { id: true, name: true, unit: true } },
+        borrowerContact: {
+          select: { id: true, displayName: true, organization: true },
+        },
+      },
     });
   }
 
@@ -266,6 +303,15 @@ export class StockService {
     });
     if (!item) throw new NotFoundException('Stock item not found');
     return item;
+  }
+
+  // Sprint 2 — empêche d'assigner le contact d'un autre utilisateur.
+  private async ensureOwnedContact(ownerId: string, contactId: string) {
+    const contact = await this.prisma.contact.findFirst({
+      where: { id: contactId, ownerId },
+      select: { id: true },
+    });
+    if (!contact) throw new NotFoundException('Contact not found');
   }
 
   private ensureStockEnabled(): Promise<void> {

@@ -145,7 +145,7 @@ export class RemindersService {
       })),
       overdueLoans: overdueLoans.map((l) => ({
         itemName: l.stockItem.name,
-        borrowerName: l.borrowerName,
+        borrowerName: l.borrowerName ?? 'Emprunteur inconnu',
         expectedReturnDate: l.expectedReturnDate!,
       })),
       get hasItems() {

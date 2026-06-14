@@ -58,6 +58,11 @@ export class UpdateInterventionDto {
   @IsString()
   professionalName?: string;
 
+  // Sprint 2 — lien Contact (peut être vidé en envoyant une chaîne vide).
+  @IsOptional()
+  @IsString()
+  professionalContactId?: string;
+
   @IsOptional()
   @IsString()
   notes?: string;

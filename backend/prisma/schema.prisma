@@ -250,6 +250,8 @@ model VehicleIntervention {
   // d'entretien et les filtres associés.
   executor         String  @default("self")
   professionalName String? @map("professional_name")
+  // Sprint 2 — lien Contact transverse (garage/pro). Optionnel.
+  professionalContactId String? @map("professional_contact_id")
   notes       String?
 
   // Lot A — Interventions enrichies.
@@ -263,10 +265,12 @@ model VehicleIntervention {
   nextDueDate    DateTime? @map("next_due_date")
   nextDueMileage Int?      @map("next_due_mileage")
 
-  vehicle        Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  stockMovements StockMovement[]
+  vehicle              Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  professionalContact  Contact?        @relation("InterventionPro", fields: [professionalContactId], references: [id], onDelete: SetNull)
+  stockMovements       StockMovement[]
 
   @@index([vehicleId])
+  @@index([professionalContactId])
   @@map("vehicle_interventions")
 }
 
@@ -345,6 +349,10 @@ model Contact {
 
   owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   interactions ContactInteraction[]
+  // Sprint 2 — relations transverses inverses
+  suppliedStockItems     StockItem[]           @relation("StockSupplier")
+  toolLoansAsBorrower    ToolLoan[]            @relation("ToolLoanBorrower")
+  interventionsAsPro     VehicleIntervention[] @relation("InterventionPro")
 
   @@index([ownerId])
   @@map("contacts")
@@ -442,15 +450,20 @@ model StockItem {
   valueAmount      Decimal? @map("value_amount") @db.Decimal(12, 2)
   reference        String?
   supplier         String?
+  // Sprint 2 — lien Contact transverse (fournisseur). Optionnel : le texte
+  // libre `supplier` reste utilisable pour un fournisseur ponctuel.
+  supplierContactId String?  @map("supplier_contact_id")
   notes            String?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner            User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  supplierContact  Contact?        @relation("StockSupplier", fields: [supplierContactId], references: [id], onDelete: SetNull)
   movements StockMovement[]
   loans     ToolLoan[]
 
   @@index([ownerId])
+  @@index([supplierContactId])
   @@map("stock_items")
 }
 
@@ -458,7 +471,10 @@ model ToolLoan {
   id                 String    @id @default(uuid())
   ownerId            String    @map("owner_id")
   stockItemId        String    @map("stock_item_id")
-  borrowerName       String    @map("borrower_name")
+  // Sprint 2 — nullable : au moins l'un des deux (borrowerName ou
+  // borrowerContactId) doit être fourni, validé côté service.
+  borrowerName       String?   @map("borrower_name")
+  borrowerContactId  String?   @map("borrower_contact_id")
   loanDate           DateTime  @map("loan_date")
   expectedReturnDate DateTime? @map("expected_return_date")
   returnedAt         DateTime? @map("returned_at")
@@ -466,10 +482,12 @@ model ToolLoan {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  owner     User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  stockItem StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  owner            User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  stockItem        StockItem @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  borrowerContact  Contact?  @relation("ToolLoanBorrower", fields: [borrowerContactId], references: [id], onDelete: SetNull)
 
   @@index([ownerId])
+  @@index([borrowerContactId])
   @@map("tool_loans")
 }
 

@@ -10,9 +10,16 @@ export class CreateToolLoanDto {
   @IsString()
   stockItemId: string;
 
-  @IsNotEmpty()
+  // Sprint 2 — borrowerName devient optionnel (au moins l'un des deux est
+  // requis : borrowerName ou borrowerContactId, vérifié côté service).
+  @IsOptional()
   @IsString()
-  borrowerName: string;
+  borrowerName?: string;
+
+  // Sprint 2 — lien Contact (emprunteur) optionnel.
+  @IsOptional()
+  @IsString()
+  borrowerContactId?: string;
 
   @IsOptional()
   @IsDateString()

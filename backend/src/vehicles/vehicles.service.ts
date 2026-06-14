@@ -77,7 +77,14 @@ export class VehiclesService {
       where: { id, ownerId },
       include: {
         mileageLogs: { orderBy: { date: 'desc' } },
-        interventions: { orderBy: { date: 'desc' } },
+        interventions: {
+          orderBy: { date: 'desc' },
+          include: {
+            professionalContact: {
+              select: { id: true, displayName: true, organization: true },
+            },
+          },
+        },
         alerts: { orderBy: { dueDate: 'asc' } },
       },
     });
@@ -251,6 +258,15 @@ export class VehiclesService {
       }
     }
 
+    // Sprint 2 — vérifie l'appartenance du contact pro si fourni.
+    if (dto.professionalContactId) {
+      const contact = await this.prisma.contact.findFirst({
+        where: { id: dto.professionalContactId, ownerId },
+        select: { id: true },
+      });
+      if (!contact) throw new NotFoundException('Contact pro introuvable.');
+    }
+
     // Pré-validation finance (dégradable : ignorée si module Finances off).
     const wantFinance =
       !!dto.recordInFinance && !!dto.costAmount && dto.costAmount > 0;
@@ -341,6 +357,7 @@ export class VehiclesService {
       status: dto.status ?? 'planned',
       executor: dto.executor ?? 'self',
       professionalName: dto.professionalName,
+      professionalContactId: dto.professionalContactId || null,
       notes: dto.notes,
       category: dto.category,
       warrantyUntil: dto.warrantyUntil
@@ -550,6 +567,14 @@ export class VehiclesService {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, vehicleId);
     await this.ensureInterventionBelongs(vehicleId, interventionId);
+    // Sprint 2 — vérifie le contact si on en assigne un.
+    if (dto.professionalContactId) {
+      const contact = await this.prisma.contact.findFirst({
+        where: { id: dto.professionalContactId, ownerId },
+        select: { id: true },
+      });
+      if (!contact) throw new NotFoundException('Contact pro introuvable.');
+    }
     return this.prisma.vehicleIntervention.update({
       where: { id: interventionId },
       data: {
@@ -562,6 +587,9 @@ export class VehiclesService {
         ...(dto.executor !== undefined && { executor: dto.executor }),
         ...(dto.professionalName !== undefined && {
           professionalName: dto.professionalName,
+        }),
+        ...(dto.professionalContactId !== undefined && {
+          professionalContactId: dto.professionalContactId || null,
         }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
         ...(dto.category !== undefined && { category: dto.category }),

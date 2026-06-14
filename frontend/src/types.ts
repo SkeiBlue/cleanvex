@@ -132,6 +132,8 @@ export type VehicleDetail = VehicleItem & {
     timeMinutes: number | null
     executor: 'self' | 'pro' | null
     professionalName: string | null
+    professionalContactId?: string | null
+    professionalContact?: { id: string; displayName: string; organization: string | null } | null
     category: string | null
     warrantyUntil: string | null; warrantyMileage: number | null
     nextDueDate: string | null; nextDueMileage: number | null
@@ -256,6 +258,8 @@ export type StockItem = {
   threshold: string | null
   reference: string | null
   supplier: string | null
+  supplierContactId?: string | null
+  supplierContact?: { id: string; displayName: string; organization: string | null } | null
   notes: string | null
 }
 
@@ -273,7 +277,9 @@ export type StockMovement = {
 
 export type ToolLoan = {
   id: string
-  borrowerName: string
+  borrowerName: string | null
+  borrowerContactId?: string | null
+  borrowerContact?: { id: string; displayName: string; organization: string | null } | null
   loanDate: string
   expectedReturnDate: string | null
   returnedAt: string | null

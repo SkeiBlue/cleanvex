@@ -91,6 +91,12 @@ export class CreateInterventionDto {
   @IsString()
   professionalName?: string;
 
+  // Sprint 2 — lien Contact transverse (garage/pro). Optionnel ; coexiste
+  // avec professionalName (texte libre conservé).
+  @IsOptional()
+  @IsString()
+  professionalContactId?: string;
+
   @IsOptional()
   @IsString()
   notes?: string;

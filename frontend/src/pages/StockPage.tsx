@@ -44,6 +44,8 @@ export function StockPage() {
   const [showPurchase, setShowPurchase] = useState(false)
   const [showConsume, setShowConsume]   = useState(false)
   const [showCreateLoan, setShowCreateLoan] = useState(false)
+  // Sprint 2 — Contacts (dégradable).
+  const [contacts, setContacts] = useState<{ id: string; displayName: string; organization: string | null }[]>([])
 
   /* ── Data ── */
   const reload = useCallback(async () => {
@@ -59,9 +61,14 @@ export function StockPage() {
 
   useEffect(() => {
     async function load() {
-      const [v, a] = await Promise.all([authedFetch('/vehicles'), authedFetch('/finances/accounts')])
+      const [v, a, c] = await Promise.all([
+        authedFetch('/vehicles'),
+        authedFetch('/finances/accounts'),
+        authedFetch('/contacts'),
+      ])
       if (v.ok) setVehicles(await v.json())
       if (a.ok) setAccounts(await a.json())
+      if (c.ok) setContacts(await c.json())
       await reload()
       setIsLoading(false)
     }
@@ -88,6 +95,7 @@ export function StockPage() {
       valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
       reference: d.get('reference') || undefined,
       supplier: d.get('supplier') || undefined,
+      supplierContactId: d.get('supplierContactId') || undefined,
       notes: d.get('notes') || undefined,
       thresholdEnabled: d.get('thresholdEnabled') === 'on',
       threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
@@ -130,6 +138,7 @@ export function StockPage() {
         status: d.get('status') || undefined,
         valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
         reference: d.get('reference') || undefined, supplier: d.get('supplier') || undefined,
+        supplierContactId: d.get('supplierContactId') !== null ? ((d.get('supplierContactId') as string) || '') : undefined,
         notes: d.get('notes') || undefined,
         thresholdEnabled: d.get('thresholdEnabled') === 'on',
         threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
@@ -192,7 +201,8 @@ export function StockPage() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         stockItemId: selected.id,
-        borrowerName: d.get('borrowerName'),
+        borrowerName: d.get('borrowerName') || undefined,
+        borrowerContactId: d.get('borrowerContactId') || undefined,
         loanDate: d.get('loanDate') || undefined,
         expectedReturnDate: d.get('expectedReturnDate') || undefined,
         notes: d.get('notes') || undefined,
@@ -296,9 +306,19 @@ export function StockPage() {
             <FieldTip label="Référence / SKU" hint="Le code fabricant ou votre référence interne. Utile pour passer commande rapidement ou faire le lien avec un catalogue.">
               <input name="reference" className="modal-input" placeholder="Ex : NGK-B8ES, REF-001" />
             </FieldTip>
-            <FieldTip label="Fournisseur" hint="Le nom du fournisseur habituel. Pratique pour savoir où recommander rapidement.">
+            <FieldTip label="Fournisseur (texte libre)" hint="Le nom du fournisseur habituel, écrit librement. Pour un fournisseur ponctuel sans fiche contact.">
               <input name="supplier" className="modal-input" placeholder="Ex : Oscaro, Amazon, Norauto" />
             </FieldTip>
+            {contacts.length > 0 && (
+              <FieldTip label="Fournisseur (contact)" hint="Ou bien lie ce stock à un contact existant. Si les deux sont remplis, le contact est prioritaire à l'affichage.">
+                <select name="supplierContactId" defaultValue="" className="modal-select">
+                  <option value="">— Aucun contact —</option>
+                  {contacts.map(c => (
+                    <option key={c.id} value={c.id}>{c.displayName}{c.organization ? ` — ${c.organization}` : ''}</option>
+                  ))}
+                </select>
+              </FieldTip>
+            )}
             <FieldTip label="Seuil d'alerte" hint="Activez cette option pour recevoir une alerte visuelle quand le stock passe sous la quantité minimale définie.">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: 'var(--text2)' }}>
@@ -411,7 +431,11 @@ export function StockPage() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '10px', color: 'var(--text3)' }}>
                   {item.location && <span>📍 {item.location}</span>}
                   {item.reference && <span style={{ fontFamily: 'var(--mono)' }}>#{item.reference}</span>}
-                  {item.supplier && <span>🏭 {item.supplier}</span>}
+                  {(item.supplierContact?.displayName || item.supplier) && (
+                    <span title={item.supplierContact ? 'Contact lié' : 'Fournisseur libre'}>
+                      🏭 {item.supplierContact?.displayName ?? item.supplier}
+                    </span>
+                  )}
                   {totalVal !== null && <span style={{ marginLeft: 'auto', color: '#4ade80', fontWeight: 600 }}>≈ {totalVal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</span>}
                 </div>
               </div>
@@ -526,9 +550,19 @@ export function StockPage() {
                     <FieldTip label="Référence / SKU" hint="Le code fabricant ou référence interne. Utile pour passer commande rapidement.">
                       <input name="reference" defaultValue={sv.reference ?? ''} className="modal-input" placeholder="Ex : NGK-B8ES" />
                     </FieldTip>
-                    <FieldTip label="Fournisseur" hint="Le nom du fournisseur habituel. Pratique pour savoir où recommander.">
+                    <FieldTip label="Fournisseur (texte libre)" hint="Le nom du fournisseur habituel, écrit librement.">
                       <input name="supplier" defaultValue={sv.supplier ?? ''} className="modal-input" placeholder="Ex : Oscaro, Amazon" />
                     </FieldTip>
+                    {contacts.length > 0 && (
+                      <FieldTip label="Fournisseur (contact)" hint="Lie ce stock à un contact existant. Si vide, on garde uniquement le texte libre.">
+                        <select name="supplierContactId" defaultValue={sv.supplierContactId ?? ''} className="modal-select">
+                          <option value="">— Aucun contact —</option>
+                          {contacts.map(c => (
+                            <option key={c.id} value={c.id}>{c.displayName}{c.organization ? ` — ${c.organization}` : ''}</option>
+                          ))}
+                        </select>
+                      </FieldTip>
+                    )}
                     <FieldTip label="Seuil d'alerte" hint="Définissez une quantité minimale en dessous de laquelle une alerte visuelle sera affichée.">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13px', color: 'var(--text2)' }}>
@@ -555,7 +589,7 @@ export function StockPage() {
                 <span>Valeur totale<strong style={{ color: '#4ade80' }}>{totalVal !== null ? `≈ ${totalVal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €` : '—'}</strong></span>
                 <span>Localisation<strong>{sv.location ?? '—'}</strong></span>
                 <span>Référence<strong style={{ fontFamily: 'var(--mono)' }}>{sv.reference ?? '—'}</strong></span>
-                <span>Fournisseur<strong>{sv.supplier ?? '—'}</strong></span>
+                <span>Fournisseur<strong>{sv.supplierContact?.displayName ?? sv.supplier ?? '—'}</strong></span>
                 {sv.thresholdEnabled && <span>Seuil alerte<strong style={{ color: isLow ? '#f87171' : 'var(--text)' }}>{Number(sv.threshold).toLocaleString('fr-FR')} {sv.unit}</strong></span>}
               </div>
 
@@ -676,8 +710,18 @@ export function StockPage() {
               <Modal open={showCreateLoan} onClose={() => setShowCreateLoan(false)} title="Enregistrer un prêt" subtitle={sv.name} icon={<RotateCcw size={20} />} maxWidth={460}>
                 <form onSubmit={handleCreateLoan}>
                   <div className="modal-grid">
-                    <FieldTip label="Prêté à" hint="Le nom de la personne ou de l'entreprise à qui vous prêtez cet outil. Sera affiché dans la liste des prêts actifs." required style={{ gridColumn: '1/-1' }}>
-                      <input name="borrowerName" required className="modal-input" placeholder="Ex : Jean Dupont, Garage Martin…" style={{ width: '100%', boxSizing: 'border-box' }} />
+                    {contacts.length > 0 && (
+                      <FieldTip label="Prêté à (contact)" hint="Optionnel. Sélectionne un contact existant. Sinon, écris juste le nom ci-dessous." style={{ gridColumn: '1/-1' }}>
+                        <select name="borrowerContactId" defaultValue="" className="modal-select">
+                          <option value="">— Aucun contact —</option>
+                          {contacts.map(c => (
+                            <option key={c.id} value={c.id}>{c.displayName}{c.organization ? ` — ${c.organization}` : ''}</option>
+                          ))}
+                        </select>
+                      </FieldTip>
+                    )}
+                    <FieldTip label="Prêté à (texte libre)" hint="Tu peux choisir un contact ci-dessus OU écrire un nom manuellement ici. L'un des deux est requis." style={{ gridColumn: '1/-1' }}>
+                      <input name="borrowerName" className="modal-input" placeholder="Ex : Jean Dupont, Garage Martin…" style={{ width: '100%', boxSizing: 'border-box' }} />
                     </FieldTip>
                     <FieldTip label="Date du prêt" hint="La date à laquelle vous remettez l'outil. Par défaut : aujourd'hui.">
                       <input name="loanDate" type="date" defaultValue={new Date().toISOString().slice(0,10)} className="modal-input" />
@@ -707,7 +751,7 @@ export function StockPage() {
                         style={{ borderLeft: `3px solid ${l.returnedAt ? '#4ade80' : isOverdue ? '#f87171' : 'var(--p1)'}`, opacity: l.returnedAt ? 0.6 : 1 }}>
                         <RotateCcw size={14} style={{ color: l.returnedAt ? '#4ade80' : isOverdue ? '#f87171' : '#c4b5fd', flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
-                          <strong style={{ fontSize: '13px' }}>{l.borrowerName}</strong>
+                          <strong style={{ fontSize: '13px' }}>{l.borrowerContact?.displayName ?? l.borrowerName ?? '—'}</strong>
                           <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>
                             {new Date(l.loanDate).toLocaleDateString('fr-FR')}
                             {l.expectedReturnDate && ` → ${new Date(l.expectedReturnDate).toLocaleDateString('fr-FR')}`}
