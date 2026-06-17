@@ -24,6 +24,7 @@ import { RemindersModule } from './reminders/reminders.module';
 import { ReportsModule } from './reports/reports.module';
 import { SearchModule } from './search/search.module';
 import { StockModule } from './stock/stock.module';
+import { SupportModule } from './support/support.module';
 import { SystemPublicModule } from './system-public/system-public.module';
 import { VehiclesModule } from './vehicles/vehicles.module';
 
@@ -56,6 +57,7 @@ import { VehiclesModule } from './vehicles/vehicles.module';
     ReportsModule,
     RemindersModule,
     BackupsModule,
+    SupportModule,
     SystemPublicModule,
   ],
   controllers: [AppController],

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Car, Home, Wallet, Package,
   CalendarDays, Folder, Users, BarChart2, HardDrive, Settings,
-  ChevronLeft, ChevronRight, ShieldCheck,
+  ChevronLeft, ChevronRight, ShieldCheck, LifeBuoy,
   type LucideIcon,
 } from 'lucide-react'
 import type { ModuleItem, User } from '../types'
@@ -138,6 +138,16 @@ export function Sidebar({
         >
           <div className="nav-ico"><HardDrive size={15} /></div>
           <span className="nav-txt">Sauvegarde</span>
+        </NavLink>
+        <NavLink
+          to="/app/support"
+          className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+          onClick={onClose}
+          data-label="Support"
+          aria-label="Support"
+        >
+          <div className="nav-ico"><LifeBuoy size={15} /></div>
+          <span className="nav-txt">Support</span>
         </NavLink>
         <NavLink
           to="/app/settings"

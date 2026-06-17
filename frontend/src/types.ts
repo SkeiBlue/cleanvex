@@ -347,3 +347,35 @@ export type ReportSummary = {
   }
   finance: { income: number; expense: number; net: number; vehicleBudget: number }
 }
+
+export type SupportAuthor = {
+  id: string
+  email: string
+  username: string | null
+  role: string
+}
+
+export type SupportMessage = {
+  id: string
+  ticketId: string
+  authorId: string
+  body: string
+  isStaff: boolean
+  createdAt: string
+  author?: SupportAuthor
+}
+
+export type SupportTicket = {
+  id: string
+  userId: string
+  subject: string
+  category: string
+  priority: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  closedAt: string | null
+  user?: SupportAuthor
+  messages?: SupportMessage[]
+  _count?: { messages: number }
+}

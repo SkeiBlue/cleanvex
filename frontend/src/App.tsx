@@ -25,6 +25,7 @@ const ContactsPage   = lazy(() => import('./pages/ContactsPage').then(m => ({ de
 const SettingsPage   = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const ReportsPage    = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const BackupsPage    = lazy(() => import('./pages/BackupsPage').then(m => ({ default: m.BackupsPage })))
+const SupportPage    = lazy(() => import('./pages/SupportPage').then(m => ({ default: m.SupportPage })))
 const AdminDashboardPage = lazy(() => import('./pages/AdminDashboardPage').then(m => ({ default: m.AdminDashboardPage })))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
 
@@ -251,6 +252,7 @@ export default function App() {
                   <Route path="settings" element={<SettingsPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="backups" element={<BackupsPage />} />
+                  <Route path="support" element={<SupportPage />} />
                   <Route path="admin" element={<AdminOnlyRoute><AdminDashboardPage /></AdminOnlyRoute>} />
                 </Route>
               </Route>
