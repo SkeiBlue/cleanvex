@@ -794,11 +794,14 @@ export function AdminDashboardPage() {
               )}
             </div>
           </section>
+
+          {/* Sprint 3 — Inscription publique (rattachée à la gestion des accès) */}
+          <SignupEnabledPanel />
         </div>
       </div>
       )}
 
-      {/* Onglet Modules : modules globaux + inscription publique */}
+      {/* Onglet Modules : modules globaux */}
       {activeTab === 'modules' && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Modules globaux (activer/désactiver pour toute l'instance) */}
@@ -846,9 +849,6 @@ export function AdminDashboardPage() {
               ))}
             </div>
           </section>
-
-          {/* Sprint 3 — Inscription publique (toggle global) */}
-          <SignupEnabledPanel />
       </div>
       )}
 
