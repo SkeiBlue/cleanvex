@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   Activity, CheckCircle2, Copy, FileText, KeyRound, MailCheck, Pencil, RefreshCw, Search,
-  ShieldCheck, ShieldOff, UserCog, UserPlus, Users, X, XCircle,
+  ShieldCheck, ShieldOff, Trash2, UserCog, UserPlus, Users, X, XCircle,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
@@ -387,6 +387,21 @@ export function AdminDashboardPage() {
     } finally { setBusyId(null) }
   }
 
+  async function removeUser(u: AdminUser) {
+    if (u.id === currentUser?.id) return
+    if (!confirm(`Supprimer définitivement « ${u.username ?? u.email} » ?\n\nToutes ses données (documents, véhicules, biens, finances…) seront effacées. Cette action est irréversible.`)) return
+    setBusyId(u.id)
+    try {
+      const r = await authedFetch(`/admin/users/${u.id}`, { method: 'DELETE' })
+      if (r.ok) {
+        setUsers(prev => prev.filter(x => x.id !== u.id))
+      } else {
+        const e = await r.json().catch(() => ({}))
+        alert(e.message ?? 'Suppression impossible.')
+      }
+    } finally { setBusyId(null) }
+  }
+
   function copyInvite() {
     if (!inviteCode) return
     navigator.clipboard.writeText(inviteCode).then(() => {
@@ -575,6 +590,20 @@ export function AdminDashboardPage() {
                                 opacity: (isMe && u.isActive) ? 0.4 : 1,
                               }}>
                               {u.isActive ? 'Désactiver' : 'Réactiver'}
+                            </button>
+                            <button disabled={isMe || busy}
+                              onClick={() => removeUser(u)}
+                              title={isMe ? 'Tu ne peux pas supprimer ton propre compte' : 'Supprimer définitivement'}
+                              style={{
+                                background: 'rgba(244,63,94,0.08)',
+                                border: '1px solid rgba(244,63,94,0.25)',
+                                borderRadius: 6, padding: '4px 8px', fontSize: 11,
+                                color: '#f87171',
+                                cursor: (isMe || busy) ? 'not-allowed' : 'pointer',
+                                opacity: isMe ? 0.4 : 1,
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                              }}>
+                              <Trash2 size={11} /> Supprimer
                             </button>
                           </div>
                         </td>

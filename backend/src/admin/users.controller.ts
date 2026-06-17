@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -126,6 +128,16 @@ export class AdminUsersController {
     return { data: items };
   }
 
+  /**
+   * Compte les autres admins actifs (différents de `excludeId`).
+   * Sert à empêcher de retirer/désactiver/supprimer le dernier admin actif.
+   */
+  private async countOtherActiveAdmins(excludeId: string): Promise<number> {
+    return this.prisma.user.count({
+      where: { role: 'admin', isActive: true, id: { not: excludeId } },
+    });
+  }
+
   /** Change le rôle d'un utilisateur */
   @Patch('users/:id/role')
   async updateRole(
@@ -141,6 +153,26 @@ export class AdminUsersController {
         'Tu ne peux pas te retirer tes droits admin',
       );
     }
+    // Lot 5 §2 : on ne rétrograde pas le dernier admin actif.
+    if (body.role !== 'admin') {
+      const target = await this.prisma.user.findUnique({
+        where: { id },
+        select: { role: true },
+      });
+      if (
+        target?.role === 'admin' &&
+        (await this.countOtherActiveAdmins(id)) === 0
+      ) {
+        await this.core.logAudit(
+          req.user.id,
+          'admin.last_admin_action_blocked',
+          { ip: req.ip, targetType: 'user', targetId: id },
+        );
+        throw new ForbiddenException(
+          'Impossible de rétrograder le dernier administrateur actif.',
+        );
+      }
+    }
     const updated = await this.prisma.user.update({
       where: { id },
       data: { role: body.role },
@@ -154,6 +186,9 @@ export class AdminUsersController {
     });
     await this.core.logAudit(req.user.id, 'admin.user.role_changed', {
       ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      targetType: 'user',
+      targetId: id,
     });
     return updated;
   }
@@ -283,6 +318,26 @@ export class AdminUsersController {
         'Tu ne peux pas désactiver ton propre compte',
       );
     }
+    // Lot 5 §3 : on ne désactive pas le dernier admin actif.
+    if (!body.isActive) {
+      const target = await this.prisma.user.findUnique({
+        where: { id },
+        select: { role: true },
+      });
+      if (
+        target?.role === 'admin' &&
+        (await this.countOtherActiveAdmins(id)) === 0
+      ) {
+        await this.core.logAudit(
+          req.user.id,
+          'admin.last_admin_action_blocked',
+          { ip: req.ip, targetType: 'user', targetId: id },
+        );
+        throw new ForbiddenException(
+          'Impossible de désactiver le dernier administrateur actif.',
+        );
+      }
+    }
     const updated = await this.prisma.user.update({
       where: { id },
       data: { isActive: !!body.isActive },
@@ -301,8 +356,50 @@ export class AdminUsersController {
       body.isActive ? 'admin.user.activated' : 'admin.user.deactivated',
       {
         ip: req.ip,
+        userAgent: req.headers['user-agent'],
+        targetType: 'user',
+        targetId: id,
       },
     );
     return updated;
+  }
+
+  /** Supprime définitivement un utilisateur (et ses données liées en cascade) */
+  @Delete('users/:id')
+  async deleteUser(@Param('id') id: string, @Req() req: AuthRequest) {
+    if (id === req.user.id) {
+      throw new ForbiddenException(
+        'Tu ne peux pas supprimer ton propre compte.',
+      );
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, role: true },
+    });
+    if (!target) {
+      throw new NotFoundException('Utilisateur introuvable.');
+    }
+    // Lot 5 §1 : on ne supprime pas le dernier admin actif.
+    if (
+      target.role === 'admin' &&
+      (await this.countOtherActiveAdmins(id)) === 0
+    ) {
+      await this.core.logAudit(req.user.id, 'admin.last_admin_action_blocked', {
+        ip: req.ip,
+        targetType: 'user',
+        targetId: id,
+      });
+      throw new ForbiddenException(
+        'Impossible de supprimer le dernier administrateur actif.',
+      );
+    }
+    await this.prisma.user.delete({ where: { id } });
+    await this.core.logAudit(req.user.id, 'admin.user.deleted', {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      targetType: 'user',
+      targetId: id,
+    });
+    return { ok: true };
   }
 }

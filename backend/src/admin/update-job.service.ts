@@ -14,10 +14,14 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const PROJECT_ROOT = join(__dirname, '..', '..', '..');
-const LOCK_FILE = '/tmp/monespace-update.lock';
+// Chemin de lock compatible OS : os.tmpdir() pointe vers /tmp sur Linux/Debian
+// (cible de prod) et vers %TEMP% sur Windows (dev local). En dur "/tmp/…" le
+// lock ne pouvait pas être créé/lu correctement sous Windows.
+const LOCK_FILE = join(tmpdir(), 'monespace-update.lock');
 
 // Persistance du job en cours sur disque pour survivre aux crashs/restarts
 // (OOM pendant `vite build`, restart final par server-start.sh, etc.) :

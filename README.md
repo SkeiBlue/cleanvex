@@ -11,6 +11,40 @@ Statut : stable, en validation finale. Voir [docs/V4.1_ECARTS_VALIDATION.md](doc
 - Auth: JWT access token court + refresh token en cookie httpOnly
 - Fichiers: stockage prive hors dossier public
 
+## Sécurité & déploiement
+
+Cible de production : **Debian**. Le développement local fonctionne sous
+macOS/Linux et **partiellement sous Windows** (le système de mise à jour
+`update.sh` s'appuie sur `bash` ; le lock file utilise désormais `os.tmpdir()`
+et est donc compatible Windows, mais le script de MAJ lui-même est prévu pour
+Debian).
+
+- **`trust proxy` derrière Nginx** : le backend active `trust proxy = 1`
+  (`src/app.setup.ts`). Indispensable derrière un reverse-proxy (Nginx) pour
+  que l'IP réelle du client (rate-limit, logs d'audit) et le `secure` des
+  cookies soient corrects. Configurer Nginx pour transmettre
+  `X-Forwarded-For` / `X-Forwarded-Proto`.
+- **Cookies sécurisés en production** : le refresh token est posé en cookie
+  `httpOnly`. Le flag `secure` est automatique si `NODE_ENV=production`
+  (transmis uniquement en HTTPS), et peut être forcé via `COOKIE_SECURE`
+  (`""` = auto, `"false"` pour un déploiement HTTP pur en LAN/intranet).
+- **JWT access token** : valable `JWT_ACCESS_EXPIRES_IN` (15 min par défaut).
+  Les routes admin sensibles revérifient l'utilisateur en base (compte
+  existant, actif, rôle toujours admin) plutôt que de se fier uniquement au
+  rôle présent dans le token. Un changement de rôle / une désactivation révoque
+  immédiatement les refresh tokens actifs.
+- **Formats de fichiers autorisés** (upload documents,
+  `src/documents/file-validation.ts`) : `pdf`, `png`, `jpg/jpeg`, `webp`,
+  `gif`, `docx`, `xlsx`, `zip`, ainsi que `txt` et `csv` (validés par contenu).
+  Le type réel est détecté via les magic bytes (`file-type`), pas via le
+  `mimetype` annoncé par le client.
+- **SVG refusé** : les fichiers SVG sont bloqués quel que soit le déguisement
+  (extension, mimetype annoncé, ou contenu `<svg>`/`<?xml>`/`<!doctype svg>`
+  détecté dans le buffer), pour éviter les XSS via SVG.
+- **Longueur des mots de passe** : 8 à 72 caractères (bcrypt tronque
+  silencieusement au-delà de 72 octets), avec au moins une minuscule, une
+  majuscule, un chiffre et un caractère spécial.
+
 ## Base PostgreSQL
 
 La base peut etre locale ou distante. Si PostgreSQL est sur une autre machine,
@@ -129,7 +163,14 @@ Etat actuel V0.1:
 - Module Documents desactive bloque l'API avec `403`.
 - Frontend connecte a l'API pour login, logout, modules et documents.
 
-Note audit: le frontend n'a pas d'alerte. Le backend remonte actuellement des alertes moderees sur une dependance dev de Prisma 7; `npm audit fix --force` propose un downgrade majeur vers Prisma 6, donc le correctif force n'est pas applique.
+Note audit (voir la section « Sécurité & déploiement » pour le détail) : le
+frontend ne remonte aucune alerte. Côté backend, toutes les vulnérabilités
+**high** sont corrigées (mise à jour `@nestjs/*`, `form-data`, et `multer ≥ 2.2.0`
+forcé via `overrides`). Les alertes **modérées** restantes proviennent
+exclusivement de dépendances de développement/outillage (Jest, `ts-jest`, et la
+dépendance `@prisma/dev` → `@hono/node-server` du runtime Prisma 7) : non
+exposées en production, et non corrigeables sans downgrade majeur (`--force`
+propose Prisma 6).
 
 ## V0.2
 
