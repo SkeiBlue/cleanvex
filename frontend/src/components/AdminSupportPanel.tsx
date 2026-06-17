@@ -5,7 +5,7 @@ import {
 import { useAuth } from '../contexts/AuthContext'
 import { relativeDate } from '../utils/date'
 import {
-  Badge, CATEGORIES, PRIORITIES, STATUSES, TicketDetail, priorityColor,
+  Badge, CATEGORIES, PRIORITIES, TicketDetail, priorityColor,
 } from '../pages/SupportPage'
 import type { SupportAuthor, SupportTicket } from '../types'
 
