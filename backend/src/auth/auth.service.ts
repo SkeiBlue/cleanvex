@@ -328,6 +328,55 @@ export class AuthService {
     return { sent: true };
   }
 
+  /**
+   * Reset mot de passe déclenché par un admin : envoie un email avec un lien
+   * de réinitialisation à l'utilisateur ciblé. Contrairement à forgotPassword,
+   * pas d'anti-énumération (l'admin connaît déjà le compte) et on renvoie des
+   * erreurs explicites. Nécessite un compte actif avec email vérifié.
+   */
+  async adminSendPasswordReset(
+    userId: string,
+    adminId: string,
+    meta: { ip?: string; userAgent?: string } = {},
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Utilisateur introuvable.');
+    if (!user.isActive) {
+      throw new BadRequestException(
+        'Compte désactivé : réactive-le avant d’envoyer un reset.',
+      );
+    }
+    if (!user.emailVerified) {
+      throw new BadRequestException(
+        'Email non vérifié : le lien de reset ne peut pas être envoyé.',
+      );
+    }
+
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+
+    const secret = randomBytes(32).toString('base64url');
+    const tokenHash = await bcrypt.hash(secret, 12);
+    const token = await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1h
+      },
+    });
+
+    await this.mail.sendPasswordResetEmail(user.email, `${token.id}.${secret}`);
+    await this.core.logAudit(adminId, 'admin.user.password_reset_email_sent', {
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      targetType: 'user',
+      targetId: user.id,
+    });
+    return { sent: true };
+  }
+
   async resetPassword(token: string, newPassword: string) {
     const current = await this.resolvePasswordResetToken(token);
     if (!current) throw new BadRequestException('Token invalide ou expiré.');

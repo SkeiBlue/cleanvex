@@ -78,11 +78,12 @@ function StatCard({ icon, label, value, hint, color }: {
 /* ── Modal édition utilisateur ────────────────────────────────── */
 type EditUserModalProps = {
   user: AdminUser
+  isSelf: boolean
   onClose: () => void
   onUpdated: (u: Partial<AdminUser> & { id: string }) => void
   authedFetch: (input: string, init?: RequestInit) => Promise<Response>
 }
-function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalProps) {
+function EditUserModal({ user, isSelf, onClose, onUpdated, authedFetch }: EditUserModalProps) {
   const [email, setEmail] = useState(user.email)
   const [username, setUsername] = useState(user.username ?? '')
   const [newPwd, setNewPwd] = useState('')
@@ -113,17 +114,6 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
     } finally { setBusy(null) }
   }
 
-  async function verifyEmail() {
-    setBusy('verify'); setMsg(null)
-    try {
-      const r = await authedFetch(`/admin/users/${user.id}/verify-email`, { method: 'POST' })
-      if (r.ok) {
-        onUpdated({ id: user.id, emailVerified: true })
-        setMsg({ text: 'Email vérifié manuellement.', ok: true })
-      } else setMsg({ text: 'Erreur.', ok: false })
-    } finally { setBusy(null) }
-  }
-
   async function disable2fa() {
     if (!confirm('Désactiver le 2FA de cet utilisateur ?')) return
     setBusy('2fa'); setMsg(null)
@@ -133,6 +123,55 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
         onUpdated({ id: user.id, totpEnabled: false })
         setMsg({ text: '2FA désactivé.', ok: true })
       } else setMsg({ text: 'Erreur.', ok: false })
+    } finally { setBusy(null) }
+  }
+
+  async function setRole(role: 'admin' | 'user') {
+    if (role === user.role) return
+    if (isSelf && role !== 'admin') { setMsg({ text: 'Tu ne peux pas te retirer tes propres droits admin.', ok: false }); return }
+    setBusy('role'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/role`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role }),
+      })
+      if (r.ok) { onUpdated({ id: user.id, role }); setMsg({ text: `Rôle changé en « ${role} ».`, ok: true }) }
+      else { const e = await r.json().catch(() => ({})); setMsg({ text: e.message ?? 'Erreur.', ok: false }) }
+    } finally { setBusy(null) }
+  }
+
+  async function setActive(isActive: boolean) {
+    if (isSelf && !isActive) { setMsg({ text: 'Tu ne peux pas désactiver ton propre compte.', ok: false }); return }
+    setBusy('active'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/active`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive }),
+      })
+      if (r.ok) { onUpdated({ id: user.id, isActive }); setMsg({ text: isActive ? 'Compte activé.' : 'Compte désactivé.', ok: true }) }
+      else { const e = await r.json().catch(() => ({})); setMsg({ text: e.message ?? 'Erreur.', ok: false }) }
+    } finally { setBusy(null) }
+  }
+
+  async function setEmailVerified(verified: boolean) {
+    setBusy('emailVerified'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/email-verified`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verified }),
+      })
+      if (r.ok) { onUpdated({ id: user.id, emailVerified: verified }); setMsg({ text: verified ? 'Email marqué vérifié.' : 'Email marqué non vérifié.', ok: true }) }
+      else setMsg({ text: 'Erreur.', ok: false })
+    } finally { setBusy(null) }
+  }
+
+  async function sendResetEmail() {
+    if (!confirm('Envoyer un email de réinitialisation de mot de passe à cet utilisateur ?')) return
+    setBusy('resetEmail'); setMsg(null)
+    try {
+      const r = await authedFetch(`/admin/users/${user.id}/send-password-reset`, { method: 'POST' })
+      if (r.ok) setMsg({ text: 'Email de réinitialisation envoyé.', ok: true })
+      else { const e = await r.json().catch(() => ({})); setMsg({ text: e.message ?? 'Envoi impossible.', ok: false }) }
     } finally { setBusy(null) }
   }
 
@@ -245,6 +284,59 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
 
         <div style={{ borderTop: '1px solid var(--border)' }} />
 
+        {/* Section : rôle & statut du compte */}
+        <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase' }}>
+            Compte
+          </h4>
+          {/* Rôle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+            <UserCog size={14} style={{ color: user.role === 'admin' ? '#a78bfa' : 'var(--text3)' }} />
+            <span style={{ flex: 1 }}>Rôle</span>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              {(['user', 'admin'] as const).map(r => {
+                const selected = user.role === r
+                const disabled = busy !== null || (isSelf && r === 'user')
+                return (
+                  <button key={r} onClick={() => setRole(r)} disabled={disabled}
+                    title={isSelf && r === 'user' ? 'Tu ne peux pas te retirer tes droits' : ''}
+                    style={{
+                      background: selected ? 'rgba(124,58,237,0.2)' : 'rgba(255,255,255,0.04)',
+                      border: `1px solid ${selected ? 'rgba(167,139,250,0.5)' : 'var(--border)'}`,
+                      borderRadius: 6, padding: '4px 10px', fontSize: 11.5,
+                      fontFamily: 'var(--mono)', letterSpacing: 0.5,
+                      color: selected ? '#c4b5fd' : 'var(--text2)',
+                      cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled && !selected ? 0.4 : 1,
+                    }}>{r.toUpperCase()}</button>
+                )
+              })}
+            </div>
+          </div>
+          {/* Statut actif */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
+            {user.isActive
+              ? <CheckCircle2 size={14} style={{ color: '#4ade80' }} />
+              : <XCircle size={14} style={{ color: '#f87171' }} />}
+            <span style={{ flex: 1 }}>
+              Statut : {user.isActive ? <span style={{ color: '#4ade80' }}>actif</span> : <span style={{ color: '#f87171' }}>désactivé</span>}
+            </span>
+            <button onClick={() => setActive(!user.isActive)} disabled={busy !== null || (isSelf && user.isActive)}
+              title={isSelf && user.isActive ? 'Tu ne peux pas désactiver ton propre compte' : ''}
+              style={{
+                background: user.isActive ? 'rgba(244,63,94,0.08)' : 'rgba(74,222,128,0.1)',
+                border: `1px solid ${user.isActive ? 'rgba(244,63,94,0.25)' : 'rgba(74,222,128,0.3)'}`,
+                borderRadius: 6, padding: '5px 10px', fontSize: 11.5,
+                color: user.isActive ? '#f87171' : '#4ade80',
+                cursor: (busy !== null || (isSelf && user.isActive)) ? 'not-allowed' : 'pointer',
+                opacity: (isSelf && user.isActive) ? 0.4 : 1,
+              }}>
+              {busy === 'active' ? '…' : user.isActive ? 'Désactiver' : 'Réactiver'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)' }} />
+
         {/* Section 2: vérif email + 2FA */}
         <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <h4 style={{ margin: 0, fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--mono)', letterSpacing: 1, textTransform: 'uppercase' }}>
@@ -255,16 +347,16 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
             <span style={{ flex: 1 }}>
               Email : {user.emailVerified ? <span style={{ color: '#4ade80' }}>vérifié ✓</span> : <span style={{ color: '#f59e0b' }}>non vérifié</span>}
             </span>
-            {!user.emailVerified && (
-              <button onClick={verifyEmail} disabled={busy === 'verify'}
-                style={{
-                  background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.3)',
-                  borderRadius: 6, padding: '5px 10px', fontSize: 11.5, color: '#4ade80',
-                  cursor: busy ? 'wait' : 'pointer',
-                }}>
-                {busy === 'verify' ? '…' : 'Marquer vérifié'}
-              </button>
-            )}
+            <button onClick={() => setEmailVerified(!user.emailVerified)} disabled={busy !== null}
+              style={{
+                background: user.emailVerified ? 'rgba(244,63,94,0.08)' : 'rgba(74,222,128,0.1)',
+                border: `1px solid ${user.emailVerified ? 'rgba(244,63,94,0.25)' : 'rgba(74,222,128,0.3)'}`,
+                borderRadius: 6, padding: '5px 10px', fontSize: 11.5,
+                color: user.emailVerified ? '#f87171' : '#4ade80',
+                cursor: busy ? 'wait' : 'pointer',
+              }}>
+              {busy === 'emailVerified' ? '…' : user.emailVerified ? 'Marquer non vérifié' : 'Marquer vérifié'}
+            </button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text2)' }}>
             <ShieldCheck size={14} style={{ color: user.totpEnabled ? '#4ade80' : 'var(--text3)' }} />
@@ -292,8 +384,22 @@ function EditUserModal({ user, onClose, onUpdated, authedFetch }: EditUserModalP
             Réinitialiser le mot de passe
           </h4>
           <p style={{ margin: 0, fontSize: 11.5, color: 'var(--text3)' }}>
-            Définit un nouveau mot de passe. Toutes les sessions actives seront révoquées.
+            Soit tu envoies un lien de réinitialisation par email, soit tu définis
+            un mot de passe directement. Dans les deux cas, les sessions actives
+            seront révoquées au changement.
           </p>
+          <button onClick={sendResetEmail} disabled={busy === 'resetEmail'}
+            style={{
+              background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(167,139,250,0.35)',
+              borderRadius: 10, padding: '9px 16px', fontSize: 13, fontWeight: 600, color: '#c4b5fd',
+              cursor: busy ? 'wait' : 'pointer', alignSelf: 'flex-start',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+            <MailCheck size={13} />{busy === 'resetEmail' ? 'Envoi…' : 'Envoyer un lien par email'}
+          </button>
+          <div style={{ fontSize: 10.5, color: 'var(--text3)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
+            ou définir manuellement
+          </div>
           <label style={labelStyle}>
             Nouveau mot de passe
             <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)}
@@ -721,6 +827,7 @@ export function AdminDashboardPage() {
       {editingUser && (
         <EditUserModal
           user={editingUser}
+          isSelf={editingUser.id === currentUser?.id}
           onClose={() => setEditingUser(null)}
           authedFetch={authedFetch}
           onUpdated={patch => {

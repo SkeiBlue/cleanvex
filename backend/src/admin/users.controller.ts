@@ -19,6 +19,7 @@ import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { AdminGuard } from '../auth/admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AuthService } from '../auth/auth.service';
 import { CoreService } from '../core/core.service';
 
 type AuthRequest = Request & {
@@ -32,6 +33,7 @@ export class AdminUsersController {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly core: CoreService,
+    private readonly auth: AuthService,
   ) {}
 
   /** Liste paginée des utilisateurs */
@@ -256,6 +258,30 @@ export class AdminUsersController {
     return updated;
   }
 
+  /** (Dé)marque l'email comme vérifié */
+  @Patch('users/:id/email-verified')
+  async setEmailVerified(
+    @Param('id') id: string,
+    @Body() body: { verified: boolean },
+    @Req() req: AuthRequest,
+  ) {
+    const verified = !!body.verified;
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: {
+        emailVerified: verified,
+        emailVerifiedAt: verified ? new Date() : null,
+      },
+      select: { id: true, email: true, emailVerified: true },
+    });
+    await this.core.logAudit(
+      req.user.id,
+      verified ? 'admin.user.email_verified' : 'admin.user.email_unverified',
+      { ip: req.ip, userAgent: req.headers['user-agent'], targetType: 'user', targetId: id },
+    );
+    return updated;
+  }
+
   /** Désactive le 2FA (TOTP) de force */
   @Post('users/:id/disable-2fa')
   async disable2fa(@Param('id') id: string, @Req() req: AuthRequest) {
@@ -304,6 +330,15 @@ export class AdminUsersController {
       targetId: id,
     });
     return { ok: true };
+  }
+
+  /** Envoie un email de réinitialisation de mot de passe à l'utilisateur */
+  @Post('users/:id/send-password-reset')
+  async sendPasswordReset(@Param('id') id: string, @Req() req: AuthRequest) {
+    return this.auth.adminSendPasswordReset(id, req.user.id, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 
   /** Active/désactive un compte */
