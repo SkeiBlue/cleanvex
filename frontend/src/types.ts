@@ -42,7 +42,6 @@ export type ProfileInfo = {
   }
   sessions: Array<{
     id: string
-    ipAddress: string | null
     userAgent: string | null
     expiresAt: string
     revokedAt: string | null
@@ -71,8 +70,6 @@ export type AuditLog = {
   action: string
   targetType: string | null
   targetId: string | null
-  ipAddress: string | null
-  userAgent: string | null
   createdAt: string
 }
 
@@ -348,5 +345,5 @@ export type ReportSummary = {
     unreadNotifications: number
     transactions: number
   }
-  finance: { income: number; expense: number; net: number }
+  finance: { income: number; expense: number; net: number; vehicleBudget: number }
 }

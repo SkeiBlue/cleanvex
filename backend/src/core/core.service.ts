@@ -25,9 +25,11 @@ export class CoreService {
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 8,
+        // RGPD : pas d'adresse IP exposée à l'utilisateur. Le user-agent reste
+        // pour permettre d'identifier l'appareil (navigateur) dans la liste des
+        // sessions actives.
         select: {
           id: true,
-          ipAddress: true,
           userAgent: true,
           expiresAt: true,
           revokedAt: true,
@@ -85,10 +87,20 @@ export class CoreService {
   }
 
   async audit(userId: string) {
+    // RGPD / minimisation des données : l'endpoint utilisateur ne renvoie PAS
+    // l'adresse IP ni le user-agent. Ces données restent stockées et ne sont
+    // exposées qu'aux administrateurs (GET /admin/audit-logs) pour la sécurité.
     return this.prisma.auditLog.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 30,
+      select: {
+        id: true,
+        action: true,
+        targetType: true,
+        targetId: true,
+        createdAt: true,
+      },
     });
   }
 

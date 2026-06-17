@@ -529,7 +529,6 @@ export function SettingsPage() {
                         {isActive && <span style={{ marginLeft: '6px', fontSize: '9px', color: '#4ade80', fontFamily: 'var(--mono)', fontWeight: 700 }}>ACTIVE</span>}
                       </div>
                       <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px', display: 'flex', gap: '10px' }}>
-                        {s.ipAddress && <span>{s.ipAddress}</span>}
                         <span>Créée le {new Date(s.createdAt).toLocaleDateString('fr-FR')}</span>
                         {s.lastUsedAt && <span>Utilisée le {new Date(s.lastUsedAt).toLocaleDateString('fr-FR')}</span>}
                       </div>
@@ -623,7 +622,6 @@ export function SettingsPage() {
                       <ShieldCheck size={14} style={{ color: '#a78bfa', flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: '12px' }}>{l.action}</span>
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        {l.ipAddress && <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)' }}>{l.ipAddress}</div>}
                         <small style={{ fontFamily: 'var(--mono)', color: 'var(--text3)' }}>
                           {new Date(l.createdAt).toLocaleDateString('fr-FR')}
                         </small>
