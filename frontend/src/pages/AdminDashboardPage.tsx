@@ -9,7 +9,7 @@ import { AdminSupportPanel } from '../components/AdminSupportPanel'
 import { SkeletonTabPage } from '../components/Skeleton'
 import type { ModuleItem } from '../types'
 
-type AdminTab = 'overview' | 'support'
+type AdminTab = 'overview' | 'users' | 'modules' | 'system' | 'support'
 
 const ADMIN_MODULE_ICONS: Record<string, string> = {
   vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
@@ -565,9 +565,12 @@ export function AdminDashboardPage() {
       </div>
 
       {/* Onglets du tableau de bord admin */}
-      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)', overflowX: 'auto' }}>
         {([
           { key: 'overview', label: "Vue d'ensemble" },
+          { key: 'users', label: 'Utilisateurs' },
+          { key: 'modules', label: 'Modules' },
+          { key: 'system', label: 'Système' },
           { key: 'support', label: 'Support' },
         ] as { key: AdminTab; label: string }[]).map(t => (
           <button
@@ -588,9 +591,8 @@ export function AdminDashboardPage() {
 
       {activeTab === 'support' && <AdminSupportPanel />}
 
-      {activeTab === 'overview' && (
-      <>
       {/* Stats — minmax(180px) au lieu de 220px : tient à 2 col sur 430px de viewport */}
+      {activeTab === 'overview' && (
       <section style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12,
       }}>
@@ -609,8 +611,10 @@ export function AdminDashboardPage() {
           hint={stats ? `${stats.content.vehicles} véh. · ${stats.content.properties} biens · ${stats.content.contacts} contacts` : undefined}
           color="#f59e0b" />
       </section>
+      )}
 
-      {/* Grille 2 colonnes : Utilisateurs + Invite */}
+      {/* Onglet Utilisateurs : gestion des comptes + code d'invitation */}
+      {activeTab === 'users' && (
       <div style={{
         display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)',
         gap: 16,
@@ -790,7 +794,13 @@ export function AdminDashboardPage() {
               )}
             </div>
           </section>
+        </div>
+      </div>
+      )}
 
+      {/* Onglet Modules : modules globaux + inscription publique */}
+      {activeTab === 'modules' && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Modules globaux (activer/désactiver pour toute l'instance) */}
           <section className="panel" style={{ padding: 0 }}>
             <div className="panel-header">
@@ -839,21 +849,23 @@ export function AdminDashboardPage() {
 
           {/* Sprint 3 — Inscription publique (toggle global) */}
           <SignupEnabledPanel />
-
-          {/* System (réutilise le panel existant) */}
-          <section className="panel" style={{ padding: 0 }}>
-            <div className="panel-header">
-              <div><span className="panel-kicker">Maintenance</span><h2>Système</h2></div>
-              <RefreshCw size={20} />
-            </div>
-            <div style={{ padding: 16 }}>
-              <SystemPanel />
-            </div>
-          </section>
-        </div>
       </div>
+      )}
 
-      {/* Modal d'édition utilisateur */}
+      {/* Onglet Système : maintenance / mises à jour */}
+      {activeTab === 'system' && (
+      <section className="panel" style={{ padding: 0 }}>
+        <div className="panel-header">
+          <div><span className="panel-kicker">Maintenance</span><h2>Système</h2></div>
+          <RefreshCw size={20} />
+        </div>
+        <div style={{ padding: 16 }}>
+          <SystemPanel />
+        </div>
+      </section>
+      )}
+
+      {/* Modal d'édition utilisateur (déclenchée depuis l'onglet Utilisateurs) */}
       {editingUser && (
         <EditUserModal
           user={editingUser}
@@ -867,7 +879,8 @@ export function AdminDashboardPage() {
         />
       )}
 
-      {/* Audit logs */}
+      {/* Audit logs (onglet Vue d'ensemble) */}
+      {activeTab === 'overview' && (
       <section className="panel" style={{ padding: 0 }}>
         <div className="panel-header">
           <div><span className="panel-kicker">Activité</span><h2>Derniers événements (audit)</h2></div>
@@ -906,7 +919,6 @@ export function AdminDashboardPage() {
           </div>
         )}
       </section>
-      </>
       )}
     </div>
   )

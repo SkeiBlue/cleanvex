@@ -9,8 +9,10 @@ import {
 } from '../pages/SupportPage'
 import type { SupportAuthor, SupportTicket } from '../types'
 
+// "active" = tous les tickets non clôturés (vue par défaut). Les tickets
+// clôturés ne sont visibles que via le filtre dédié.
 const STATUS_FILTERS: { key: string; label: string }[] = [
-  { key: '', label: 'Tous' },
+  { key: 'active', label: 'Actifs' },
   { key: 'open', label: 'Ouverts' },
   { key: 'pending', label: 'En attente' },
   { key: 'resolved', label: 'Résolus' },
@@ -21,15 +23,20 @@ export function AdminSupportPanel() {
   const { authedFetch } = useAuth()
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [loading, setLoading] = useState(true)
-  const [status, setStatus] = useState('')
+  const [status, setStatus] = useState('active')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [userInfo, setUserInfo] = useState<SupportAuthor | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const qs = status ? `?status=${status}` : ''
+    // "active" récupère tout puis exclut les clôturés côté client ; les autres
+    // filtres ciblent un statut précis côté serveur.
+    const qs = status && status !== 'active' ? `?status=${status}` : ''
     const r = await authedFetch(`/support/all${qs}`)
-    if (r.ok) setTickets(await r.json())
+    if (r.ok) {
+      const data: SupportTicket[] = await r.json()
+      setTickets(status === 'active' ? data.filter(t => t.status !== 'closed') : data)
+    }
     setLoading(false)
   }, [authedFetch, status])
 
@@ -54,7 +61,7 @@ export function AdminSupportPanel() {
       <section className="panel" style={{ padding: 0 }}>
         <div className="panel-header">
           <div><span className="panel-kicker">Assistance</span><h2>Tickets de support</h2></div>
-          <button className="btn-ghost" onClick={load} disabled={loading}>
+          <button className="btn btn-ghost" onClick={load} disabled={loading}>
             <RefreshCw size={14} style={{ marginRight: 4, animation: loading ? 'spin 0.8s linear infinite' : undefined }} />
             Actualiser
           </button>

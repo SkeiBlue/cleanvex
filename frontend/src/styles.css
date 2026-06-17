@@ -459,6 +459,9 @@ body::after {
 
 /* ─── BUTTONS ─── */
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 12px;
@@ -467,7 +470,9 @@ body::after {
   border: none;
   font-family: var(--font);
   transition: all 0.2s;
+  white-space: nowrap;
 }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .btn-primary {
   background: linear-gradient(135deg, var(--p1), var(--p2));
   color: white;
@@ -480,6 +485,24 @@ body::after {
   color: var(--text2);
 }
 .btn-ghost:hover { background: var(--card-hover); color: var(--text); }
+
+/* Ligne cliquable (liste de tickets de support) */
+.support-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+.support-row + .support-row { border-top: 1px solid var(--border); }
+.support-row:hover { background: var(--card-hover); }
+.support-row .support-chevron { color: var(--text3); flex-shrink: 0; transition: transform 0.15s; }
+.support-row:hover .support-chevron { transform: translateX(2px); color: var(--text2); }
 
 /* primary-action alias */
 .primary-action {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft, LifeBuoy, Plus, RefreshCw, Send,
+  ArrowLeft, ChevronRight, LifeBuoy, Plus, RefreshCw, Send,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { relativeDate } from '../utils/date'
@@ -66,6 +66,7 @@ export function SupportPage() {
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
+  const [showClosed, setShowClosed] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -91,6 +92,10 @@ export function SupportPage() {
 
   if (loading && tickets.length === 0) return <SkeletonTabPage />
 
+  // Les tickets clôturés sont masqués par défaut.
+  const closedCount = tickets.filter(t => t.status === 'closed').length
+  const visibleTickets = showClosed ? tickets : tickets.filter(t => t.status !== 'closed')
+
   return (
     <>
       <div className="panel-header" style={{ marginBottom: 20 }}>
@@ -99,12 +104,12 @@ export function SupportPage() {
           <h2>Support</h2>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-ghost" onClick={load} disabled={loading}>
-            <RefreshCw size={14} style={{ marginRight: 4 }} />
+          <button className="btn btn-ghost" onClick={load} disabled={loading}>
+            <RefreshCw size={14} style={{ marginRight: 6 }} />
             {loading ? 'Chargement…' : 'Actualiser'}
           </button>
-          <button className="btn-primary" onClick={() => setShowCreate(true)}>
-            <Plus size={14} style={{ marginRight: 4 }} />
+          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>
+            <Plus size={14} style={{ marginRight: 6 }} />
             Nouveau ticket
           </button>
         </div>
@@ -126,38 +131,47 @@ export function SupportPage() {
           </p>
         </div>
       ) : (
-        <div className="panel" style={{ padding: 0 }}>
-          {tickets.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedId(t.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
-                padding: '14px 16px', background: 'none', border: 'none',
-                borderTop: i === 0 ? 'none' : '1px solid var(--border)',
-                cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                  <span style={{
-                    color: 'var(--text)', fontSize: 14, fontWeight: 500,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {t.subject}
-                  </span>
-                  <Badge status={t.status} />
+        <>
+          <div className="panel" style={{ padding: 0 }}>
+            {visibleTickets.map(t => (
+              <button key={t.id} className="support-row" onClick={() => setSelectedId(t.id)}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                    <span style={{
+                      color: 'var(--text)', fontSize: 14, fontWeight: 500,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {t.subject}
+                    </span>
+                    <Badge status={t.status} />
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text3)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <span>{CATEGORIES[t.category] ?? t.category}</span>
+                    <span style={{ color: priorityColor(t.priority) }}>● {PRIORITIES[t.priority] ?? t.priority}</span>
+                    <span>{t._count?.messages ?? 0} message(s)</span>
+                    <span>· {relativeDate(t.updatedAt)}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize: 11.5, color: 'var(--text3)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <span>{CATEGORIES[t.category] ?? t.category}</span>
-                  <span style={{ color: priorityColor(t.priority) }}>● {PRIORITIES[t.priority] ?? t.priority}</span>
-                  <span>{t._count?.messages ?? 0} message(s)</span>
-                  <span>· {relativeDate(t.updatedAt)}</span>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+                <ChevronRight size={16} className="support-chevron" />
+              </button>
+            ))}
+            {visibleTickets.length === 0 && (
+              <p style={{ padding: 30, textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+                Aucun ticket actif. Tous tes tickets sont clôturés.
+              </p>
+            )}
+          </div>
+
+          {closedCount > 0 && (
+            <div style={{ marginTop: 12, textAlign: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => setShowClosed(v => !v)}>
+                {showClosed
+                  ? 'Masquer les tickets clôturés'
+                  : `Afficher les tickets clôturés (${closedCount})`}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </>
   )
@@ -219,8 +233,8 @@ function CreateTicketForm({
         />
         {error && <p style={{ color: '#f87171', fontSize: 13, margin: 0 }}>{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" className="btn-ghost" onClick={onClose}>Annuler</button>
-          <button type="submit" className="btn-primary" disabled={busy}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Annuler</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? 'Envoi…' : 'Créer le ticket'}
           </button>
         </div>
@@ -279,7 +293,7 @@ export function TicketDetail({
   if (!ticket) {
     return (
       <>
-        <button className="btn-ghost" onClick={onBack}><ArrowLeft size={14} /> Retour</button>
+        <button className="btn btn-ghost" onClick={onBack}><ArrowLeft size={14} style={{ marginRight: 6 }} /> Retour</button>
         <p style={{ color: 'var(--text3)', marginTop: 20 }}>Ticket introuvable.</p>
       </>
     )
@@ -290,8 +304,8 @@ export function TicketDetail({
   return (
     <>
       <div className="panel-header" style={{ marginBottom: 16 }}>
-        <button className="btn-ghost" onClick={onBack}>
-          <ArrowLeft size={14} style={{ marginRight: 4 }} /> Retour
+        <button className="btn btn-ghost" onClick={onBack}>
+          <ArrowLeft size={14} style={{ marginRight: 6 }} /> Retour
         </button>
       </div>
 
@@ -392,7 +406,7 @@ export function TicketDetail({
             style={{ resize: 'vertical', marginBottom: 10 }}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button className="btn-primary" onClick={sendReply} disabled={busy || !reply.trim()}>
+            <button className="btn btn-primary" onClick={sendReply} disabled={busy || !reply.trim()}>
               <Send size={14} style={{ marginRight: 4 }} />
               {busy ? 'Envoi…' : 'Envoyer'}
             </button>
