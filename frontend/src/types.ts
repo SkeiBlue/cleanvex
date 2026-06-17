@@ -353,6 +353,20 @@ export type SupportAuthor = {
   email: string
   username: string | null
   role: string
+  // Champs enrichis présents uniquement pour le propriétaire du ticket
+  // (popup d'infos côté admin).
+  isActive?: boolean
+  emailVerified?: boolean
+  totpEnabled?: boolean
+  lastLoginAt?: string | null
+  createdAt?: string
+  _count?: {
+    documents: number
+    vehicles: number
+    properties: number
+    contacts: number
+    supportTickets: number
+  }
 }
 
 export type SupportMessage = {

@@ -12,6 +12,32 @@ const AUTHOR_SELECT = {
   select: { id: true, email: true, username: true, role: true },
 } as const;
 
+// Sélection enrichie pour l'auteur (propriétaire) du ticket : alimente la
+// popup d'informations côté admin. L'endpoint n'étant accessible qu'au
+// propriétaire ou à un admin, exposer ces champs est sans risque.
+const OWNER_SELECT = {
+  select: {
+    id: true,
+    email: true,
+    username: true,
+    role: true,
+    isActive: true,
+    emailVerified: true,
+    totpEnabled: true,
+    lastLoginAt: true,
+    createdAt: true,
+    _count: {
+      select: {
+        documents: true,
+        vehicles: true,
+        properties: true,
+        contacts: true,
+        supportTickets: true,
+      },
+    },
+  },
+} as const;
+
 @Injectable()
 export class SupportService {
   constructor(private readonly prisma: PrismaService) {}
@@ -32,7 +58,7 @@ export class SupportService {
       orderBy: { updatedAt: 'desc' },
       include: {
         _count: { select: { messages: true } },
-        user: AUTHOR_SELECT,
+        user: OWNER_SELECT,
       },
     });
   }
@@ -63,7 +89,7 @@ export class SupportService {
     const ticket = await this.prisma.supportTicket.findUnique({
       where: { id },
       include: {
-        user: AUTHOR_SELECT,
+        user: OWNER_SELECT,
         messages: {
           orderBy: { createdAt: 'asc' },
           include: { author: AUTHOR_SELECT },

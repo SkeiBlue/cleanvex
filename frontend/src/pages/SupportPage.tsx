@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft, LifeBuoy, Plus, RefreshCw, Send, ShieldCheck,
+  ArrowLeft, LifeBuoy, Plus, RefreshCw, Send,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { relativeDate } from '../utils/date'
 import { SkeletonTabPage } from '../components/Skeleton'
 import type { SupportTicket } from '../types'
 
-const CATEGORIES: Record<string, string> = {
+export const CATEGORIES: Record<string, string> = {
   general: 'Général',
   bug: 'Bug',
   feature: 'Suggestion',
@@ -15,14 +15,14 @@ const CATEGORIES: Record<string, string> = {
   billing: 'Facturation',
 }
 
-const PRIORITIES: Record<string, string> = {
+export const PRIORITIES: Record<string, string> = {
   low: 'Basse',
   normal: 'Normale',
   high: 'Haute',
   urgent: 'Urgente',
 }
 
-const STATUSES: Record<string, string> = {
+export const STATUSES: Record<string, string> = {
   open: 'Ouvert',
   pending: 'En attente',
   resolved: 'Résolu',
@@ -39,7 +39,7 @@ function statusColor(status: string): { bg: string; fg: string } {
   }
 }
 
-function priorityColor(priority: string): string {
+export function priorityColor(priority: string): string {
   switch (priority) {
     case 'urgent': return '#f87171'
     case 'high': return '#fb923c'
@@ -48,7 +48,7 @@ function priorityColor(priority: string): string {
   }
 }
 
-function Badge({ status }: { status: string }) {
+export function Badge({ status }: { status: string }) {
   const c = statusColor(status)
   return (
     <span style={{
@@ -61,22 +61,21 @@ function Badge({ status }: { status: string }) {
 }
 
 export function SupportPage() {
-  const { authedFetch, user } = useAuth()
-  const isAdmin = user?.role === 'admin'
+  const { authedFetch } = useAuth()
 
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [loading, setLoading] = useState(true)
-  const [adminView, setAdminView] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const path = isAdmin && adminView ? '/support/all' : '/support'
-    const r = await authedFetch(path)
+    // Chaque utilisateur ne voit que ses propres tickets. La gestion de tous
+    // les tickets se fait dans le tableau de bord admin (onglet Support).
+    const r = await authedFetch('/support')
     if (r.ok) setTickets(await r.json())
     setLoading(false)
-  }, [authedFetch, isAdmin, adminView])
+  }, [authedFetch])
 
   useEffect(() => { load() }, [load])
 
@@ -84,7 +83,7 @@ export function SupportPage() {
     return (
       <TicketDetail
         id={selectedId}
-        isAdmin={isAdmin}
+        isAdmin={false}
         onBack={() => { setSelectedId(null); load() }}
       />
     )
@@ -100,16 +99,6 @@ export function SupportPage() {
           <h2>Support</h2>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {isAdmin && (
-            <button
-              className="btn-ghost"
-              onClick={() => setAdminView(v => !v)}
-              title="Basculer entre mes tickets et tous les tickets"
-            >
-              <ShieldCheck size={14} style={{ marginRight: 4 }} />
-              {adminView ? 'Tous les tickets' : 'Mes tickets'}
-            </button>
-          )}
           <button className="btn-ghost" onClick={load} disabled={loading}>
             <RefreshCw size={14} style={{ marginRight: 4 }} />
             {loading ? 'Chargement…' : 'Actualiser'}
@@ -163,9 +152,6 @@ export function SupportPage() {
                   <span>{CATEGORIES[t.category] ?? t.category}</span>
                   <span style={{ color: priorityColor(t.priority) }}>● {PRIORITIES[t.priority] ?? t.priority}</span>
                   <span>{t._count?.messages ?? 0} message(s)</span>
-                  {isAdmin && adminView && t.user && (
-                    <span>· {t.user.username ?? t.user.email}</span>
-                  )}
                   <span>· {relativeDate(t.updatedAt)}</span>
                 </div>
               </div>
@@ -244,9 +230,15 @@ function CreateTicketForm({
 }
 
 /* ── Détail d'un ticket + fil de discussion ────────────────────────── */
-function TicketDetail({
-  id, isAdmin, onBack,
-}: { id: string; isAdmin: boolean; onBack: () => void }) {
+export function TicketDetail({
+  id, isAdmin, onBack, onUserClick,
+}: {
+  id: string
+  isAdmin: boolean
+  onBack: () => void
+  // Optionnel (vue admin) : ouvre la popup d'infos sur le demandeur.
+  onUserClick?: (owner: SupportTicket['user']) => void
+}) {
   const { authedFetch } = useAuth()
   const [ticket, setTicket] = useState<SupportTicket | null>(null)
   const [loading, setLoading] = useState(true)
@@ -310,7 +302,24 @@ function TicketDetail({
             <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <span>{CATEGORIES[ticket.category] ?? ticket.category}</span>
               <span style={{ color: priorityColor(ticket.priority) }}>● {PRIORITIES[ticket.priority] ?? ticket.priority}</span>
-              {isAdmin && ticket.user && <span>· {ticket.user.username ?? ticket.user.email}</span>}
+              {isAdmin && ticket.user && (
+                onUserClick ? (
+                  <button
+                    type="button"
+                    onClick={() => onUserClick(ticket.user)}
+                    title="Voir la fiche de l'utilisateur"
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      color: '#a78bfa', fontSize: 12, fontFamily: 'var(--font)',
+                      textDecoration: 'underline', textUnderlineOffset: 2,
+                    }}
+                  >
+                    · {ticket.user.username ?? ticket.user.email}
+                  </button>
+                ) : (
+                  <span>· {ticket.user.username ?? ticket.user.email}</span>
+                )
+              )}
               <span>· ouvert {relativeDate(ticket.createdAt)}</span>
             </div>
           </div>

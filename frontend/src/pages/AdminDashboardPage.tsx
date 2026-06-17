@@ -5,8 +5,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
+import { AdminSupportPanel } from '../components/AdminSupportPanel'
 import { SkeletonTabPage } from '../components/Skeleton'
 import type { ModuleItem } from '../types'
+
+type AdminTab = 'overview' | 'support'
 
 const ADMIN_MODULE_ICONS: Record<string, string> = {
   vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
@@ -438,6 +441,7 @@ export function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null)
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview')
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -560,6 +564,32 @@ export function AdminDashboardPage() {
         </button>
       </div>
 
+      {/* Onglets du tableau de bord admin */}
+      <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--border)' }}>
+        {([
+          { key: 'overview', label: "Vue d'ensemble" },
+          { key: 'support', label: 'Support' },
+        ] as { key: AdminTab; label: string }[]).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
+              padding: '10px 16px', fontSize: 13.5, fontWeight: 600,
+              color: activeTab === t.key ? 'var(--text)' : 'var(--text3)',
+              borderBottom: `2px solid ${activeTab === t.key ? 'var(--p1)' : 'transparent'}`,
+              marginBottom: -1,
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'support' && <AdminSupportPanel />}
+
+      {activeTab === 'overview' && (
+      <>
       {/* Stats — minmax(180px) au lieu de 220px : tient à 2 col sur 430px de viewport */}
       <section style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12,
@@ -876,6 +906,8 @@ export function AdminDashboardPage() {
           </div>
         )}
       </section>
+      </>
+      )}
     </div>
   )
 }
