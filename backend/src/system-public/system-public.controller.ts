@@ -4,8 +4,6 @@ import { Throttle } from '@nestjs/throttler';
 import { UpdateJobService } from '../admin/update-job.service';
 import { AppSettingsService } from '../app-settings/app-settings.service';
 
-const LOCK_FILE = '/tmp/monespace-update.lock';
-
 /**
  * Endpoints PUBLICS de l'état système — pas de JwtAuthGuard.
  * Pour l'instant : juste `maintenance` pour permettre au frontend de tous
@@ -33,7 +31,7 @@ export class SystemPublicController {
       return { active: true, since: current.startedAt };
     }
 
-    if (existsSync(LOCK_FILE)) {
+    if (existsSync(this.updates.lockFilePath)) {
       return { active: true, since: null };
     }
 

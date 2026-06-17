@@ -52,6 +52,9 @@ export interface UpdateJob {
 
 @Injectable()
 export class UpdateJobService implements OnModuleInit {
+  /** Chemin du lock file, exposé comme source unique (cf. SystemPublicController). */
+  readonly lockFilePath = LOCK_FILE;
+
   private readonly logger = new Logger('UpdateJob');
   private readonly jobs = new Map<string, UpdateJob>();
   private currentJobId: string | null = null;
@@ -121,7 +124,10 @@ export class UpdateJobService implements OnModuleInit {
     // du job sur disque), le frontend retrouve l'état correct au reload.
     const proc = spawn('bash', ['./update.sh'], {
       cwd: PROJECT_ROOT,
-      env: { ...process.env, FORCE_COLOR: '0' },
+      // UPDATE_LOCK_FILE : source unique du chemin de lock. update.sh utilise
+      // cette valeur (fallback /tmp/...), évitant toute divergence si os.tmpdir()
+      // ne pointe pas vers /tmp (TMPDIR custom, systemd PrivateTmp, etc.).
+      env: { ...process.env, FORCE_COLOR: '0', UPDATE_LOCK_FILE: LOCK_FILE },
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     });

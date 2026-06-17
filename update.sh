@@ -9,7 +9,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-LOCK_FILE="/tmp/monespace-update.lock"
+# Le chemin du lock est fourni par le service Node (UpdateJobService) via la
+# variable d'env UPDATE_LOCK_FILE pour garantir une source unique. Fallback sur
+# /tmp/monespace-update.lock si le script est lancé à la main.
+LOCK_FILE="${UPDATE_LOCK_FILE:-/tmp/monespace-update.lock}"
 LOG_DIR="logs"
 TIMESTAMP="$(date '+%Y%m%d_%H%M%S')"
 LOG_FILE="${LOG_DIR}/update_${TIMESTAMP}.log"
