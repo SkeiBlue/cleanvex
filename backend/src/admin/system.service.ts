@@ -17,11 +17,21 @@ interface RemoteCache {
   commits: { sha: string; message: string; date: string }[];
 }
 
+// Cooldown par défaut après un échec (réseau, 5xx) avant de retenter GitHub.
+const FAIL_COOLDOWN_MS = 60 * 1000;
+
 @Injectable()
 export class SystemService {
   private readonly logger = new Logger('SystemService');
   private installedSha: string | null = null;
   private remoteCache: RemoteCache | null = null;
+  // Cache négatif : tant que `now < cooldownUntil`, on ne retente PAS GitHub
+  // (évite de marteler l'API et de saturer les logs quand le rate limit non
+  // authentifié — 60 req/h — est atteint).
+  private cooldownUntil = 0;
+  // Déduplication : un seul appel GitHub en vol à la fois ; les polls
+  // concurrents partagent la même promesse au lieu de tirer en rafale.
+  private inFlight: Promise<RemoteCache | null> | null = null;
 
   async getInstalledSha(): Promise<string | null> {
     if (this.installedSha) return this.installedSha;
@@ -47,6 +57,23 @@ export class SystemService {
     ) {
       return this.remoteCache;
     }
+    // Cache négatif : on respecte le cooldown (sauf forçage explicite) et on
+    // renvoie la dernière valeur connue (éventuellement null) sans appeler
+    // GitHub. C'est ce qui stoppe le flot de 403 quand le rate limit est saturé.
+    if (!force && Date.now() < this.cooldownUntil) {
+      return this.remoteCache;
+    }
+    // Déduplication des appels concurrents : on partage la promesse en vol.
+    if (this.inFlight) return this.inFlight;
+    this.inFlight = this.fetchRemoteInfo();
+    try {
+      return await this.inFlight;
+    } finally {
+      this.inFlight = null;
+    }
+  }
+
+  private async fetchRemoteInfo(): Promise<RemoteCache | null> {
     const installed = await this.getInstalledSha();
     if (!installed) return null;
     try {
@@ -58,8 +85,24 @@ export class SystemService {
         headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
       const res = await fetch(compareUrl, { headers });
       if (!res.ok) {
-        this.logger.warn(`GitHub compare ${res.status} ${res.statusText}`);
-        return null;
+        // Back-off : si c'est un rate limit, on attend la date de reset fournie
+        // par GitHub (header X-RateLimit-Reset, en secondes epoch) ; sinon un
+        // cooldown court. Évite de retenter à chaque poll.
+        const remaining = res.headers.get('x-ratelimit-remaining');
+        const reset = Number(res.headers.get('x-ratelimit-reset'));
+        if (remaining === '0' && Number.isFinite(reset) && reset > 0) {
+          this.cooldownUntil = reset * 1000 + 1000;
+          const waitMin = Math.ceil((this.cooldownUntil - Date.now()) / 60000);
+          this.logger.warn(
+            `GitHub rate limit atteint (60 req/h non authentifié). ` +
+              `Prochain essai dans ~${waitMin} min. ` +
+              `Définis GITHUB_TOKEN pour passer à 5000 req/h.`,
+          );
+        } else {
+          this.cooldownUntil = Date.now() + FAIL_COOLDOWN_MS;
+          this.logger.warn(`GitHub compare ${res.status} ${res.statusText}`);
+        }
+        return this.remoteCache;
       }
       const data = (await res.json()) as {
         ahead_by: number;
@@ -84,8 +127,9 @@ export class SystemService {
       };
       return this.remoteCache;
     } catch (err) {
+      this.cooldownUntil = Date.now() + FAIL_COOLDOWN_MS;
       this.logger.warn(`Erreur fetch GitHub: ${(err as Error).message}`);
-      return null;
+      return this.remoteCache;
     }
   }
 
