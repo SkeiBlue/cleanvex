@@ -32,6 +32,11 @@ const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m 
 /* Landing publique (lazy aussi pour ne pas alourdir le bundle de l'app) */
 const LandingPage = lazy(() => import('./landing/LandingPage').then(m => ({ default: m.LandingPage })))
 const ContactPage = lazy(() => import('./landing/ContactPage').then(m => ({ default: m.ContactPage })))
+const MentionsLegalesPage = lazy(() => import('./landing/LegalPage').then(m => ({ default: m.MentionsLegalesPage })))
+const ConditionsPage      = lazy(() => import('./landing/LegalPage').then(m => ({ default: m.ConditionsPage })))
+const ConfidentialitePage = lazy(() => import('./landing/LegalPage').then(m => ({ default: m.ConfidentialitePage })))
+const CookiesPage         = lazy(() => import('./landing/LegalPage').then(m => ({ default: m.CookiesPage })))
+const TarifsPage          = lazy(() => import('./landing/LegalPage').then(m => ({ default: m.TarifsPage })))
 
 type FormEv = { preventDefault(): void }
 
@@ -234,6 +239,11 @@ export default function App() {
             {/* Landing publique (vitrine) */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/contact" element={<ContactPage />} />
+            <Route path="/mentions-legales" element={<MentionsLegalesPage />} />
+            <Route path="/conditions" element={<ConditionsPage />} />
+            <Route path="/confidentialite" element={<ConfidentialitePage />} />
+            <Route path="/cookies" element={<CookiesPage />} />
+            <Route path="/tarifs" element={<TarifsPage />} />
 
             {/* App protégée, isolée sous /app/* */}
             <Route path="/app">

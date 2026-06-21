@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, CheckCircle2, Mail, Send } from 'lucide-react'
 import { API_URL, useAuth } from '../contexts/AuthContext'
+import { LandingFooter } from './LandingFooter'
 import './landing.css'
 import './contact.css'
 
@@ -59,12 +60,11 @@ export function ContactPage() {
         <div className="landing-wrap landing-nav">
           <Link to="/" className="landing-logo">
             <span className="landing-logo-gem" />
-            CleanVex <span>(MonEspace)</span>
+            CleanVex
           </Link>
           <nav className="landing-nav-links">
-            <Link to="/#features">Fonctionnalités</Link>
-            <Link to="/#modules">Modules</Link>
-            <Link to="/#faq">FAQ</Link>
+            <Link to="/#solution">La solution</Link>
+            <Link to="/#pour-qui">Pour qui&nbsp;?</Link>
             <Link to="/contact" style={{ color: 'var(--text)' }}>Contact</Link>
           </nav>
           <div className="landing-nav-right">
@@ -199,17 +199,7 @@ export function ContactPage() {
       </section>
 
       {/* Footer réutilisé */}
-      <footer className="landing-footer">
-        <div className="landing-wrap landing-footer-inner">
-          <div>© {new Date().getFullYear()} CleanVex — MonEspace v{__APP_VERSION__}</div>
-          <div className="landing-footer-links">
-            <Link to="/">Accueil</Link>
-            <Link to="/#features">Fonctionnalités</Link>
-            <Link to="/#faq">FAQ</Link>
-            <Link to="/app/login">Connexion</Link>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   )
 }

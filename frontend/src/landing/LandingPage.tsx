@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useScrollReveal } from './useScrollReveal'
+import { LandingFooter } from './LandingFooter'
 import './landing.css'
 
 const PILLARS = [
@@ -339,18 +340,7 @@ export function LandingPage() {
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────── */}
-      <footer className="landing-footer">
-        <div className="landing-wrap landing-footer-inner">
-          <div>© {new Date().getFullYear()} CleanVex — Le cerveau de votre atelier · v{__APP_VERSION__}</div>
-          <div className="landing-footer-links">
-            <a href="#solution">La solution</a>
-            <a href="#exemple">Exemple</a>
-            <a href="#pour-qui">Pour qui</a>
-            <Link to="/contact">Contact</Link>
-            <Link to="/app/login">Connexion</Link>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   )
 }
