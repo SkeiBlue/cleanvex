@@ -1,55 +1,98 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, LayoutDashboard, LineChart, Lock, Sparkles } from 'lucide-react'
+import {
+  ArrowRight,
+  Car,
+  Package,
+  Wrench,
+  NotebookPen,
+  FolderOpen,
+  Wallet,
+  Search,
+  CalendarClock,
+  Receipt,
+  Bike,
+  Trophy,
+  Hammer,
+  Users,
+  Menu,
+  X,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useScrollReveal } from './useScrollReveal'
 import './landing.css'
 
-const MODULES = [
-  { icon: '🚗', title: 'Véhicules',  desc: 'Suivi entretiens, alertes contrôle technique, pièces & ateliers.' },
-  { icon: '💸', title: 'Finances',   desc: 'Comptes, opérations, catégories, graphiques mensuels.' },
-  { icon: '📦', title: 'Stock',      desc: 'Outils, consommables, prêts et seuils d\'alerte.' },
-  { icon: '📅', title: 'Agenda',     desc: 'Tâches, rappels, calendrier mensuel et notifications.' },
-  { icon: '🏠', title: 'Immobilier', desc: 'Biens, surfaces, dépenses planifiées et historisées.' },
-  { icon: '📁', title: 'Documents',  desc: 'Stockage privé, dates d\'expiration, partage contrôlé.' },
-  { icon: '👥', title: 'Contacts',   desc: 'Carnet d\'adresses unifié avec historique d\'interactions.' },
-  { icon: '📊', title: 'Rapports',   desc: 'Synthèse mensuelle, exports PDF/CSV pour ton comptable.' },
+const PILLARS = [
+  {
+    Icon: Car,
+    emoji: '🚗',
+    title: 'Vos projets véhicules',
+    desc: 'Suivez chaque restauration ou réparation, gardez l\'historique de vos travaux et sachez toujours où vous en êtes.',
+  },
+  {
+    Icon: Package,
+    emoji: '📦',
+    title: 'Votre stock de pièces',
+    desc: 'Retrouvez vos références, quantités, emplacements et évitez les achats en double.',
+  },
+  {
+    Icon: Wrench,
+    emoji: '🧰',
+    title: 'Votre atelier & outillage',
+    desc: 'Gardez une vue claire de vos outils, de leur état et de leur organisation.',
+  },
+  {
+    Icon: NotebookPen,
+    emoji: '📝',
+    title: 'Journal de travaux',
+    desc: 'Conservez chaque intervention, chaque découverte et chaque étape de vos projets.',
+  },
+  {
+    Icon: FolderOpen,
+    emoji: '📁',
+    title: 'Documentation centralisée',
+    desc: 'Regroupez factures, photos, manuels, schémas techniques et documents importants.',
+  },
+  {
+    Icon: Wallet,
+    emoji: '💰',
+    title: 'Coût réel de vos projets',
+    desc: 'Suivez ce que chaque véhicule vous a réellement coûté au fil du temps.',
+  },
 ]
 
-const FAQ = [
+const PROBLEMS = [
   {
-    q: 'Qui peut utiliser CleanVex ?',
-    a: 'CleanVex est conçu comme une plateforme personnelle modulaire : tu actives uniquement les modules dont tu as besoin (véhicules, finances, immobilier…). C\'est pensé pour un usage individuel ou pour une petite famille.',
+    Icon: Search,
+    title: 'Une pièce introuvable',
+    desc: 'Vous avez acheté une pièce il y a 6 mois mais impossible de savoir où elle est rangée ?',
   },
   {
-    q: 'Mes données sont-elles en sécurité ?',
-    a: 'Toutes les données sont stockées sur ton serveur (auto-hébergé). Auth JWT avec refresh tokens, 2FA TOTP optionnel, fichiers privés hors web root, sauvegardes Postgres planifiées.',
+    Icon: CalendarClock,
+    title: 'Un projet en pause',
+    desc: 'Vous reprenez un projet après plusieurs semaines et vous ne savez plus où vous en étiez ?',
   },
   {
-    q: 'Comment fonctionne le système modulaire ?',
-    a: 'Chaque domaine (véhicules, finances, immo, etc.) est un module activable ou désactivable depuis l\'espace administration. Les modules désactivés disparaissent de la navigation et leurs routes API sont bloquées — sans perte de données.',
-  },
-  {
-    q: 'L\'inscription est-elle ouverte ?',
-    a: 'Selon la configuration de l\'instance, l\'inscription peut être ouverte ou protégée par un code d\'invitation. Demande à l\'administrateur de ton instance si tu n\'as pas reçu de lien.',
-  },
-  {
-    q: 'L\'app est-elle utilisable sur téléphone ?',
-    a: 'Oui : design responsive optimisé pour tablette et mobile, PWA installable depuis ton navigateur. La sidebar se replie automatiquement sur petits écrans.',
+    Icon: Receipt,
+    title: 'Des factures éparpillées',
+    desc: 'Vos factures sont réparties entre votre téléphone, vos mails et plusieurs classeurs ?',
   },
 ]
 
-const FEATURES = [
-  { Icon: LayoutDashboard, title: 'Vue d\'ensemble unifiée', desc: 'Un dashboard qui synthétise tout : tâches en retard, finances du mois, véhicules en réparation, documents qui expirent.' },
-  { Icon: Lock,            title: 'Privé par défaut',         desc: 'Fichiers stockés hors du web, authentification à deux facteurs, sessions révocables à la demande. Tes données restent chez toi.' },
-  { Icon: Sparkles,        title: 'Modulaire',                desc: 'Active uniquement ce qui te sert. Pas besoin du module immobilier ? Désactive-le et il disparaît partout dans l\'app.' },
-  { Icon: LineChart,       title: 'Insights intégrés',        desc: 'Graphiques mensuels, rapports exportables PDF/CSV, alertes intelligentes sur les échéances importantes.' },
+const AUDIENCE = [
+  { Icon: Car,     label: 'Passionnés automobiles', desc: 'Daily, youngtimers, sportives.' },
+  { Icon: Hammer,  label: 'Restaurateurs',          desc: 'Projets longs, voitures de caractère.' },
+  { Icon: Bike,    label: 'Motards & mobylettistes', desc: 'Deux-roues anciens ou modernes.' },
+  { Icon: Trophy,  label: 'Collectionneurs',        desc: 'Plusieurs véhicules à suivre.' },
+  { Icon: Users,   label: 'Bricoleurs équipés',     desc: 'Atelier perso, outillage sérieux.' },
 ]
 
 export function LandingPage() {
   const { user } = useAuth()
   useScrollReveal()
+  const [menuOpen, setMenuOpen] = useState(false)
 
-  const primaryLabel = user ? 'Ouvrir l\'app' : 'Créer un compte'
+  const primaryLabel = user ? 'Ouvrir l\'app' : 'Commencer gratuitement'
   const primaryHref  = user ? '/app' : '/app/login'
 
   return (
@@ -59,14 +102,18 @@ export function LandingPage() {
         <div className="landing-wrap landing-nav">
           <Link to="/" className="landing-logo">
             <span className="landing-logo-gem" />
-            CleanVex <span>(MonEspace)</span>
+            CleanVex
           </Link>
-          <nav className="landing-nav-links">
-            <a href="#features">Fonctionnalités</a>
-            <a href="#modules">Modules</a>
-            <a href="#why">Pourquoi</a>
-            <a href="#faq">FAQ</a>
+          <nav
+            className={`landing-nav-links${menuOpen ? ' open' : ''}`}
+            onClick={() => setMenuOpen(false)}
+          >
+            <a href="#probleme">Le problème</a>
+            <a href="#solution">La solution</a>
+            <a href="#exemple">Exemple</a>
+            <a href="#pour-qui">Pour qui ?</a>
             <Link to="/contact">Contact</Link>
+            {!user && <Link to="/app/login" className="landing-nav-mobile-auth">Se connecter</Link>}
           </nav>
           <div className="landing-nav-right">
             {user ? (
@@ -81,6 +128,15 @@ export function LandingPage() {
                 </Link>
               </>
             )}
+            <button
+              type="button"
+              className="landing-burger"
+              aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(o => !o)}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
       </header>
@@ -89,41 +145,94 @@ export function LandingPage() {
       <section className="landing-hero landing-wrap">
         <span className="landing-eyebrow">
           <span className="landing-eyebrow-dot" />
-          Plateforme personnelle modulaire — v0.1
+          Le cerveau numérique de votre atelier
         </span>
         <h1 className="landing-h1">
-          Ta vie personnelle, <span className="grad">organisée au même endroit</span>.
+          Ne perdez plus jamais le fil <br className="landing-h1-br" />
+          de vos <span className="grad">projets mécaniques</span>.
         </h1>
         <p className="landing-sub">
-          CleanVex (MonEspace) regroupe véhicules, finances, immobilier, stock, agenda, documents et contacts
-          dans un cockpit unique. Privé, auto-hébergé, modulaire — pensé pour celles et ceux qui veulent
-          enfin arrêter de jongler entre dix outils.
+          Centralisez vos véhicules, pièces, outils, documents et travaux dans une seule
+          application pensée par et pour les passionnés de mécanique.
         </p>
         <div className="landing-hero-actions">
           <Link to={primaryHref} className="landing-btn primary">
             {primaryLabel} <ArrowRight size={14} />
           </Link>
-          <a href="#features" className="landing-btn ghost">Voir les fonctionnalités</a>
+          <a href="#solution" className="landing-btn ghost">Découvrir CleanVex</a>
         </div>
-        <div className="landing-hero-meta">
-          <span>· 8 modules ·</span>
-          <span>· Auto-hébergé ·</span>
-          <span>· 2FA TOTP ·</span>
-          <span>· PWA installable ·</span>
+
+        {/* Mockup atelier */}
+        <div className="landing-hero-mockup reveal">
+          <div className="landing-mockup-frame">
+            <div className="landing-mockup-bar">
+              <span /><span /><span />
+              <div className="landing-mockup-url">cleanvex · atelier</div>
+            </div>
+            <div className="landing-mockup-body">
+              <aside className="landing-mockup-side">
+                <div className="landing-mockup-side-logo">
+                  <span className="landing-logo-gem" />
+                  <strong>CleanVex</strong>
+                </div>
+                <ul>
+                  <li className="active">🚗 Véhicules</li>
+                  <li>📦 Stock pièces</li>
+                  <li>🧰 Outillage</li>
+                  <li>📝 Journal</li>
+                  <li>📁 Documents</li>
+                  <li>💰 Budget</li>
+                </ul>
+              </aside>
+              <main className="landing-mockup-main">
+                <div className="landing-mockup-title">
+                  <h4>Mes projets</h4>
+                  <span className="landing-mockup-badge">3 en cours</span>
+                </div>
+                <div className="landing-mockup-grid">
+                  <div className="landing-mockup-card accent">
+                    <div className="landing-mockup-card-head">
+                      <span className="landing-mockup-emoji">🏎️</span>
+                      <span className="landing-mockup-tag warn">En restauration</span>
+                    </div>
+                    <strong>Golf 3 GTI</strong>
+                    <small>Train arrière · 3 250 €</small>
+                  </div>
+                  <div className="landing-mockup-card">
+                    <div className="landing-mockup-card-head">
+                      <span className="landing-mockup-emoji">🏍️</span>
+                      <span className="landing-mockup-tag ok">Roulante</span>
+                    </div>
+                    <strong>CB 750 Four</strong>
+                    <small>Vidange à -200 km</small>
+                  </div>
+                  <div className="landing-mockup-card">
+                    <div className="landing-mockup-card-head">
+                      <span className="landing-mockup-emoji">🛵</span>
+                      <span className="landing-mockup-tag info">En pause</span>
+                    </div>
+                    <strong>Peugeot 103</strong>
+                    <small>Stock : 12 pièces</small>
+                  </div>
+                </div>
+              </main>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ── Features ───────────────────────────────────────────────── */}
-      <section id="features" className="landing-section landing-wrap">
-        <span className="landing-section-kicker reveal">Pourquoi CleanVex</span>
-        <h2 className="reveal">Une plateforme pensée pour durer.</h2>
+      {/* ── Le problème ────────────────────────────────────────────── */}
+      <section id="probleme" className="landing-section landing-wrap">
+        <span className="landing-section-kicker reveal">Le problème</span>
+        <h2 className="reveal">Votre atelier déborde. Votre mémoire, aussi.</h2>
         <p className="landing-section-lead reveal">
-          Pas de SaaS opaque, pas de fonctionnalités payantes cachées : tu héberges, tu contrôles, tu adaptes.
+          Carnets papier, notes sur le téléphone, photos perdues, classeurs, Excel, Drive…
+          La mémoire de votre atelier est éclatée partout — sauf au bon endroit.
         </p>
-        <div className="landing-features">
-          {FEATURES.map(({ Icon, title, desc }) => (
-            <div key={title} className="landing-feature reveal">
-              <div className="landing-feature-ico"><Icon size={20} /></div>
+        <div className="landing-problems">
+          {PROBLEMS.map(({ Icon, title, desc }) => (
+            <div key={title} className="landing-problem reveal">
+              <div className="landing-problem-ico"><Icon size={22} /></div>
               <h3>{title}</h3>
               <p>{desc}</p>
             </div>
@@ -131,99 +240,89 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Modules ────────────────────────────────────────────────── */}
-      <section id="modules" className="landing-section landing-wrap">
-        <span className="landing-section-kicker reveal">Tous les modules</span>
-        <h2 className="reveal">Des briques qui s'activent à la demande.</h2>
+      {/* ── La solution / 6 piliers ────────────────────────────────── */}
+      <section id="solution" className="landing-section landing-wrap">
+        <span className="landing-section-kicker reveal">La solution</span>
+        <h2 className="reveal">Toute la mémoire de votre atelier, au même endroit.</h2>
         <p className="landing-section-lead reveal">
-          Chaque module est indépendant : active ce qui te sert aujourd'hui, ajoute le reste plus tard.
+          Six piliers pour reprendre le contrôle de vos projets, du premier démontage à la
+          dernière intervention.
         </p>
-        <div className="landing-modules">
-          {MODULES.map(m => (
-            <div key={m.title} className="landing-module reveal">
-              <span className="landing-module-emoji">{m.icon}</span>
-              <h3>{m.title}</h3>
-              <p>{m.desc}</p>
+        <div className="landing-pillars">
+          {PILLARS.map(({ Icon, emoji, title, desc }) => (
+            <div key={title} className="landing-pillar reveal">
+              <div className="landing-pillar-ico">
+                <span className="landing-pillar-emoji">{emoji}</span>
+                <Icon size={18} className="landing-pillar-lucide" />
+              </div>
+              <h3>{title}</h3>
+              <p>{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Why (alternance image/texte) ───────────────────────────── */}
-      <section id="why" className="landing-section landing-wrap">
-        <span className="landing-section-kicker reveal">Conçu pour de vrai</span>
-        <h2 className="reveal">L'antithèse du SaaS jetable.</h2>
+      {/* ── Exemple concret ────────────────────────────────────────── */}
+      <section id="exemple" className="landing-section landing-wrap">
+        <span className="landing-section-kicker reveal">Un exemple concret</span>
+        <h2 className="reveal">Voici à quoi ressemble un projet dans CleanVex.</h2>
+        <p className="landing-section-lead reveal">
+          Une fiche claire, vivante, qui répond à toutes les questions que vous vous posez
+          quand vous reprenez le projet après plusieurs semaines.
+        </p>
 
-        <div className="landing-why-row reveal" style={{ marginTop: 56 }}>
-          <div>
-            <h3>Tes données, ton serveur.</h3>
-            <p>
-              Auto-hébergé sur ta machine ou un VPS chez toi. Pas de tracking, pas de revente, pas de dépendance
-              à un fournisseur tiers qui peut pivoter du jour au lendemain.
-            </p>
-            <ul>
-              <li>Backend NestJS + PostgreSQL</li>
-              <li>Fichiers privés hors web root</li>
-              <li>Sauvegardes ZIP exportables</li>
-            </ul>
+        <div className="landing-example reveal">
+          <div className="landing-example-head">
+            <div>
+              <span className="landing-example-emoji">🏎️</span>
+              <div>
+                <h3>Projet Golf 3 GTI</h3>
+                <small>Restauration mécanique &amp; châssis</small>
+              </div>
+            </div>
+            <span className="landing-example-status">🔧 En restauration</span>
           </div>
-          <div className="landing-why-visual"><span className="landing-why-emoji">🔒</span></div>
-        </div>
 
-        <div className="landing-why-row reverse reveal">
-          <div>
-            <h3>Sécurité de niveau pro.</h3>
-            <p>
-              Auth JWT avec refresh tokens rotatifs, 2FA TOTP optionnel, sessions révocables, rate limiting
-              sur les endpoints sensibles, validation stricte côté API.
-            </p>
-            <ul>
-              <li>Argon2 sur les mots de passe</li>
-              <li>Rate limit anti brute-force</li>
-              <li>Audit log des actions sensibles</li>
-            </ul>
+          <div className="landing-example-grid">
+            <div className="landing-example-block">
+              <span className="landing-example-label">Dernière intervention</span>
+              <p>Remplacement du train arrière.</p>
+              <small>il y a 4 jours</small>
+            </div>
+            <div className="landing-example-block">
+              <span className="landing-example-label">À faire</span>
+              <p>Commander les silent-blocs.</p>
+              <small>priorité haute</small>
+            </div>
+            <div className="landing-example-block">
+              <span className="landing-example-label">Stock disponible</span>
+              <p>✓ 4 vis de fixation disponibles</p>
+              <small>rangées : étagère B · bac 3</small>
+            </div>
+            <div className="landing-example-block accent">
+              <span className="landing-example-label">Budget investi</span>
+              <p className="landing-example-budget">3 250 €</p>
+              <small>depuis le début du projet</small>
+            </div>
           </div>
-          <div className="landing-why-visual"><span className="landing-why-emoji">🛡️</span></div>
-        </div>
-
-        <div className="landing-why-row reveal">
-          <div>
-            <h3>Pensé pour le quotidien.</h3>
-            <p>
-              Dashboard synthétique au lancement, raccourcis clavier (⌘K pour la recherche globale), visite
-              guidée à la première connexion, mode sombre/clair, PWA installable.
-            </p>
-            <ul>
-              <li>Recherche globale unifiée</li>
-              <li>Tour d'onboarding interactif</li>
-              <li>Responsive mobile / tablette</li>
-            </ul>
-          </div>
-          <div className="landing-why-visual"><span className="landing-why-emoji">✨</span></div>
         </div>
       </section>
 
-      {/* ── Stats ──────────────────────────────────────────────────── */}
-      <section className="landing-section landing-wrap">
-        <div className="landing-stats reveal">
-          <div className="landing-stat"><strong>8</strong><span>Modules activables</span></div>
-          <div className="landing-stat"><strong>0</strong><span>Tracking tiers</span></div>
-          <div className="landing-stat"><strong>100%</strong><span>Auto-hébergé</span></div>
-          <div className="landing-stat"><strong>∞</strong><span>Utilisateurs / instance</span></div>
-        </div>
-      </section>
-
-      {/* ── FAQ ────────────────────────────────────────────────────── */}
-      <section id="faq" className="landing-section landing-wrap">
-        <span className="landing-section-kicker reveal">Foire aux questions</span>
-        <h2 className="reveal">Tout ce que tu te demandes.</h2>
-        <p className="landing-section-lead reveal">Et si la réponse n'est pas ici, écris-nous directement.</p>
-        <div className="landing-faq">
-          {FAQ.map((item, i) => (
-            <details key={item.q} className="reveal" open={i === 0}>
-              <summary>{item.q}</summary>
-              <p>{item.a}</p>
-            </details>
+      {/* ── Pour qui ───────────────────────────────────────────────── */}
+      <section id="pour-qui" className="landing-section landing-wrap">
+        <span className="landing-section-kicker reveal">Pour qui ?</span>
+        <h2 className="reveal">Fait pour celles et ceux qui aiment vraiment la mécanique.</h2>
+        <p className="landing-section-lead reveal">
+          CleanVex n'est pas un outil pour l'automobiliste moyen. C'est l'outil de celles et
+          ceux qui vivent dans leur atelier.
+        </p>
+        <div className="landing-audience">
+          {AUDIENCE.map(({ Icon, label, desc }) => (
+            <div key={label} className="landing-audience-card reveal">
+              <div className="landing-audience-ico"><Icon size={20} /></div>
+              <strong>{label}</strong>
+              <span>{desc}</span>
+            </div>
           ))}
         </div>
       </section>
@@ -231,8 +330,8 @@ export function LandingPage() {
       {/* ── CTA final ──────────────────────────────────────────────── */}
       <section className="landing-section landing-wrap">
         <div className="landing-cta reveal">
-          <h2>Prêt à reprendre le contrôle ?</h2>
-          <p>Crée ton compte en 30 secondes. Tu pourras activer les modules ensuite.</p>
+          <h2>Votre atelier a une mémoire.<br />Donnez-lui un cerveau.</h2>
+          <p>Créez votre compte gratuitement et commencez à structurer vos projets dès aujourd'hui.</p>
           <Link to={primaryHref} className="landing-btn primary">
             {primaryLabel} <ArrowRight size={14} />
           </Link>
@@ -242,11 +341,11 @@ export function LandingPage() {
       {/* ── Footer ─────────────────────────────────────────────────── */}
       <footer className="landing-footer">
         <div className="landing-wrap landing-footer-inner">
-          <div>© {new Date().getFullYear()} CleanVex — MonEspace v{__APP_VERSION__}</div>
+          <div>© {new Date().getFullYear()} CleanVex — Le cerveau de votre atelier · v{__APP_VERSION__}</div>
           <div className="landing-footer-links">
-            <a href="#features">Fonctionnalités</a>
-            <a href="#modules">Modules</a>
-            <a href="#faq">FAQ</a>
+            <a href="#solution">La solution</a>
+            <a href="#exemple">Exemple</a>
+            <a href="#pour-qui">Pour qui</a>
             <Link to="/contact">Contact</Link>
             <Link to="/app/login">Connexion</Link>
           </div>
