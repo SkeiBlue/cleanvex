@@ -62,7 +62,13 @@ ok "Checkout ${BEFORE_SHA:0:7} → ${AFTER_SHA:0:7}"
 SERVER_HOST="${SERVER_HOST:-$(hostname -I 2>/dev/null | awk '{print $1}')}"
 SERVER_HOST="${SERVER_HOST:-localhost}"
 BACKEND_PORT="${BACKEND_PORT:-3000}"
-VITE_API_URL_VAL="http://${SERVER_HOST}:${BACKEND_PORT}/api"
+# URL de l'API vue par le navigateur. Par défaut RELATIVE (/api) : fonctionne
+# derrière le reverse-proxy de prod (ex. cleanvex.fr sert le front ET /api sur
+# la même origine) sans jamais dépendre d'une IP privée. NE PAS remettre l'IP
+# LAN ici : un bundle avec http://192.168.x.x:3000/api casse le login public
+# (injoignable depuis Internet + mixed-content http sur une page https).
+# Pour un accès LAN direct sans proxy, surcharger via VITE_API_URL.
+VITE_API_URL_VAL="${VITE_API_URL:-/api}"
 log "Build frontend ciblera : $VITE_API_URL_VAL"
 
 # ── 3. Backend ────────────────────────────────────────────────

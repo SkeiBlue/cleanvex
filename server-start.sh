@@ -153,8 +153,12 @@ cmd_start() {
     rm -rf node_modules
     NODE_ENV= npm install --include=dev --production=false --no-audit --no-fund
   fi
-  # API URL vue depuis le navigateur du client
-  VITE_API_URL="http://$SERVER_HOST:$BACKEND_PORT/api" npm run build
+  # API URL vue depuis le navigateur du client.
+  # Par défaut RELATIVE (/api) : fonctionne derrière le reverse-proxy de prod
+  # (front + /api sur la même origine) sans dépendre d'une IP privée.
+  # Surchargeable via VITE_API_URL pour un accès LAN direct sans proxy
+  # (ex. VITE_API_URL="http://$SERVER_HOST:$BACKEND_PORT/api").
+  VITE_API_URL="${VITE_API_URL:-/api}" npm run build
   ok "Frontend buildé dans dist/"
 
   # 5. Lancement des deux process en arrière-plan
