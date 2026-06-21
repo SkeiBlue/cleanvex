@@ -513,10 +513,10 @@ export function SettingsPage() {
               {(profileInfo?.sessions ?? []).map((s) => {
                 const isActive = !s.revokedAt && new Date(s.expiresAt) > new Date()
                 const ua = s.userAgent ?? 'Appareil inconnu'
-                const browser = ua.includes('Chrome') ? '🌐 Chrome'
-                  : ua.includes('Firefox') ? '🦊 Firefox'
-                  : ua.includes('Safari') ? '🧭 Safari'
-                  : '💻 Navigateur'
+                const browser = ua.includes('Chrome') ? 'Chrome'
+                  : ua.includes('Firefox') ? 'Firefox'
+                  : ua.includes('Safari') ? 'Safari'
+                  : 'Navigateur'
                 return (
                   <div
                     className="document-row"

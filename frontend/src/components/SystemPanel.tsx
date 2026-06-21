@@ -137,7 +137,7 @@ export function SystemPanel() {
         </div>
 
         {version?.warning && (
-          <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>⚠ {version.warning}</p>
+          <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>{version.warning}</p>
         )}
 
         {!version?.upToDate && version?.commits && version.commits.length > 0 && (
@@ -169,7 +169,7 @@ export function SystemPanel() {
         {confirmUpdate && (
           <div style={{ background: 'rgba(244,63,94,0.05)', border: '1px solid rgba(244,63,94,0.25)', borderRadius: 10, padding: 12, fontSize: 12 }}>
             <p style={{ margin: '0 0 10px', color: 'var(--text)' }}>
-              ⚠ La mise à jour va arrêter le serveur quelques secondes. Continuer ?
+              La mise à jour va arrêter le serveur quelques secondes. Continuer ?
             </p>
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={handleUpdate} style={{ background: '#f43f5e', color: 'white', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>

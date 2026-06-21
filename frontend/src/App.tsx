@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
-import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { Sidebar } from './components/Sidebar'
@@ -11,7 +11,6 @@ import { CommandPalette } from './components/CommandPalette'
 import { ModuleGuard } from './components/ModuleGuard'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { PageLoader } from './components/PageLoader'
-import type { SearchResult } from './types'
 
 /* ── Lazy loading des pages (code splitting par route) ── */
 const DashboardPage  = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
@@ -40,21 +39,8 @@ const TarifsPage          = lazy(() => import('./landing/LegalPage').then(m => (
 
 type FormEv = { preventDefault(): void }
 
-const RESULT_ROUTES: Record<string, string> = {
-  vehicle: '/app/vehicles',
-  contact: '/app/contacts',
-  document: '/app/documents',
-  property: '/app/real-estate',
-  task: '/app/agenda',
-  'stock_item': '/app/stock',
-  transaction: '/app/finances',
-}
-
 function AppLayout() {
-  const { user, modules, unreadNotifications, logout, authedFetch } = useAuth()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
-  const [searchOpen, setSearchOpen] = useState(false)
+  const { user, modules, unreadNotifications, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('sidebar-collapsed') === 'true'
@@ -68,8 +54,6 @@ function AppLayout() {
       return next
     })
   }
-  const searchRef = useRef<HTMLDivElement>(null)
-  const navigate = useNavigate()
 
   /* Cmd+K / Ctrl+K listener */
   useEffect(() => {
@@ -86,26 +70,6 @@ function AppLayout() {
   const dateLabel = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
   })
-
-  async function handleSearch(event: FormEv) {
-    event.preventDefault()
-    const q = searchQuery.trim()
-    if (!q) { setSearchResults([]); setSearchOpen(false); return }
-    const r = await authedFetch(`/search?q=${encodeURIComponent(q)}`)
-    if (r.ok) {
-      const data = await r.json()
-      setSearchResults(data.results ?? [])
-      setSearchOpen(true)
-    }
-  }
-
-  function handleResultClick(result: SearchResult) {
-    setSearchOpen(false)
-    setSearchQuery('')
-    setSearchResults([])
-    const route = RESULT_ROUTES[result.type] ?? '/'
-    navigate(route)
-  }
 
   if (!user) return <Navigate to="/app/login" replace />
 
@@ -136,16 +100,8 @@ function AppLayout() {
           username={user.username}
           dateLabel={dateLabel}
           unreadNotifications={unreadNotifications}
-          searchQuery={searchQuery}
-          onSearchChange={(q) => { setSearchQuery(q); if (!q) { setSearchOpen(false); setSearchResults([]) } }}
-          onSearch={handleSearch}
           onLogout={logout}
           onMenuToggle={() => setSidebarOpen(o => !o)}
-          searchResults={searchResults}
-          searchOpen={searchOpen}
-          onSearchResultClick={handleResultClick}
-          onSearchClose={() => setSearchOpen(false)}
-          searchRef={searchRef}
           onCmdOpen={() => setCmdOpen(true)}
         />
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
@@ -216,7 +172,7 @@ function ProtectedRoute() {
   if (isLoading) return (
     <div className="loading-screen">
       <div className="loading-screen-spinner" />
-      <div className="loading-screen-logo">Mon<span>Espace</span></div>
+      <div className="loading-screen-logo">Clean<span>Vex</span></div>
     </div>
   )
   if (!user) return <Navigate to="/app/login" replace />

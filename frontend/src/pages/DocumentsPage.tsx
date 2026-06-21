@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Download, FileLock2, Plus, Upload } from 'lucide-react'
+import {
+  Download, FileArchive, FileLock2, FileText, Film, Image,
+  Paperclip, Plus, Upload, type LucideIcon,
+} from 'lucide-react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
 import { Modal } from '../components/Modal'
@@ -11,18 +14,18 @@ import type { DocumentItem } from '../types'
 
 type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
 
-const MIME_ICON: Record<string, string> = {
-  'application/pdf': '📄',
-  'image/jpeg': '🖼️',
-  'image/png': '🖼️',
-  'image/gif': '🖼️',
-  'image/webp': '🖼️',
-  'video/mp4': '🎬',
-  'application/zip': '🗜️',
+const MIME_ICON: Record<string, LucideIcon> = {
+  'application/pdf': FileText,
+  'image/jpeg': Image,
+  'image/png': Image,
+  'image/gif': Image,
+  'image/webp': Image,
+  'video/mp4': Film,
+  'application/zip': FileArchive,
 }
 
-function mimeIcon(mime: string) {
-  return MIME_ICON[mime] ?? (mime.startsWith('image/') ? '🖼️' : mime.startsWith('video/') ? '🎬' : '📎')
+function mimeIcon(mime: string): LucideIcon {
+  return MIME_ICON[mime] ?? (mime.startsWith('image/') ? Image : mime.startsWith('video/') ? Film : Paperclip)
 }
 
 function fileSize(bytes: number) {
@@ -159,7 +162,7 @@ export function DocumentsPage() {
 
           {(expiredCount > 0 || expiringSoonCount > 0) && (
             <div style={{ margin: '0 20px 8px', padding: '8px 12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '8px', fontSize: '12px', color: '#fbbf24' }}>
-              {expiredCount > 0 && <span>⚠ {expiredCount} document{expiredCount > 1 ? 's' : ''} expiré{expiredCount > 1 ? 's' : ''}</span>}
+              {expiredCount > 0 && <span>{expiredCount} document{expiredCount > 1 ? 's' : ''} expiré{expiredCount > 1 ? 's' : ''}</span>}
               {expiredCount > 0 && expiringSoonCount > 0 && <span> · </span>}
               {expiringSoonCount > 0 && <span>⏳ {expiringSoonCount} expire bientôt</span>}
             </div>
@@ -178,7 +181,7 @@ export function DocumentsPage() {
                     className="document-row"
                     style={{ borderLeft: isExpired ? '3px solid #f87171' : isExpiringSoon ? '3px solid #fbbf24' : undefined }}
                   >
-                    <span style={{ fontSize: '18px', flexShrink: 0 }}>{mimeIcon(doc.mimeType)}</span>
+                    {(() => { const Icon = mimeIcon(doc.mimeType); return <Icon size={18} style={{ flexShrink: 0, color: 'var(--text2)' }} /> })()}
                     <button
                       style={{ flex: 1, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: '12px', fontWeight: 500, padding: 0 }}
                       onClick={() => downloadDoc(doc.id, doc.name)}

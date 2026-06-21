@@ -345,7 +345,7 @@ export function LoginScreen({
               <Wrench size={22} />
             </div>
             <div>
-              <strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>MonEspace</strong>
+              <strong style={{ fontSize: 18, letterSpacing: '-0.3px' }}>CleanVex</strong>
               <span style={{ display: 'block', fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
                 Plateforme personnelle
               </span>
@@ -440,7 +440,7 @@ export function LoginScreen({
               style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 0, background: 'none', border: 'none' }}>
               <div>
                 <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: '-0.4px' }}>
-                  Bon retour 👋
+                  Bon retour
                 </h1>
                 <p style={{ fontSize: 12.5, color: 'var(--text3)', margin: '4px 0 0' }}>
                   Connecte-toi pour accéder à ton espace.

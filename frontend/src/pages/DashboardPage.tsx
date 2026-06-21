@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertTriangle, Bell, Car, FileText, Home,
-  Package, ShieldCheck, TrendingUp, UserRound,
+  Package, ShieldCheck, TrendingUp, UserRound, Wrench,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SkeletonDashboard } from '../components/Skeleton'
@@ -54,21 +54,21 @@ function UrgentBanner({ overdueTasks, openAlerts, expiringDocs }: { overdueTasks
         {overdueTasks > 0 && (
           <Link to="/app/agenda" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
-              ⏰ {overdueTasks} tâche{overdueTasks > 1 ? 's' : ''} en retard
+              {overdueTasks} tâche{overdueTasks > 1 ? 's' : ''} en retard
             </span>
           </Link>
         )}
         {openAlerts > 0 && (
           <Link to="/app/vehicles" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)', cursor: 'pointer' }}>
-              🔔 {openAlerts} alerte{openAlerts > 1 ? 's' : ''} véhicule
+              {openAlerts} alerte{openAlerts > 1 ? 's' : ''} véhicule
             </span>
           </Link>
         )}
         {expiringDocs > 0 && (
           <Link to="/app/documents" style={{ textDecoration: 'none' }}>
             <span style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '20px', background: 'rgba(167,139,250,0.15)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)', cursor: 'pointer' }}>
-              📄 {expiringDocs} document{expiringDocs > 1 ? 's' : ''} expirent bientôt
+              {expiringDocs} document{expiringDocs > 1 ? 's' : ''} expirent bientôt
             </span>
           </Link>
         )}
@@ -172,10 +172,10 @@ export function DashboardPage() {
         <StatTile icon={<Car size={20} />} label="Véhicules" value={vehicles.length} sub={vehiclesInRepair.length > 0 ? `${vehiclesInRepair.length} en réparation` : 'Aucun en réparation'} color="#67e8f9" to="/app/vehicles" />
         <StatTile icon={<TrendingUp size={20} />} label="Solde" value={`${balance >= 0 ? '+' : ''}${balance.toFixed(0)} €`} sub={`${(finance?.income ?? 0).toFixed(0)} € revenus`} color={balance >= 0 ? '#4ade80' : '#f87171'} to="/app/finances" />
         <StatTile icon={<Package size={20} />} label="Stock" value={stockCount} sub="articles référencés" color="#fbbf24" to="/app/stock" />
-        <StatTile icon={<Bell size={20} />} label="Tâches" value={agenda?.openTasks ?? 0} sub={overdueTasks > 0 ? `⚠ ${overdueTasks} en retard` : 'Tout à jour'} color={overdueTasks > 0 ? '#f87171' : '#a78bfa'} to="/app/agenda" />
+        <StatTile icon={<Bell size={20} />} label="Tâches" value={agenda?.openTasks ?? 0} sub={overdueTasks > 0 ? `${overdueTasks} en retard` : 'Tout à jour'} color={overdueTasks > 0 ? '#f87171' : '#a78bfa'} to="/app/agenda" />
         <StatTile icon={<Home size={20} />} label="Biens" value={report?.counts.properties ?? 0} sub="biens immobiliers" color="#a78bfa" to="/app/real-estate" />
         <StatTile icon={<UserRound size={20} />} label="Contacts" value={report?.counts.contacts ?? 0} sub="dans le carnet" color="#f9a8d4" to="/app/contacts" />
-        <StatTile icon={<FileText size={20} />} label="Documents" value={report?.counts.documents ?? 0} sub={expiringDocs > 0 ? `⚠ ${expiringDocs} expirent bientôt` : 'Tous valides'} color={expiringDocs > 0 ? '#fbbf24' : '#4ade80'} to="/app/documents" />
+        <StatTile icon={<FileText size={20} />} label="Documents" value={report?.counts.documents ?? 0} sub={expiringDocs > 0 ? `${expiringDocs} expirent bientôt` : 'Tous valides'} color={expiringDocs > 0 ? '#fbbf24' : '#4ade80'} to="/app/documents" />
       </div>
 
       {/* Corps 2 colonnes */}
@@ -200,7 +200,7 @@ export function DashboardPage() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{t.title}</div>
                     {due && <div style={{ fontSize: '11px', color: isLate ? '#f87171' : 'var(--text3)', marginTop: '2px', fontFamily: 'var(--mono)' }}>
-                      {isLate ? `⏰ En retard (${Math.abs(days!)}j)` : days === 0 ? '📅 Aujourd\'hui' : `📅 J-${days}`}
+                      {isLate ? `En retard (${Math.abs(days!)}j)` : days === 0 ? 'Aujourd\'hui' : `J-${days}`}
                     </div>}
                   </div>
                   <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '20px', background: `${priColors[t.priority] ?? '#7b82a8'}20`, color: priColors[t.priority] ?? '#7b82a8', border: `1px solid ${priColors[t.priority] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
@@ -237,14 +237,14 @@ export function DashboardPage() {
               }
               return (
                 <div key={v.id} className="document-row">
-                  <span style={{ fontSize: '16px' }}>🚗</span>
+                  <Car size={16} style={{ color: 'var(--text3)', flexShrink: 0 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500 }}>{v.name}</div>
                     <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{v.mileage.toLocaleString('fr-FR')} km</div>
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    {alerts > 0 && <span style={{ fontSize: '11px', background: '#fbbf2420', color: '#fbbf24', padding: '2px 6px', borderRadius: '20px', border: '1px solid #fbbf2440', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔔 {alerts}</span>}
-                    {interv > 0 && <span style={{ fontSize: '11px', background: '#a78bfa20', color: '#a78bfa', padding: '2px 6px', borderRadius: '20px', border: '1px solid #a78bfa40', fontFamily: 'var(--mono)', fontWeight: 700 }}>🔧 {interv}</span>}
+                    {alerts > 0 && <span style={{ fontSize: '11px', background: '#fbbf2420', color: '#fbbf24', padding: '2px 6px', borderRadius: '20px', border: '1px solid #fbbf2440', fontFamily: 'var(--mono)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Bell size={10} /> {alerts}</span>}
+                    {interv > 0 && <span style={{ fontSize: '11px', background: '#a78bfa20', color: '#a78bfa', padding: '2px 6px', borderRadius: '20px', border: '1px solid #a78bfa40', fontFamily: 'var(--mono)', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px' }}><Wrench size={10} /> {interv}</span>}
                     <span style={{ fontSize: '11px', background: `${statusColors[v.status] ?? '#7b82a8'}20`, color: statusColors[v.status] ?? '#7b82a8', padding: '2px 6px', borderRadius: '20px', border: `1px solid ${statusColors[v.status] ?? '#7b82a8'}40`, fontFamily: 'var(--mono)', fontWeight: 700 }}>
                       {statusLabels[v.status] ?? v.status}
                     </span>

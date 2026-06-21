@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDownUp, CircleDollarSign, Pencil, Plus } from 'lucide-react'
+import { ArrowDownUp, CircleDollarSign, Landmark, Pencil, Plus, Tag, Wallet } from 'lucide-react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
 import { Modal } from '../components/Modal'
@@ -232,7 +232,7 @@ export function FinancesPage() {
                   const r = await authedFetch('/finances/transactions/import.csv', { method: 'POST', body: form })
                   if (r.ok) {
                     const d = await r.json() as { created: number; errors: string[]; total: number }
-                    toast.ok(`✓ ${d.created} / ${d.total} opérations importées`)
+                    toast.ok(`${d.created} / ${d.total} opérations importées`)
                     if (d.errors.length) toast.err(d.errors.slice(0, 3).join(' · '))
                     await reload()
                   } else { toast.err('Import échoué') }
@@ -240,7 +240,7 @@ export function FinancesPage() {
                 }}
               />
               <span className="btn-ghost" style={{ fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                ⬆ Importer CSV
+                Importer CSV
               </span>
             </label>
           </div>
@@ -274,8 +274,8 @@ export function FinancesPage() {
             <div><span className="panel-kicker">Opérations</span><h2>Mouvements</h2></div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <span className="badge">{filtered.length} / {financialTransactions.length}</span>
-              <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/finances/transactions/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `transactions_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }}>⬇ CSV</button>
-              <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={() => { if (financeSummary) generateFinancePDF(financialTransactions, { income: financeSummary.income, expense: financeSummary.expense, balance: balance, accountCount: financeSummary.accountCount }) }}>📄 PDF</button>
+              <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/finances/transactions/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `transactions_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }}>Exporter CSV</button>
+              <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={() => { if (financeSummary) generateFinancePDF(financialTransactions, { income: financeSummary.income, expense: financeSummary.expense, balance: balance, accountCount: financeSummary.accountCount }) }}>Exporter PDF</button>
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export function FinancesPage() {
             </button>
           </div>
 
-          <Modal open={showCreateTx} onClose={() => setShowCreateTx(false)} title="Nouvelle opération" subtitle="Enregistre un revenu ou une dépense sur l'un de tes comptes." icon="💶">
+          <Modal open={showCreateTx} onClose={() => setShowCreateTx(false)} title="Nouvelle opération" subtitle="Enregistre un revenu ou une dépense sur l'un de tes comptes." icon={<Wallet size={20} />}>
             <form onSubmit={handleCreateTransaction}>
               <div className="modal-grid">
                 <FieldTip label="Libellé" hint="Description de l'opération — sois précis pour retrouver facilement. Ex : 'Essence Total Clermont', 'Loyer décembre'." required style={{ gridColumn: '1/-1' }}>
@@ -467,7 +467,7 @@ export function FinancesPage() {
               <Plus size={12} /> Nouveau compte
             </button>
           </div>
-          <Modal open={showCreateAccount} onClose={() => setShowCreateAccount(false)} title="Nouveau compte" subtitle="Ajoute un compte bancaire, d'épargne, ou un portefeuille espèces." icon="🏦">
+          <Modal open={showCreateAccount} onClose={() => setShowCreateAccount(false)} title="Nouveau compte" subtitle="Ajoute un compte bancaire, d'épargne, ou un portefeuille espèces." icon={<Landmark size={20} />}>
             <form onSubmit={handleCreateAccount}>
               <div className="modal-grid">
                 <FieldTip label="Nom du compte" hint="Identifiant court. Ex : 'Compte courant LCL', 'Livret A', 'Wallet cash'. Apparaît dans tous les formulaires." required style={{ gridColumn: '1/-1' }}>
@@ -475,10 +475,10 @@ export function FinancesPage() {
                 </FieldTip>
                 <FieldTip label="Type" hint="Courant : compte du quotidien. Épargne : livret, PEL. Espèces : argent liquide. Investissement : CTO, PEA…">
                   <select name="type" className="modal-select" defaultValue="checking">
-                    <option value="checking">💳 Courant</option>
-                    <option value="savings">💰 Épargne</option>
-                    <option value="cash">💵 Espèces</option>
-                    <option value="investment">📈 Investissement</option>
+                    <option value="checking">Courant</option>
+                    <option value="savings">Épargne</option>
+                    <option value="cash">Espèces</option>
+                    <option value="investment">Investissement</option>
                   </select>
                 </FieldTip>
                 <FieldTip label="Devise" hint="Monnaie du compte. EUR pour euro, USD pour dollar, etc.">
@@ -514,7 +514,7 @@ export function FinancesPage() {
               <Plus size={12} /> Nouvelle catégorie
             </button>
           </div>
-          <Modal open={showCreateCategory} onClose={() => setShowCreateCategory(false)} title="Nouvelle catégorie" subtitle="Crée une catégorie pour regrouper tes opérations dans les graphiques." icon="🏷️">
+          <Modal open={showCreateCategory} onClose={() => setShowCreateCategory(false)} title="Nouvelle catégorie" subtitle="Crée une catégorie pour regrouper tes opérations dans les graphiques." icon={<Tag size={20} />}>
             <form onSubmit={handleCreateCategory}>
               <div className="modal-grid">
                 <FieldTip label="Nom" hint="Libellé de la catégorie. Ex : 'Carburant', 'Assurances', 'Alimentation'. Court et reconnaissable." required style={{ gridColumn: '1/-1' }}>

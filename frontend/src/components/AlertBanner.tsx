@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react'
+
 type Props = {
   unreadNotifications: number
   overdueTasks: number
@@ -10,7 +12,7 @@ export function AlertBanner({ unreadNotifications, overdueTasks, openTasks, docu
 
   return (
     <div className="alert-banner">
-      <div className="alert-icon">⚠️</div>
+      <div className="alert-icon"><AlertTriangle size={18} /></div>
       <div className="alert-content">
         <div className="alert-title">
           {overdueTasks > 0 ? `${overdueTasks} tâche${overdueTasks > 1 ? 's' : ''} en retard` : `${unreadNotifications} notifications non lues`}

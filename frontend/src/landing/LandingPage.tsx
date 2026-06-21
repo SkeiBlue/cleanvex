@@ -26,37 +26,31 @@ import './landing.css'
 const PILLARS = [
   {
     Icon: Car,
-    emoji: '🚗',
     title: 'Vos projets véhicules',
     desc: 'Suivez chaque restauration ou réparation, gardez l\'historique de vos travaux et sachez toujours où vous en êtes.',
   },
   {
     Icon: Package,
-    emoji: '📦',
     title: 'Votre stock de pièces',
     desc: 'Retrouvez vos références, quantités, emplacements et évitez les achats en double.',
   },
   {
     Icon: Wrench,
-    emoji: '🧰',
     title: 'Votre atelier & outillage',
     desc: 'Gardez une vue claire de vos outils, de leur état et de leur organisation.',
   },
   {
     Icon: NotebookPen,
-    emoji: '📝',
     title: 'Journal de travaux',
     desc: 'Conservez chaque intervention, chaque découverte et chaque étape de vos projets.',
   },
   {
     Icon: FolderOpen,
-    emoji: '📁',
     title: 'Documentation centralisée',
     desc: 'Regroupez factures, photos, manuels, schémas techniques et documents importants.',
   },
   {
     Icon: Wallet,
-    emoji: '💰',
     title: 'Coût réel de vos projets',
     desc: 'Suivez ce que chaque véhicule vous a réellement coûté au fil du temps.',
   },
@@ -177,12 +171,12 @@ export function LandingPage() {
                   <strong>CleanVex</strong>
                 </div>
                 <ul>
-                  <li className="active">🚗 Véhicules</li>
-                  <li>📦 Stock pièces</li>
-                  <li>🧰 Outillage</li>
-                  <li>📝 Journal</li>
-                  <li>📁 Documents</li>
-                  <li>💰 Budget</li>
+                  <li className="active">Véhicules</li>
+                  <li>Stock pièces</li>
+                  <li>Outillage</li>
+                  <li>Journal</li>
+                  <li>Documents</li>
+                  <li>Budget</li>
                 </ul>
               </aside>
               <main className="landing-mockup-main">
@@ -250,11 +244,10 @@ export function LandingPage() {
           dernière intervention.
         </p>
         <div className="landing-pillars">
-          {PILLARS.map(({ Icon, emoji, title, desc }) => (
+          {PILLARS.map(({ Icon, title, desc }) => (
             <div key={title} className="landing-pillar reveal">
               <div className="landing-pillar-ico">
-                <span className="landing-pillar-emoji">{emoji}</span>
-                <Icon size={18} className="landing-pillar-lucide" />
+                <Icon size={26} className="landing-pillar-lucide" />
               </div>
               <h3>{title}</h3>
               <p>{desc}</p>
@@ -299,7 +292,7 @@ export function LandingPage() {
           <div className="lx-specs">
             <span>Kilométrage<strong>187 400 km</strong></span>
             <span>Année<strong>1992</strong></span>
-            <span>Carburant<strong>⛽ Essence</strong></span>
+            <span>Carburant<strong>Essence</strong></span>
             <span>Puissance<strong>110 CV</strong></span>
           </div>
 

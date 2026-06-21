@@ -13,9 +13,6 @@ type FormEv = { preventDefault(): void; currentTarget: HTMLFormElement }
 type View = 'list' | 'detail'
 type DetailTab = 'infos' | 'mouvements' | 'prets'
 
-const CAT_ICONS: Record<string, string> = {
-  piece: '⚙️', consommable: '🧴', outil: '🔧', equipement: '📋', autre: '📦',
-}
 const CAT_COLORS: Record<string, string> = {
   piece: '#67e8f9', consommable: '#4ade80', outil: '#fbbf24', equipement: '#a78bfa', autre: '#7b82a8',
 }
@@ -256,7 +253,7 @@ export function StockPage() {
             {stockItems.length} articles · <strong style={{ color: '#4ade80' }}>{totalValue.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</strong>
           </span>
           <label style={{ cursor: 'pointer' }}>
-            <span className="btn-ghost" style={{ fontSize: '12px' }}>⬆ Import CSV</span>
+            <span className="btn-ghost" style={{ fontSize: '12px' }}>Importer CSV</span>
             <input type="file" accept=".csv" style={{ display: 'none' }} onChange={async e => {
               const f = e.target.files?.[0]; if (!f) return
               const fd = new FormData(); fd.append('file', f)
@@ -267,7 +264,7 @@ export function StockPage() {
               e.target.value = ''; await reload()
             }} />
           </label>
-          <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/stock/items/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `stock_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url) }}>⬇ Export CSV</button>
+          <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/stock/items/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `stock_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url) }}>Exporter CSV</button>
           <button className="primary-action" onClick={() => setShowCreate(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Plus size={15} /> Nouvel article
           </button>
@@ -282,11 +279,11 @@ export function StockPage() {
             </FieldTip>
             <FieldTip label="Catégorie" hint="La famille de l'article. Pièce = composant à monter. Consommable = produit qui se vide. Outil = équipement réutilisable.">
               <select name="category" defaultValue="piece" className="modal-select">
-                <option value="piece">⚙️ Pièce</option>
-                <option value="consommable">🧴 Consommable</option>
-                <option value="outil">🔧 Outil</option>
-                <option value="equipement">📋 Équipement</option>
-                <option value="autre">📦 Autre</option>
+                <option value="piece">Pièce</option>
+                <option value="consommable">Consommable</option>
+                <option value="outil">Outil</option>
+                <option value="equipement">Équipement</option>
+                <option value="autre">Autre</option>
               </select>
             </FieldTip>
             <FieldTip label="Unité" hint="L'unité de mesure (litre, pièce, kg, mètre…). Gère la liste dans Paramètres → Unités." required>
@@ -301,8 +298,8 @@ export function StockPage() {
             </FieldTip>
             <FieldTip label="Statut" hint="« En stock » pour un article que vous possédez. « À acheter » pour un article que vous voulez acheter prochainement (wishlist d'achat).">
               <select name="status" defaultValue="in-stock" className="modal-select">
-                <option value="in-stock">📦 En stock</option>
-                <option value="to-buy">🛒 À acheter</option>
+                <option value="in-stock">En stock</option>
+                <option value="to-buy">À acheter</option>
               </select>
             </FieldTip>
             <FieldTip label="Valeur unitaire (€)" hint="Le coût à l'unité de cet article. Multipliée par la quantité, elle donne la valeur totale de votre stock.">
@@ -368,7 +365,7 @@ export function StockPage() {
             background: catFilter === c ? `${CAT_COLORS[c] ?? 'var(--p1)'}18` : 'none',
             color: catFilter === c ? (CAT_COLORS[c] ?? 'var(--p1)') : 'var(--text3)',
           }}>
-            {c === 'all' ? 'Tous' : `${CAT_ICONS[c]} ${c}`}
+            {c === 'all' ? 'Tous' : c}
           </button>
         ))}
       </div>
@@ -377,8 +374,8 @@ export function StockPage() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {([
           { key: 'all',      label: 'Tous',           count: stockItems.length },
-          { key: 'in-stock', label: '📦 En stock',    count: stockItems.length - toBuyCount },
-          { key: 'to-buy',   label: `🛒 À acheter${toBuyCount > 0 ? ` (${toBuyCount})` : ''}`, count: toBuyCount },
+          { key: 'in-stock', label: 'En stock',    count: stockItems.length - toBuyCount },
+          { key: 'to-buy',   label: `À acheter${toBuyCount > 0 ? ` (${toBuyCount})` : ''}`, count: toBuyCount },
         ] as const).map(f => (
           <button key={f.key} onClick={() => setStatusFilter(f.key as 'all' | 'in-stock' | 'to-buy')} style={{
             padding: '6px 12px', borderRadius: 999, cursor: 'pointer',
@@ -420,12 +417,12 @@ export function StockPage() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: '10px', fontFamily: 'var(--mono)', color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      {CAT_ICONS[item.category]} {item.category}
+                      {item.category}
                     </span>
                     <div style={{ fontSize: '15px', fontWeight: 700, color: isLow ? '#f87171' : 'var(--text)', marginTop: '2px', lineHeight: 1.2 }}>{item.name}</div>
                   </div>
                   {isToBuy && (
-                    <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', flexShrink: 0, marginTop: 2 }}>🛒 À ACHETER</span>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '3px 8px', borderRadius: 6, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.4)', flexShrink: 0, marginTop: 2 }}>À ACHETER</span>
                   )}
                   {!isToBuy && isLow && <AlertTriangle size={16} style={{ color: '#f87171', flexShrink: 0, marginTop: '2px' }} />}
                 </div>
@@ -437,11 +434,11 @@ export function StockPage() {
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', fontSize: '10px', color: 'var(--text3)' }}>
-                  {item.location && <span>📍 {item.location}</span>}
+                  {item.location && <span>{item.location}</span>}
                   {item.reference && <span style={{ fontFamily: 'var(--mono)' }}>#{item.reference}</span>}
                   {(item.supplierContact?.displayName || item.supplier) && (
                     <span title={item.supplierContact ? 'Contact lié' : 'Fournisseur libre'}>
-                      🏭 {item.supplierContact?.displayName ?? item.supplier}
+                      {item.supplierContact?.displayName ?? item.supplier}
                     </span>
                   )}
                   {totalVal !== null && <span style={{ marginLeft: 'auto', color: '#4ade80', fontWeight: 600 }}>≈ {totalVal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</span>}
@@ -467,9 +464,9 @@ export function StockPage() {
   const activeLoans = itemLoans.filter(l => !l.returnedAt)
 
   const NAV: { tab: DetailTab; label: string; badge?: number }[] = [
-    { tab: 'infos',      label: '📋 Infos' },
-    { tab: 'mouvements', label: '📈 Mouvements', badge: itemMovements.length },
-    { tab: 'prets',      label: '🤝 Prêts', badge: activeLoans.length },
+    { tab: 'infos',      label: 'Infos' },
+    { tab: 'mouvements', label: 'Mouvements', badge: itemMovements.length },
+    { tab: 'prets',      label: 'Prêts', badge: activeLoans.length },
   ]
 
   return (
@@ -483,13 +480,13 @@ export function StockPage() {
         </button>
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: '10px', fontFamily: 'var(--mono)', color, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {CAT_ICONS[sv.category]} {sv.category}
+            {sv.category}
           </span>
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>{sv.name}</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '22px', fontWeight: 800, color: isLow ? '#f87171' : color }}>{qty.toLocaleString('fr-FR')} <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text3)' }}>{sv.unit}</span></span>
-          {isLow && <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '20px', background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', fontFamily: 'var(--mono)', fontWeight: 700 }}>⚠ STOCK BAS</span>}
+          {isLow && <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '20px', background: 'rgba(248,113,113,0.15)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', fontFamily: 'var(--mono)', fontWeight: 700 }}>STOCK BAS</span>}
           <button className="hdr-btn" onClick={() => setEditMode(m => !m)} title="Modifier"><Pencil size={13} /></button>
           <ConfirmButton onConfirm={handleDelete} confirmLabel="Supprimer ?" />
         </div>
@@ -533,11 +530,11 @@ export function StockPage() {
                     </FieldTip>
                     <FieldTip label="Catégorie" hint="La famille de l'article. Pièce, consommable, outil, équipement ou autre.">
                       <select name="category" defaultValue={sv.category} className="modal-select">
-                        <option value="piece">⚙️ Pièce</option>
-                        <option value="consommable">🧴 Consommable</option>
-                        <option value="outil">🔧 Outil</option>
-                        <option value="equipement">📋 Équipement</option>
-                        <option value="autre">📦 Autre</option>
+                        <option value="piece">Pièce</option>
+                        <option value="consommable">Consommable</option>
+                        <option value="outil">Outil</option>
+                        <option value="equipement">Équipement</option>
+                        <option value="autre">Autre</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Unité" hint="L'unité de mesure. Gère la liste dans Paramètres → Unités." required>
@@ -551,8 +548,8 @@ export function StockPage() {
                     </FieldTip>
                     <FieldTip label="Statut" hint="Bascule entre « En stock » et « À acheter » (wishlist). Quand l'article arrive, repassez-le en « En stock ».">
                       <select name="status" defaultValue={sv.status ?? 'in-stock'} className="modal-select">
-                        <option value="in-stock">📦 En stock</option>
-                        <option value="to-buy">🛒 À acheter</option>
+                        <option value="in-stock">En stock</option>
+                        <option value="to-buy">À acheter</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Valeur unitaire (€)" hint="Le coût à l'unité. Multipliée par la quantité, elle donne la valeur totale du stock.">
@@ -598,7 +595,7 @@ export function StockPage() {
 
               <div className="detail-grid">
                 <span>Quantité<strong style={{ color, fontSize: '18px' }}>{qty.toLocaleString('fr-FR')} {sv.unit}</strong></span>
-                <span>Catégorie<strong>{CAT_ICONS[sv.category]} {sv.category}</strong></span>
+                <span>Catégorie<strong>{sv.category}</strong></span>
                 <span>Valeur unit.<strong>{sv.valueAmount ? `${Number(sv.valueAmount).toFixed(2)} €` : '—'}</strong></span>
                 <span>Valeur totale<strong style={{ color: '#4ade80' }}>{totalVal !== null ? `≈ ${totalVal.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €` : '—'}</strong></span>
                 <span>Localisation<strong>{sv.location ?? '—'}</strong></span>

@@ -759,13 +759,8 @@
   gap: 10px;
   margin-bottom: 14px;
 }
-.landing-pillar-emoji {
-  font-size: 32px;
-  line-height: 1;
-}
 .landing-pillar-lucide {
   color: #a78bfa;
-  opacity: 0.6;
 }
 .landing-pillar h3 {
   font-size: 17px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.2px;

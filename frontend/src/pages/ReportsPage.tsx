@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BarChart3, RefreshCw, ShieldCheck, TrendingDown, TrendingUp } from 'lucide-react'
+import {
+  BarChart3, Bell, CalendarDays, Car, CreditCard, FileText, Home,
+  Package, RefreshCw, ShieldCheck, TrendingDown, TrendingUp, Users, type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { relativeDate } from '../utils/date'
 import { SkeletonTabPage } from '../components/Skeleton'
@@ -53,20 +56,20 @@ export function ReportsPage() {
 
       {/* Compteurs modules */}
       <div className="stats-grid" style={{ marginBottom: '24px' }}>
-        {[
-          { icon: '🚗', label: 'VEHICULES',   value: summary?.counts.vehicles ?? 0 },
-          { icon: '👥', label: 'CONTACTS',    value: summary?.counts.contacts ?? 0 },
-          { icon: '🏠', label: 'IMMOBILIER',  value: summary?.counts.properties ?? 0 },
-          { icon: '📁', label: 'DOCUMENTS',   value: summary?.counts.documents ?? 0 },
-          { icon: '📦', label: 'STOCK',       value: summary?.counts.stockItems ?? 0 },
-          { icon: '📅', label: 'TACHES OPEN', value: summary?.counts.openTasks ?? 0 },
-          { icon: '🔔', label: 'NOTIFS',      value: summary?.counts.unreadNotifications ?? 0 },
-          { icon: '💳', label: 'OPERATIONS',  value: summary?.counts.transactions ?? 0 },
-        ].map(({ icon, label, value }) => (
+        {([
+          { Icon: Car,          label: 'VEHICULES',   value: summary?.counts.vehicles ?? 0 },
+          { Icon: Users,        label: 'CONTACTS',    value: summary?.counts.contacts ?? 0 },
+          { Icon: Home,         label: 'IMMOBILIER',  value: summary?.counts.properties ?? 0 },
+          { Icon: FileText,     label: 'DOCUMENTS',   value: summary?.counts.documents ?? 0 },
+          { Icon: Package,      label: 'STOCK',       value: summary?.counts.stockItems ?? 0 },
+          { Icon: CalendarDays, label: 'TACHES OPEN', value: summary?.counts.openTasks ?? 0 },
+          { Icon: Bell,         label: 'NOTIFS',      value: summary?.counts.unreadNotifications ?? 0 },
+          { Icon: CreditCard,   label: 'OPERATIONS',  value: summary?.counts.transactions ?? 0 },
+        ] as { Icon: LucideIcon; label: string; value: number }[]).map(({ Icon, label, value }) => (
           <div className="stat-card" key={label}>
             <div className="stat-header">
               <span className="stat-label">{label}</span>
-              <span className="stat-ico">{icon}</span>
+              <span className="stat-ico"><Icon size={16} /></span>
             </div>
             <div className="stat-value">{value}</div>
           </div>
@@ -90,6 +93,9 @@ export function ReportsPage() {
             <span>Solde net<strong style={{ color: net >= 0 ? '#4ade80' : '#f87171' }}>
               {net >= 0 ? <TrendingUp size={12} style={{ display: 'inline', marginRight: 4 }} /> : <TrendingDown size={12} style={{ display: 'inline', marginRight: 4 }} />}
               {net.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
+            </strong></span>
+            <span>Budgets véhicules<strong style={{ color: '#a78bfa' }}>
+              {(summary?.finance.vehicleBudget ?? 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}
             </strong></span>
           </div>
         </article>

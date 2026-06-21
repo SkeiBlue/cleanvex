@@ -116,7 +116,7 @@ export function ContactPage() {
           {status.state === 'success' ? (
             <div className="contact-success">
               <div className="contact-success-ico"><CheckCircle2 size={28} /></div>
-              <h2>Message envoyé ✦</h2>
+              <h2>Message envoyé</h2>
               <p>
                 Merci {name || 'pour ton message'} ! On t'écrit à <strong>{email}</strong> sous 48h.
               </p>

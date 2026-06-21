@@ -8,7 +8,7 @@ const STEPS = [
   {
     element: '[data-tour="sidebar"]',
     popover: {
-      title: 'Bienvenue sur MonEspace 👋',
+      title: 'Bienvenue sur CleanVex',
       description: "Voici la navigation principale. Chaque module (véhicules, finances, agenda…) a sa section ici. Tu peux la replier avec la flèche en haut.",
       side: 'right' as const, align: 'start' as const,
     },
@@ -47,7 +47,7 @@ const STEPS = [
   },
   {
     popover: {
-      title: "C'est parti ! 🚀",
+      title: "C'est parti !",
       description: "Tu peux maintenant explorer librement. N'hésite pas à ajouter ton premier véhicule, document ou rappel — le dashboard se remplira automatiquement.",
     },
   },

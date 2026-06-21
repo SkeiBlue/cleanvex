@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft, CalendarDays, FileText, FileLock2,
-  Home, Pencil, Plus, Upload, Wallet,
+  ArrowLeft, Building, Building2, CalendarDays, FileText, FileLock2,
+  Home, Pencil, Plus, SquareParking, Store, Trees, Upload, Wallet,
+  type LucideIcon,
 } from 'lucide-react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
@@ -20,8 +21,8 @@ const STATUS_STYLE: Record<string, { color: string; label: string }> = {
   sold:     { color: '#f87171', label: 'Vendu' },
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  apartment: '🏢', house: '🏠', land: '🌿', parking: '🅿️', commercial: '🏪', other: '🏗️',
+const TYPE_ICONS: Record<string, LucideIcon> = {
+  apartment: Building2, house: Home, land: Trees, parking: SquareParking, commercial: Store, other: Building,
 }
 
 const SELECT_STYLE: React.CSSProperties = {
@@ -209,7 +210,7 @@ export function RealEstatePage() {
         </button>
       </div>
 
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau bien immobilier" subtitle="Ajoute un bien à ton patrimoine : appartement, maison, terrain, garage, local…" icon="🏠">
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Nouveau bien immobilier" subtitle="Ajoute un bien à ton patrimoine : appartement, maison, terrain, garage, local…" icon={<Home size={20} />}>
         <form onSubmit={handleCreate}>
           <div className="modal-grid">
             <FieldTip label="Nom du bien" hint="Nom court pour identifier ce bien dans toutes les listes. Ex : 'Appart Lyon 3', 'Maison Clermont'." required style={{ gridColumn: '1/-1' }}>
@@ -217,20 +218,20 @@ export function RealEstatePage() {
             </FieldTip>
             <FieldTip label="Type" hint="Nature du bien. Influence l'icône et les filtres dans la liste.">
               <select name="type" className="modal-select" defaultValue="apartment">
-                <option value="apartment">🏢 Appartement</option>
-                <option value="house">🏠 Maison</option>
-                <option value="land">🌿 Terrain</option>
-                <option value="parking">🅿️ Parking</option>
-                <option value="commercial">🏪 Commercial</option>
-                <option value="other">🏗️ Autre</option>
+                <option value="apartment">Appartement</option>
+                <option value="house">Maison</option>
+                <option value="land">Terrain</option>
+                <option value="parking">Parking</option>
+                <option value="commercial">Commercial</option>
+                <option value="other">Autre</option>
               </select>
             </FieldTip>
             <FieldTip label="Statut" hint="Ton rapport à ce bien : propriétaire (tu le possèdes), locataire (tu le loues), en vente, ou vendu (archivé).">
               <select name="status" className="modal-select" defaultValue="owned">
-                <option value="owned">✅ Propriété</option>
-                <option value="rented">🔑 Location</option>
-                <option value="for_sale">🏷️ En vente</option>
-                <option value="sold">📦 Vendu</option>
+                <option value="owned">Propriété</option>
+                <option value="rented">Location</option>
+                <option value="for_sale">En vente</option>
+                <option value="sold">Vendu</option>
               </select>
             </FieldTip>
             <FieldTip label="Adresse" hint="Adresse postale complète pour retrouver le bien facilement." style={{ gridColumn: '1/-1' }}>
@@ -285,7 +286,7 @@ export function RealEstatePage() {
                 <div style={{ padding: '18px 18px 12px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ fontSize: '28px' }}>{TYPE_ICONS[p.type] ?? '🏗️'}</span>
+                      {(() => { const Icon = TYPE_ICONS[p.type] ?? Building; return <Icon size={26} style={{ color: 'var(--text3)', flexShrink: 0 }} /> })()}
                       <div>
                         <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{p.name}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '1px' }}>{[p.city, p.postalCode].filter(Boolean).join(', ') || p.type}</div>
@@ -294,8 +295,8 @@ export function RealEstatePage() {
                     <StatusBadge status={p.status} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '6px', fontSize: '11px', color: 'var(--text3)' }}>
-                    {p.surface && <span>📐 {Number(p.surface).toLocaleString('fr-FR')} m²</span>}
-                    {p.rooms && <span>🚪 {p.rooms} pièces</span>}
+                    {p.surface && <span>{Number(p.surface).toLocaleString('fr-FR')} m²</span>}
+                    {p.rooms && <span>{p.rooms} pièces</span>}
                   </div>
                 </div>
                 <div style={{ borderTop: '1px solid var(--border)', padding: '10px 18px', display: 'flex', justifyContent: 'space-between', background: 'rgba(0,0,0,0.1)', fontSize: '11px' }}>
@@ -318,7 +319,7 @@ export function RealEstatePage() {
         <button onClick={() => { setView('list'); setEditMode(false) }} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '7px 14px', color: 'var(--text2)', fontSize: '13px', cursor: 'pointer' }}>
           <ArrowLeft size={14} /> Immobilier
         </button>
-        <span style={{ fontSize: '28px' }}>{TYPE_ICONS[selected.type] ?? '🏗️'}</span>
+        {(() => { const Icon = TYPE_ICONS[selected.type] ?? Building; return <Icon size={26} style={{ color: 'var(--text3)', flexShrink: 0 }} /> })()}
         <div style={{ flex: 1 }}>
           <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Fiche bien</span>
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>{selected.name}</h1>
@@ -359,7 +360,7 @@ export function RealEstatePage() {
                 <span>Valeur estimée<strong style={{ color: '#4ade80' }}>{selected.estimatedValue ? `${Number(selected.estimatedValue).toLocaleString('fr-FR')} €` : '—'}</strong></span>
                 <span>Prix d'achat<strong>{selected.purchasePrice ? `${Number(selected.purchasePrice).toLocaleString('fr-FR')} €` : '—'}</strong></span>
                 <span>Ville<strong>{[selected.city, selected.postalCode].filter(Boolean).join(' ') || '—'}</strong></span>
-                <span>Type<strong>{TYPE_ICONS[selected.type] ?? ''} {selected.type}</strong></span>
+                <span>Type<strong>{selected.type}</strong></span>
                 {selected.address && <span style={{ gridColumn: '1/-1' }}>Adresse<strong style={{ fontWeight: 400, fontSize: '12px', color: 'var(--text2)', fontFamily: 'var(--font)' }}>{selected.address}</strong></span>}
                 {selected.notes && <span style={{ gridColumn: '1/-1' }}>Notes<p style={{ fontSize: '12px', color: 'var(--text2)', margin: '4px 0 0', lineHeight: 1.5 }}>{selected.notes}</p></span>}
               </div>
@@ -372,10 +373,10 @@ export function RealEstatePage() {
                     </FieldTip>
                     <FieldTip label="Statut" hint="Ton rapport actuel à ce bien.">
                       <select name="status" className="modal-select" defaultValue={selected.status}>
-                        <option value="owned">✅ Propriété</option>
-                        <option value="rented">🔑 Location</option>
-                        <option value="for_sale">🏷️ En vente</option>
-                        <option value="sold">📦 Vendu</option>
+                        <option value="owned">Propriété</option>
+                        <option value="rented">Location</option>
+                        <option value="for_sale">En vente</option>
+                        <option value="sold">Vendu</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Adresse" hint="Adresse postale complète." style={{ gridColumn: '1/-1' }}>
@@ -419,7 +420,7 @@ export function RealEstatePage() {
                 <Plus size={14} /> Nouvel événement
               </button>
 
-              <Modal open={showAddEvent} onClose={() => setShowAddEvent(false)} title="Nouvel événement" subtitle="Enregistre un travaux, une taxe, un loyer ou tout autre événement lié à ce bien." icon="📅">
+              <Modal open={showAddEvent} onClose={() => setShowAddEvent(false)} title="Nouvel événement" subtitle="Enregistre un travaux, une taxe, un loyer ou tout autre événement lié à ce bien." icon={<CalendarDays size={20} />}>
                 <form onSubmit={handleAddEvent}>
                   <div className="modal-grid">
                     <FieldTip label="Titre" hint="Description courte de l'événement. Ex : 'Remplacement chauffe-eau', 'Taxe foncière 2025'." required style={{ gridColumn: '1/-1' }}>
@@ -427,18 +428,18 @@ export function RealEstatePage() {
                     </FieldTip>
                     <FieldTip label="Type" hint="Catégorie de l'événement — utilisée dans les graphiques financiers.">
                       <select name="type" className="modal-select" defaultValue="maintenance">
-                        <option value="maintenance">🔧 Maintenance</option>
-                        <option value="renovation">🏗️ Rénovation</option>
-                        <option value="tax">🧾 Taxe/Charge</option>
-                        <option value="insurance">🛡️ Assurance</option>
-                        <option value="rent">💶 Loyer</option>
-                        <option value="other">📝 Autre</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="renovation">Rénovation</option>
+                        <option value="tax">Taxe/Charge</option>
+                        <option value="insurance">Assurance</option>
+                        <option value="rent">Loyer</option>
+                        <option value="other">Autre</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Statut" hint="'Planifié' : prévu mais pas encore fait. 'Fait' : dépense réelle comptabilisée.">
                       <select name="status" className="modal-select" defaultValue="planned">
-                        <option value="planned">📋 Planifié</option>
-                        <option value="done">✅ Fait</option>
+                        <option value="planned">Planifié</option>
+                        <option value="done">Fait</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Date" hint="Date de l'événement ou de la dépense." required>

@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, X } from 'lucide-react'
+import {
+  CalendarDays, Car, FileText, Home, LayoutDashboard,
+  Package, Search, Users, Wallet, X, type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import type { SearchResult } from '../types'
 
-const TYPE_ICONS: Record<string, string> = {
-  vehicle: '🚗', contact: '👥', document: '📁',
-  property: '🏠', task: '✅', stock_item: '📦', transaction: '💸',
+const TYPE_ICONS: Record<string, LucideIcon> = {
+  vehicle: Car, contact: Users, document: FileText,
+  property: Home, task: CalendarDays, stock_item: Package, transaction: Wallet,
 }
 const TYPE_LABELS: Record<string, string> = {
   vehicle: 'Véhicule', contact: 'Contact', document: 'Document',
@@ -17,15 +20,15 @@ const TYPE_ROUTES: Record<string, string> = {
   property: '/real-estate', task: '/agenda', stock_item: '/stock', transaction: '/finances',
 }
 
-const QUICK_LINKS = [
-  { label: 'Tableau de bord',  icon: '🏠', route: '/' },
-  { label: 'Véhicules',        icon: '🚗', route: '/vehicles' },
-  { label: 'Finances',         icon: '💰', route: '/finances' },
-  { label: 'Agenda',           icon: '📅', route: '/agenda' },
-  { label: 'Contacts',         icon: '👥', route: '/contacts' },
-  { label: 'Immobilier',       icon: '🏢', route: '/real-estate' },
-  { label: 'Stock',            icon: '📦', route: '/stock' },
-  { label: 'Documents',        icon: '📁', route: '/documents' },
+const QUICK_LINKS: { label: string; icon: LucideIcon; route: string }[] = [
+  { label: 'Tableau de bord',  icon: LayoutDashboard, route: '/' },
+  { label: 'Véhicules',        icon: Car,             route: '/vehicles' },
+  { label: 'Finances',         icon: Wallet,          route: '/finances' },
+  { label: 'Agenda',           icon: CalendarDays,    route: '/agenda' },
+  { label: 'Contacts',         icon: Users,           route: '/contacts' },
+  { label: 'Immobilier',       icon: Home,            route: '/real-estate' },
+  { label: 'Stock',            icon: Package,         route: '/stock' },
+  { label: 'Documents',        icon: FileText,        route: '/documents' },
 ]
 
 interface Props {
@@ -67,7 +70,7 @@ export function CommandPalette({ open, onClose }: Props) {
 
   const allItems = query.trim()
     ? results
-    : QUICK_LINKS.map(l => ({ id: l.route, type: 'nav', title: l.label, subtitle: l.route, icon: l.icon } as SearchResult & { icon: string }))
+    : QUICK_LINKS.map(l => ({ id: l.route, type: 'nav', title: l.label, subtitle: l.route } as SearchResult))
 
   const go = useCallback((item: SearchResult) => {
     onClose()
@@ -140,16 +143,19 @@ export function CommandPalette({ open, onClose }: Props) {
           {!query.trim() && (
             <>
               <div style={{ padding: '8px 16px 4px', fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', letterSpacing: '0.08em' }}>NAVIGATION RAPIDE</div>
-              {QUICK_LINKS.map((l, i) => (
+              {QUICK_LINKS.map((l, i) => {
+                const Icon = l.icon
+                return (
                 <button key={l.route} onClick={() => { onClose(); navigate(l.route) }}
                   style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: cursor === i ? 'rgba(124,58,237,0.12)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', transition: 'background 0.1s' }}
                   onMouseEnter={() => setCursor(i)}
                 >
-                  <span style={{ fontSize: '18px', flexShrink: 0 }}>{l.icon}</span>
+                  <Icon size={16} style={{ flexShrink: 0, color: 'var(--text2)' }} />
                   <span style={{ flex: 1, fontSize: '14px', color: 'var(--text)' }}>{l.label}</span>
                   <kbd style={{ fontSize: '10px', color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', padding: '1px 5px', borderRadius: '4px', fontFamily: 'var(--mono)' }}>↵</kbd>
                 </button>
-              ))}
+                )
+              })}
             </>
           )}
 
@@ -164,7 +170,7 @@ export function CommandPalette({ open, onClose }: Props) {
             return (
               <div key={type}>
                 <div style={{ padding: '8px 16px 2px', fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  {TYPE_ICONS[type]} {(TYPE_LABELS[type] ?? type).toUpperCase()}S
+                  {(() => { const Icon = TYPE_ICONS[type]; return Icon ? <Icon size={11} /> : null })()} {(TYPE_LABELS[type] ?? type).toUpperCase()}S
                 </div>
                 {items.map((r, i) => {
                   const idx = sectionStart + i
@@ -173,7 +179,7 @@ export function CommandPalette({ open, onClose }: Props) {
                     <button key={r.id} onClick={() => go(r)} onMouseEnter={() => setCursor(idx)}
                       style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', background: active ? 'rgba(124,58,237,0.12)' : 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', transition: 'background 0.1s', borderLeft: active ? '2px solid #a78bfa' : '2px solid transparent' }}
                     >
-                      <span style={{ fontSize: '18px', flexShrink: 0 }}>{TYPE_ICONS[r.type] ?? '🔍'}</span>
+                      {(() => { const Icon = TYPE_ICONS[r.type] ?? Search; return <Icon size={16} style={{ flexShrink: 0, color: 'var(--text2)' }} /> })()}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '14px', color: 'var(--text)', fontWeight: active ? 600 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
                         {r.subtitle && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>{r.subtitle}</div>}

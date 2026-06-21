@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, HardDrive, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Download, FileJson, Folder, HardDrive, Lock, RefreshCw, ShieldCheck, type LucideIcon } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
 export function BackupsPage() {
@@ -87,15 +87,15 @@ export function BackupsPage() {
             <div><span className="panel-kicker">Informations</span><h2>À savoir</h2></div>
           </div>
           <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              { icon: '🔒', text: 'L\'archive est générée à la volée côté serveur, rien n\'est stocké.' },
-              { icon: '📁', text: 'Les fichiers attachés à tes documents sont inclus dans le dossier files/.' },
-              { icon: '📋', text: 'Un fichier manifest.json liste toutes les données au format JSON.' },
-              { icon: '⚠️', text: 'Conserve tes backups dans un endroit sécurisé et chiffré.' },
-              { icon: '🔄', text: 'Lance un backup régulièrement pour ne rien perdre.' },
-            ].map(({ icon, text }) => (
+            {([
+              { Icon: Lock,          text: 'L\'archive est générée à la volée côté serveur, rien n\'est stocké.' },
+              { Icon: Folder,        text: 'Les fichiers attachés à tes documents sont inclus dans le dossier files/.' },
+              { Icon: FileJson,      text: 'Un fichier manifest.json liste toutes les données au format JSON.' },
+              { Icon: AlertTriangle, text: 'Conserve tes backups dans un endroit sécurisé et chiffré.' },
+              { Icon: RefreshCw,     text: 'Lance un backup régulièrement pour ne rien perdre.' },
+            ] as { Icon: LucideIcon; text: string }[]).map(({ Icon, text }) => (
               <div key={text} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '14px', lineHeight: 1.5 }}>{icon}</span>
+                <Icon size={14} style={{ color: 'var(--text3)', flexShrink: 0, marginTop: 3 }} />
                 <p style={{ fontSize: '12px', color: 'var(--text2)', lineHeight: 1.6, margin: 0 }}>{text}</p>
               </div>
             ))}

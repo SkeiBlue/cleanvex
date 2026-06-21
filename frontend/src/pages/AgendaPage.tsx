@@ -258,7 +258,7 @@ export function AgendaPage() {
             )}
           </div>
 
-          <Modal open={showCreateTask} onClose={() => setShowCreateTask(false)} title="Nouvelle tâche" subtitle="Décris précisément ce qu'il faut faire et pourquoi." icon="✅">
+          <Modal open={showCreateTask} onClose={() => setShowCreateTask(false)} title="Nouvelle tâche" subtitle="Décris précisément ce qu'il faut faire et pourquoi." icon={<CheckCircle2 size={20} />}>
             <form onSubmit={handleCreateTask}>
               <div className="modal-grid">
                 <FieldTip label="Titre" hint="Nom court de la tâche — sois précis pour t'en souvenir plus tard." required style={{ gridColumn: '1/-1' }}>
@@ -269,9 +269,9 @@ export function AgendaPage() {
                 </FieldTip>
                 <FieldTip label="Priorité" hint="Haute = apparaît en tête de liste et génère des rappels plus fréquents. Basse = visible mais sans urgence.">
                   <select name="priority" className="modal-select" defaultValue="normal">
-                    <option value="high">🔴 Haute</option>
-                    <option value="normal">🟡 Normale</option>
-                    <option value="low">⚪ Basse</option>
+                    <option value="high">Haute</option>
+                    <option value="normal">Normale</option>
+                    <option value="low">Basse</option>
                   </select>
                 </FieldTip>
                 <FieldTip label="Date d'échéance" hint="Quand cette tâche doit-elle être terminée ? Les tâches en retard apparaissent en rouge.">
@@ -280,10 +280,10 @@ export function AgendaPage() {
                 <FieldTip label="Module associé" hint="Lie cette tâche à un module (véhicules, finances…) pour la retrouver dans son contexte." style={{ gridColumn: '1/-1' }}>
                   <select name="moduleKey" className="modal-select" defaultValue="">
                     <option value="">Aucun module</option>
-                    <option value="vehicles">🚗 Véhicules</option>
-                    <option value="finances">💶 Finances</option>
-                    <option value="stock">📦 Stock</option>
-                    <option value="real-estate">🏠 Immobilier</option>
+                    <option value="vehicles">Véhicules</option>
+                    <option value="finances">Finances</option>
+                    <option value="stock">Stock</option>
+                    <option value="real-estate">Immobilier</option>
                   </select>
                 </FieldTip>
               </div>
@@ -472,7 +472,7 @@ export function AgendaPage() {
             </div>
           </div>
 
-          <Modal open={showCreateNotif} onClose={() => setShowCreateNotif(false)} title="Nouvelle alerte / rappel" subtitle="Crée un rappel ou une notification à afficher à une date donnée." icon="🔔">
+          <Modal open={showCreateNotif} onClose={() => setShowCreateNotif(false)} title="Nouvelle alerte / rappel" subtitle="Crée un rappel ou une notification à afficher à une date donnée." icon={<Bell size={20} />}>
             <form onSubmit={handleCreateNotification}>
               <div className="modal-grid">
                 <FieldTip label="Titre" hint="Intitulé court du rappel. Il apparaîtra dans la cloche en haut à droite." required style={{ gridColumn: '1/-1' }}>
@@ -483,9 +483,9 @@ export function AgendaPage() {
                 </FieldTip>
                 <FieldTip label="Importance" hint="Haute = badge rouge dans la cloche. Normale = badge jaune. Basse = discret.">
                   <select name="importance" className="modal-select" defaultValue="normal">
-                    <option value="low">⚪ Basse</option>
-                    <option value="normal">🟡 Normale</option>
-                    <option value="high">🔴 Haute</option>
+                    <option value="low">Basse</option>
+                    <option value="normal">Normale</option>
+                    <option value="high">Haute</option>
                   </select>
                 </FieldTip>
                 <FieldTip label="Date d'échéance" hint="Date à laquelle tu veux être rappelé. Les alertes expirées restent visibles jusqu'à lecture.">

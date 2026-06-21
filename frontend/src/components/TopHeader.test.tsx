@@ -1,5 +1,4 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createRef } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { TopHeader } from './TopHeader'
@@ -24,14 +23,6 @@ function makeProps(overrides: Partial<Parameters<typeof TopHeader>[0]> = {}) {
     onLogout: vi.fn(),
     onMenuToggle: vi.fn(),
     onCmdOpen: vi.fn(),
-    searchQuery: '',
-    onSearchChange: vi.fn(),
-    onSearch: vi.fn(e => e.preventDefault()),
-    searchResults: [],
-    searchOpen: false,
-    onSearchResultClick: vi.fn(),
-    onSearchClose: vi.fn(),
-    searchRef: createRef<HTMLDivElement>(),
     ...overrides,
   }
 }
@@ -40,7 +31,7 @@ describe('TopHeader', () => {
   it('affiche le salut et la date', () => {
     renderWithRouter(<TopHeader {...makeProps()} />)
     expect(screen.getByText('Clement')).toBeInTheDocument()
-    expect(screen.getByText(/LUN\. 07 JUIN/)).toBeInTheDocument()
+    expect(screen.getByText(/lun\. 07 juin/)).toBeInTheDocument()
   })
 
   it('appelle onLogout au clic sur Déconnexion', () => {

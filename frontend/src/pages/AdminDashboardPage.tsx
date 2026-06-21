@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  Activity, CheckCircle2, Copy, FileText, KeyRound, MailCheck, Pencil, RefreshCw, Search,
-  ShieldCheck, ShieldOff, Trash2, UserCog, UserPlus, Users, X, XCircle,
+  Activity, CalendarDays, Car, CheckCircle2, Copy, FileText, Folder, Home, KeyRound,
+  MailCheck, Package, Pencil, RefreshCw, Search, Settings,
+  ShieldCheck, ShieldOff, Trash2, UserCog, UserPlus, Users, Wallet, X, XCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { SystemPanel } from '../components/SystemPanel'
@@ -11,9 +13,9 @@ import type { ModuleItem } from '../types'
 
 type AdminTab = 'overview' | 'users' | 'modules' | 'system' | 'support'
 
-const ADMIN_MODULE_ICONS: Record<string, string> = {
-  vehicles: '🚗', 'real-estate': '🏠', finances: '💸',
-  stock: '📦', agenda: '📅', documents: '📁', contacts: '👥',
+const ADMIN_MODULE_ICONS: Record<string, LucideIcon> = {
+  vehicles: Car, 'real-estate': Home, finances: Wallet,
+  stock: Package, agenda: CalendarDays, documents: Folder, contacts: Users,
 }
 
 type AdminStats = {
@@ -789,7 +791,7 @@ export function AdminDashboardPage() {
                 </div>
               ) : (
                 <p style={{ fontSize: 12, color: '#f59e0b', margin: 0 }}>
-                  ⚠ Aucun code n'est défini. Tout le monde peut s'inscrire librement !
+                  Aucun code n'est défini. Tout le monde peut s'inscrire librement !
                 </p>
               )}
             </div>
@@ -826,7 +828,7 @@ export function AdminDashboardPage() {
                     cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'var(--font)',
                   }}
                 >
-                  <span style={{ fontSize: 20 }}>{ADMIN_MODULE_ICONS[m.key] ?? '⚙️'}</span>
+                  {(() => { const Icon = ADMIN_MODULE_ICONS[m.key] ?? Settings; return <Icon size={18} style={{ color: m.isEnabled ? '#a78bfa' : 'var(--text3)', flexShrink: 0 }} /> })()}
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: m.isEnabled ? 'var(--text)' : 'var(--text2)' }}>{m.title}</div>
                     <div style={{ fontSize: 10, fontFamily: 'var(--mono)', color: m.isEnabled ? '#a78bfa' : 'var(--text3)' }}>

@@ -151,6 +151,7 @@ export function VehiclesPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [intervStatusFilter, setIntervStatusFilter] = useState('all')
   const [budgetTarget, setBudgetTarget] = useState(0)
+  const [budgetSaving, setBudgetSaving] = useState(false)
   const [parts, setParts] = useState<VehiclePart[]>([])
   const [partFilter, setPartFilter] = useState('all')
   const [editingPart, setEditingPart] = useState<VehiclePart | null>(null)
@@ -186,6 +187,48 @@ export function VehiclesPage() {
   // Filtre carnet d'entretien : seulement les travaux faits (utilisé via
   // intervStatusFilter, on ajoute juste une option dédiée).
 
+  // LOT 4 — le budget véhicule est désormais persisté en base. On le charge
+  // via l'API. Migration transparente : si un ancien budget existe encore dans
+  // localStorage et qu'aucun budget n'est en base, on le pousse une fois puis
+  // on nettoie la clé locale (à retirer dans une future version).
+  const loadBudget = useCallback(async (id: string) => {
+    const r = await authedFetch(`/vehicles/${id}/budget`)
+    let amount = 0
+    if (r.ok) {
+      const b = await r.json()
+      amount = b.amount != null ? Number(b.amount) : 0
+    }
+    const legacyKey = `vehicle-budget-${id}`
+    const legacy = localStorage.getItem(legacyKey)
+    if (amount === 0 && legacy && Number(legacy) > 0) {
+      const mig = await authedFetch(`/vehicles/${id}/budget`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(legacy), periodType: 'total' }),
+      })
+      if (mig.ok) { amount = Number(legacy); localStorage.removeItem(legacyKey) }
+    } else if (legacy) {
+      // Budget déjà en base → la clé locale est obsolète, on la supprime.
+      localStorage.removeItem(legacyKey)
+    }
+    setBudgetTarget(amount)
+  }, [authedFetch])
+
+  const saveBudget = useCallback(async (id: string, amount: number) => {
+    setBudgetSaving(true)
+    try {
+      const r = await authedFetch(`/vehicles/${id}/budget`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, periodType: 'total' }),
+      })
+      if (!r.ok) { toast.err('Impossible d’enregistrer le budget du véhicule.'); return }
+      toast.ok('Budget véhicule enregistré.')
+    } finally {
+      setBudgetSaving(false)
+    }
+  }, [authedFetch, toast])
+
   const loadVehicleDetail = useCallback(async (id: string) => {
     const [vr, pr] = await Promise.all([
       authedFetch(`/vehicles/${id}`),
@@ -194,11 +237,10 @@ export function VehiclesPage() {
     if (vr.ok) {
       const data = await vr.json()
       setSelectedVehicle(data)
-      const stored = localStorage.getItem(`vehicle-budget-${id}`)
-      setBudgetTarget(stored ? Number(stored) : 0)
+      await loadBudget(id)
     }
     if (pr.ok) setParts(await pr.json())
-  }, [authedFetch])
+  }, [authedFetch, loadBudget])
 
   const reload = useCallback(async () => {
     const [vr, dr] = await Promise.all([authedFetch('/vehicles'), authedFetch('/documents')])
@@ -732,7 +774,7 @@ export function VehiclesPage() {
           <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>Véhicules & Atelier</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/vehicles/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vehicules_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }}>⬇ CSV</button>
+          <button className="btn-ghost" style={{ fontSize: '12px' }} onClick={async () => { const r = await authedFetch('/vehicles/export.csv'); if (!r.ok) return; const blob = await r.blob(); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vehicules_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }}>Exporter CSV</button>
           <button
             className="primary-action"
             onClick={() => setShowCreateForm(true)}
@@ -751,13 +793,13 @@ export function VehiclesPage() {
             </FieldTip>
             <FieldTip label="Type" hint="La catégorie du véhicule — influence l'icône affichée et certaines statistiques.">
               <select name="type" defaultValue="car" className="modal-select">
-                <option value="car">🚗 Voiture</option>
-                <option value="motorcycle">🏍 Moto</option>
-                <option value="utility">🚐 Utilitaire</option>
-                <option value="truck">🚚 Camion</option>
-                <option value="tractor">🚜 Tracteur</option>
-                <option value="trailer">🛻 Remorque</option>
-                <option value="boat">⛵ Bateau</option>
+                <option value="car">Voiture</option>
+                <option value="motorcycle">Moto</option>
+                <option value="utility">Utilitaire</option>
+                <option value="truck">Camion</option>
+                <option value="tractor">Tracteur</option>
+                <option value="trailer">Remorque</option>
+                <option value="boat">Bateau</option>
                 <option value="other">Autre</option>
               </select>
             </FieldTip>
@@ -788,11 +830,11 @@ export function VehiclesPage() {
             <FieldTip label="Carburant" hint="Le type d'énergie. Renseigné ici, il apparaît dans la fiche récapitulative et le suivi des dépenses.">
               <select name="fuelType" defaultValue="" className="modal-select">
                 <option value="">— Carburant —</option>
-                <option value="essence">⛽ Essence</option>
-                <option value="diesel">🛢 Diesel</option>
-                <option value="electrique">⚡ Électrique</option>
-                <option value="hybride">🔋 Hybride</option>
-                <option value="gpl">🔵 GPL</option>
+                <option value="essence">Essence</option>
+                <option value="diesel">Diesel</option>
+                <option value="electrique">Électrique</option>
+                <option value="hybride">Hybride</option>
+                <option value="gpl">GPL</option>
               </select>
             </FieldTip>
             <FieldTip label="Couleur" hint="Purement descriptif, pratique si vous gérez plusieurs véhicules similaires.">
@@ -939,14 +981,21 @@ export function VehiclesPage() {
         >
           <ArrowLeft size={14} /> Véhicules
         </button>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: '11px', fontFamily: 'var(--mono)', color: 'var(--text3)', textTransform: 'uppercase' }}>Fiche véhicule</span>
           <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text)', margin: '2px 0 0' }}>{sv.name}</h1>
+          <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '3px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 8px' }}>
+            <span>
+              {[[sv.brand, sv.model].filter(Boolean).join(' '), sv.year ? String(sv.year) : '', sv.registration ?? '']
+                .filter(Boolean).join('  ·  ') || 'Informations à compléter'}
+            </span>
+            <span style={{ fontFamily: 'var(--mono)', color: '#67e8f9', fontWeight: 600 }}>{sv.mileage.toLocaleString('fr-FR')} km</span>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <StatusBadge status={sv.status} />
           <button className="hdr-btn" onClick={() => setEditMode(m => !m)} title="Modifier"><Pencil size={13} /></button>
-          <button className="btn-ghost" style={{ fontSize: '12px' }} title="Exporter PDF" onClick={() => generateVehiclePDF(sv)}>📄 PDF</button>
+          <button className="btn-ghost" style={{ fontSize: '12px' }} title="Exporter le carnet d'entretien PDF" onClick={() => generateVehiclePDF(sv, { interventions: sv.interventions, parts, mileageLogs: sv.mileageLogs, budget: budgetTarget })}>Exporter PDF</button>
           <ConfirmButton onConfirm={handleDeleteVehicle} confirmLabel="Supprimer ?" />
         </div>
       </div>
@@ -1036,11 +1085,11 @@ export function VehiclesPage() {
                     <FieldTip label="Carburant" hint="Le type d'énergie utilisé par le véhicule.">
                       <select name="fuelType" defaultValue={sv.fuelType ?? ''} className="modal-select">
                         <option value="">—</option>
-                        <option value="essence">⛽ Essence</option>
-                        <option value="diesel">🛢 Diesel</option>
-                        <option value="electrique">⚡ Électrique</option>
-                        <option value="hybride">🔋 Hybride</option>
-                        <option value="gpl">🔵 GPL</option>
+                        <option value="essence">Essence</option>
+                        <option value="diesel">Diesel</option>
+                        <option value="electrique">Électrique</option>
+                        <option value="hybride">Hybride</option>
+                        <option value="gpl">GPL</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Statut" hint="L'état opérationnel actuel. Affecte les filtres et l'affichage dans la liste.">
@@ -1067,7 +1116,7 @@ export function VehiclesPage() {
                 <span>Kilométrage<strong>{sv.mileage.toLocaleString('fr-FR')} km</strong></span>
                 <span>Année<strong>{sv.year ?? '—'}</strong></span>
                 <span>Immatriculation<strong style={{ fontFamily: 'var(--mono)' }}>{sv.registration ?? '—'}</strong></span>
-                <span>Carburant<strong>{sv.fuelType ? { essence:'⛽ Essence', diesel:'🛢 Diesel', electrique:'⚡ Électrique', hybride:'🔋 Hybride', gpl:'🔵 GPL' }[sv.fuelType] ?? sv.fuelType : '—'}</strong></span>
+                <span>Carburant<strong>{sv.fuelType ? { essence:'Essence', diesel:'Diesel', electrique:'Électrique', hybride:'Hybride', gpl:'GPL' }[sv.fuelType] ?? sv.fuelType : '—'}</strong></span>
                 <span>Marque / Modèle<strong>{[sv.brand, sv.model].filter(Boolean).join(' ') || '—'}</strong></span>
                 <span>Puissance<strong>{sv.power ? `${sv.power} CV` : '—'}</strong></span>
                 <span>Couleur<strong>{sv.color ?? '—'}</strong></span>
@@ -1077,13 +1126,13 @@ export function VehiclesPage() {
                 {sv.insuranceExpiry && (
                   <span>Fin assurance<strong style={{ color: new Date(sv.insuranceExpiry) < new Date(Date.now() + 30*864e5) ? '#f87171' : 'var(--text)' }}>
                     {new Date(sv.insuranceExpiry).toLocaleDateString('fr-FR')}
-                    {new Date(sv.insuranceExpiry) < new Date() ? ' ⚠ EXPIRÉE' : new Date(sv.insuranceExpiry) < new Date(Date.now() + 30*864e5) ? ' ⚠ bientôt' : ''}
+                    {new Date(sv.insuranceExpiry) < new Date() ? ' · EXPIRÉE' : new Date(sv.insuranceExpiry) < new Date(Date.now() + 30*864e5) ? ' · bientôt' : ''}
                   </strong></span>
                 )}
                 {sv.ctExpiry && (
                   <span>Fin CT<strong style={{ color: new Date(sv.ctExpiry) < new Date(Date.now() + 30*864e5) ? '#f87171' : 'var(--text)' }}>
                     {new Date(sv.ctExpiry).toLocaleDateString('fr-FR')}
-                    {new Date(sv.ctExpiry) < new Date() ? ' ⚠ EXPIRÉ' : new Date(sv.ctExpiry) < new Date(Date.now() + 30*864e5) ? ' ⚠ bientôt' : ''}
+                    {new Date(sv.ctExpiry) < new Date() ? ' · EXPIRÉ' : new Date(sv.ctExpiry) < new Date(Date.now() + 30*864e5) ? ' · bientôt' : ''}
                   </strong></span>
                 )}
               </div>
@@ -1179,8 +1228,8 @@ export function VehiclesPage() {
                         onChange={e => setInterventionExecutor(e.target.value as 'self' | 'pro')}
                         className="modal-select"
                       >
-                        <option value="self">🛠 Moi-même</option>
-                        <option value="pro">🏢 Professionnel</option>
+                        <option value="self">Moi-même</option>
+                        <option value="pro">Professionnel</option>
                       </select>
                     </FieldTip>
                     {interventionExecutor === 'pro' && (
@@ -1241,7 +1290,7 @@ export function VehiclesPage() {
                       <div style={{ gridColumn: '1/-1' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: scheduleOnAgenda ? 'rgba(167,139,250,0.08)' : 'rgba(255,255,255,0.02)' }}>
                           <input type="checkbox" checked={scheduleOnAgenda} onChange={e => setScheduleOnAgenda(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#a78bfa', cursor: 'pointer' }} />
-                          <span style={{ fontWeight: 600 }}>📅 Ajouter une tâche dans l'agenda</span>
+                          <span style={{ fontWeight: 600 }}>Ajouter une tâche dans l'agenda</span>
                           <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>(échéance : date de l'intervention)</span>
                         </label>
                       </div>
@@ -1253,7 +1302,7 @@ export function VehiclesPage() {
                       <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, color: 'var(--text)', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: recordInFinance ? 'rgba(74,222,128,0.06)' : 'rgba(255,255,255,0.02)' }}>
                           <input type="checkbox" checked={recordInFinance} onChange={e => setRecordInFinance(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#22c55e', cursor: 'pointer' }} />
-                          <span style={{ fontWeight: 600 }}>💰 Enregistrer la dépense dans Finances</span>
+                          <span style={{ fontWeight: 600 }}>Enregistrer la dépense dans Finances</span>
                           <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>(si un coût est saisi)</span>
                         </label>
                         {recordInFinance && (
@@ -1446,8 +1495,8 @@ export function VehiclesPage() {
                       </FieldTip>
                       <FieldTip label="Qui réalise ?" hint="Carnet d'entretien : soi-même ou pro.">
                         <select name="executor" defaultValue={editingIntervention.executor ?? 'self'} className="modal-select">
-                          <option value="self">🛠 Moi-même</option>
-                          <option value="pro">🏢 Professionnel</option>
+                          <option value="self">Moi-même</option>
+                          <option value="pro">Professionnel</option>
                         </select>
                       </FieldTip>
                       {contacts.length > 0 && (
@@ -1517,26 +1566,26 @@ export function VehiclesPage() {
                           {/* V1 — Badge carnet d'entretien : qui a fait le travail. */}
                           {i.executor === 'pro' ? (
                             <span title={i.professionalContact?.displayName ?? i.professionalName ?? undefined} style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(103,232,249,0.12)', color: '#67e8f9', border: '1px solid rgba(103,232,249,0.3)' }}>
-                              🏢 PRO{(() => { const n = i.professionalContact?.displayName ?? i.professionalName; return n ? ` · ${n.slice(0, 18)}${n.length > 18 ? '…' : ''}` : '' })()}
+                              PRO{(() => { const n = i.professionalContact?.displayName ?? i.professionalName; return n ? ` · ${n.slice(0, 18)}${n.length > 18 ? '…' : ''}` : '' })()}
                             </span>
                           ) : i.executor === 'self' ? (
                             <span style={{ fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 700, padding: '2px 7px', borderRadius: 5, background: 'rgba(167,139,250,0.12)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.3)' }}>
-                              🛠 MOI-MÊME
+                              MOI-MÊME
                             </span>
                           ) : null}
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                           <span>{new Date(i.date).toLocaleDateString('fr-FR')}</span>
-                          {i.category && <span>🏷 {i.category}</span>}
-                          {i.mileage && <span>🔧 {Number(i.mileage).toLocaleString('fr-FR')} km</span>}
-                          {i.costAmount && <span style={{ color: '#f87171', fontWeight: 600 }}>💰 {Number(i.costAmount).toFixed(2)} €</span>}
-                          {i.financeTransaction && <span style={{ color: '#4ade80' }} title="Dépense enregistrée dans Finances">📊 Finances</span>}
-                          {i.documents && i.documents.length > 0 && <span title="Pièces jointes">📎 {i.documents.length}</span>}
+                          {i.category && <span>{i.category}</span>}
+                          {i.mileage && <span>{Number(i.mileage).toLocaleString('fr-FR')} km</span>}
+                          {i.costAmount && <span style={{ color: '#f87171', fontWeight: 600 }}>{Number(i.costAmount).toFixed(2)} €</span>}
+                          {i.financeTransaction && <span style={{ color: '#4ade80' }} title="Dépense enregistrée dans Finances">Finances</span>}
+                          {i.documents && i.documents.length > 0 && <span title="Pièces jointes">{i.documents.length} PJ</span>}
                           {(i.warrantyMileage || i.warrantyUntil) && (
-                            <span title="Garantie">🛡 {[i.warrantyMileage ? `${Number(i.warrantyMileage).toLocaleString('fr-FR')} km` : null, i.warrantyUntil ? new Date(i.warrantyUntil).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
+                            <span title="Garantie">Garantie {[i.warrantyMileage ? `${Number(i.warrantyMileage).toLocaleString('fr-FR')} km` : null, i.warrantyUntil ? new Date(i.warrantyUntil).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
                           )}
                           {(i.nextDueMileage || i.nextDueDate) && (
-                            <span style={{ color: '#fbbf24' }} title="Prochaine échéance">⏭ {[i.nextDueMileage ? `${Number(i.nextDueMileage).toLocaleString('fr-FR')} km` : null, i.nextDueDate ? new Date(i.nextDueDate).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
+                            <span style={{ color: '#fbbf24' }} title="Prochaine échéance">Échéance {[i.nextDueMileage ? `${Number(i.nextDueMileage).toLocaleString('fr-FR')} km` : null, i.nextDueDate ? new Date(i.nextDueDate).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
                           )}
                         </div>
                         {i.notes && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px', fontStyle: 'italic' }}>{i.notes}</div>}
@@ -1546,11 +1595,11 @@ export function VehiclesPage() {
                           if (parts.length === 0) return null
                           return (
                             <div style={{ marginTop: '8px', padding: '8px 10px', background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.18)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ fontSize: '10px', color: '#a78bfa', fontFamily: 'var(--mono)', fontWeight: 700 }}>📦 PIÈCES DU STOCK CONSOMMÉES</div>
+                              <div style={{ fontSize: '10px', color: '#a78bfa', fontFamily: 'var(--mono)', fontWeight: 700 }}>PIÈCES DU STOCK CONSOMMÉES</div>
                               {parts.map(m => (
                                 <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text2)' }}>
                                   <span style={{ flex: 1 }}>{m.stockItem.name} — {Number(m.quantity).toLocaleString('fr-FR')} {m.stockItem.unit}{m.valueAmount ? ` · ${Number(m.valueAmount).toFixed(2)} €` : ''}</span>
-                                  <button className="btn-ghost" style={{ fontSize: '10px', padding: '2px 6px', color: '#fbbf24' }} title="Remettre la pièce en stock" onClick={() => handleReverseStockMovement(m.id)}>↩ Annuler</button>
+                                  <button className="btn-ghost" style={{ fontSize: '10px', padding: '2px 6px', color: '#fbbf24' }} title="Remettre la pièce en stock" onClick={() => handleReverseStockMovement(m.id)}>Annuler</button>
                                 </div>
                               ))}
                             </div>
@@ -1669,10 +1718,10 @@ export function VehiclesPage() {
                     </FieldTip>
                     <FieldTip label="Urgence" hint="Le niveau de priorité. 'Bloquant' = le véhicule ne peut pas rouler sans. 'Important' = à faire vite. 'Normal' = dans le planning. 'Optionnel' = amélioration.">
                       <select name="urgency" defaultValue="normal" className="modal-select">
-                        <option value="bloquant">🔴 Bloquant</option>
-                        <option value="important">🟡 Important</option>
-                        <option value="normal">⚪ Normal</option>
-                        <option value="optionnel">💤 Optionnel</option>
+                        <option value="bloquant">Bloquant</option>
+                        <option value="important">Important</option>
+                        <option value="normal">Normal</option>
+                        <option value="optionnel">Optionnel</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Référence" hint="La référence fabricant ou OEM de la pièce. Permet de commander exactement la bonne pièce et évite les erreurs de compatibilité.">
@@ -1720,10 +1769,10 @@ export function VehiclesPage() {
                       </FieldTip>
                       <FieldTip label="Urgence" hint="Bloquant = le véhicule est immobilisé. Important = à faire vite. Normal = dans le planning.">
                         <select name="urgency" defaultValue={editingPart.urgency} className="modal-select">
-                          <option value="bloquant">🔴 Bloquant</option>
-                          <option value="important">🟡 Important</option>
-                          <option value="normal">⚪ Normal</option>
-                          <option value="optionnel">💤 Optionnel</option>
+                          <option value="bloquant">Bloquant</option>
+                          <option value="important">Important</option>
+                          <option value="normal">Normal</option>
+                          <option value="optionnel">Optionnel</option>
                         </select>
                       </FieldTip>
                       <FieldTip label="Référence" hint="Référence fabricant ou OEM pour commander la bonne pièce.">
@@ -1785,13 +1834,13 @@ export function VehiclesPage() {
                             <span style={{ fontSize: '9px', color: 'var(--text3)' }}>{part.category}</span>
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            {linkedStockItem && <span style={{ color: '#a78bfa' }}>📦 {linkedStockItem.name} — {Number(linkedStockItem.quantity).toLocaleString('fr-FR')} {linkedStockItem.unit} en stock</span>}
+                            {linkedStockItem && <span style={{ color: '#a78bfa' }}>{linkedStockItem.name} — {Number(linkedStockItem.quantity).toLocaleString('fr-FR')} {linkedStockItem.unit} en stock</span>}
                             {userReference && <span>Réf: <strong style={{ color: 'var(--text2)' }}>{userReference}</strong></span>}
                             {part.estimatedPrice && <span>Estimé: <strong style={{ color: '#fbbf24' }}>{Number(part.estimatedPrice).toFixed(2)} €</strong></span>}
                             {part.realPrice && <span>Réel: <strong style={{ color: '#4ade80' }}>{Number(part.realPrice).toFixed(2)} €</strong></span>}
                           </div>
                           {part.comment && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', fontStyle: 'italic' }}>{part.comment}</div>}
-                          {part.link && <a href={part.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10px', color: '#a78bfa', marginTop: '4px', display: 'block' }}>🔗 Lien achat</a>}
+                          {part.link && <a href={part.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '10px', color: '#a78bfa', marginTop: '4px', display: 'block' }}>Lien achat</a>}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-end' }}>
                           <select value={part.status} onChange={e => handlePartStatus(part.id, e.target.value)} style={{ ...SELECT_STYLE, fontSize: '10px', padding: '3px 6px', border: `1px solid ${statusColors[part.status] ?? 'var(--border)'}40` }}>
@@ -1884,8 +1933,11 @@ export function VehiclesPage() {
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px' }}>
                 <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>BUDGET CIBLE</div>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input type="number" step="0.01" min="0" value={budgetTarget || ''} placeholder="Ex : 2000" onChange={e => { const v = Number(e.target.value) || 0; setBudgetTarget(v); localStorage.setItem(`vehicle-budget-${sv.id}`, String(v)) }} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '14px', fontFamily: 'var(--font)', outline: 'none' }} />
+                  <input type="number" step="0.01" min="0" value={budgetTarget || ''} placeholder="Ex : 2000" onChange={e => setBudgetTarget(Number(e.target.value) || 0)} style={{ flex: 1, background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 12px', color: 'var(--text)', fontSize: '14px', fontFamily: 'var(--font)', outline: 'none' }} />
                   <span style={{ color: 'var(--text2)' }}>€</span>
+                  <button className="primary-action" onClick={() => saveBudget(sv.id, budgetTarget)} disabled={budgetSaving} style={{ width: 'auto', whiteSpace: 'nowrap', opacity: budgetSaving ? 0.6 : 1 }}>
+                    {budgetSaving ? '…' : 'Enregistrer'}
+                  </button>
                 </div>
                 {budgetTarget > 0 && <div style={{ marginTop: '12px' }}><ProgressBar value={budgetUsedPct} color={budgetUsedPct >= 100 ? '#f87171' : budgetUsedPct >= 75 ? '#fbbf24' : '#4ade80'} label={`${totalCost.toLocaleString('fr-FR')} € / ${budgetTarget.toLocaleString('fr-FR')} €`} /></div>}
               </div>
@@ -1909,7 +1961,7 @@ export function VehiclesPage() {
               {/* Coûts interventions */}
               {sv.interventions.filter(i => Number(i.costAmount) > 0).length > 0 && (
                 <div>
-                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>🔧 INTERVENTIONS</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>INTERVENTIONS</div>
                   {sv.interventions.filter(i => Number(i.costAmount) > 0).sort((a, b) => Number(b.costAmount) - Number(a.costAmount)).map(i => {
                     const s = INTERV_STATUS[i.status] ?? { color: '#7b82a8' }
                     return (
@@ -1927,7 +1979,7 @@ export function VehiclesPage() {
               {/* Sorties stock — Lot C : regroupées par travail + annulation */}
               {sv.stockMovements.length > 0 && (
                 <div>
-                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>📦 PIÈCES & CONSOMMABLES (sorties stock)</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>PIÈCES & CONSOMMABLES (sorties stock)</div>
                   {(() => {
                     type Mv = (typeof sv.stockMovements)[number]
                     const byInterv = new Map<string, Mv[]>()
@@ -1941,12 +1993,12 @@ export function VehiclesPage() {
                     const groups: { key: string; label: string; items: Mv[] }[] = []
                     for (const [iid, items] of byInterv) {
                       const interv = sv.interventions.find(x => x.id === iid)
-                      groups.push({ key: iid, label: interv ? `🔧 ${interv.title}` : '🔧 Intervention supprimée', items })
+                      groups.push({ key: iid, label: interv ? interv.title : 'Intervention supprimée', items })
                     }
-                    if (manual.length > 0) groups.push({ key: 'manual', label: '✋ Sorties manuelles', items: manual })
+                    if (manual.length > 0) groups.push({ key: 'manual', label: 'Sorties manuelles', items: manual })
                     const renderMovement = (m: Mv) => (
                       <div key={m.id} className="document-row">
-                        <span style={{ fontSize: '15px' }}>📦</span>
+                        <Package size={15} style={{ color: 'var(--text3)', flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '13px', fontWeight: 500 }}>{m.stockItem.name}</div>
                           <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{Number(m.quantity).toLocaleString('fr-FR')} {m.stockItem.unit} · {new Date(m.createdAt).toLocaleDateString('fr-FR')}</div>
@@ -1990,15 +2042,15 @@ export function VehiclesPage() {
                     </FieldTip>
                     <FieldTip label="Type de document" hint="Catégorisez le fichier pour le retrouver facilement dans la galerie : photo avant/après travaux, facture, document administratif…">
                       <select name="vehicleFileContext" defaultValue="document" className="modal-select">
-                        <option value="avant">📸 Photo avant</option>
-                        <option value="apres">📸 Photo après</option>
-                        <option value="travail">🔧 Photo travail</option>
-                        <option value="piece">⚙️ Photo pièce</option>
-                        <option value="document">📄 Document</option>
-                        <option value="facture">🧾 Facture</option>
-                        <option value="assurance">🛡 Assurance</option>
-                        <option value="carte_grise">📋 Carte grise</option>
-                        <option value="ct">✅ CT</option>
+                        <option value="avant">Photo avant</option>
+                        <option value="apres">Photo après</option>
+                        <option value="travail">Photo travail</option>
+                        <option value="piece">Photo pièce</option>
+                        <option value="document">Document</option>
+                        <option value="facture">Facture</option>
+                        <option value="assurance">Assurance</option>
+                        <option value="carte_grise">Carte grise</option>
+                        <option value="ct">CT</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Date d'expiration" hint="Optionnel. Pour les documents à durée limitée (assurance, CT, contrôle technique) : une alerte apparaîtra à l'approche de la date.">
@@ -2024,14 +2076,14 @@ export function VehiclesPage() {
               {['avant', 'apres', 'travail', 'piece'].map(cat => {
                 const catPhotos = sv.documents.filter(l => l.context === cat || (cat === 'avant' && !l.context && l.document.mimeType.startsWith('image/')))
                 if (catPhotos.length === 0) return null
-                const catLabel: Record<string, string> = { avant: '📸 Avant', apres: '📸 Après', travail: '🔧 Travail', piece: '⚙️ Pièce' }
+                const catLabel: Record<string, string> = { avant: 'Avant', apres: 'Après', travail: 'Travail', piece: 'Pièce' }
                 return (
                   <div key={cat}>
                     <div style={{ fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: '8px' }}>{catLabel[cat]} ({catPhotos.length})</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                       {catPhotos.map(link => (
                         <button key={link.id} onClick={() => downloadDoc(link.document.id, link.document.name)} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', borderRadius: '10px', padding: '14px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '28px' }}>🖼️</span>
+                          <Image size={28} style={{ color: 'var(--text3)' }} />
                           <span style={{ fontSize: '9px', color: 'var(--text3)', wordBreak: 'break-all', textAlign: 'center' }}>{link.document.name.slice(0, 16)}</span>
                         </button>
                       ))}

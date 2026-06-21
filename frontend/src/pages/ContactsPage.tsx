@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft, FileLock2, FileText, MessageSquare, Pencil, Plus,
-  Upload, UserRound,
+  ArrowLeft, ClipboardList, FileLock2, FileText, Handshake, Mail, MapPin,
+  MessageSquare, Pencil, Phone, Plus, StickyNote, Upload, UserRound,
+  type LucideIcon,
 } from 'lucide-react'
 import { ConfirmButton } from '../components/ConfirmButton'
 import { FieldTip } from '../components/FieldTip'
@@ -21,8 +22,8 @@ const KIND_STYLE: Record<string, { color: string; label: string }> = {
   insurer:  { color: '#f9a8d4', label: 'Assureur' },
 }
 
-const INTERACT_ICONS: Record<string, string> = {
-  call: '📞', email: '✉️', meeting: '🤝', quote: '📋', note: '📝',
+const INTERACT_ICONS: Record<string, LucideIcon> = {
+  call: Phone, email: Mail, meeting: Handshake, quote: ClipboardList, note: StickyNote,
 }
 
 const SELECT_STYLE: React.CSSProperties = {
@@ -218,11 +219,11 @@ export function ContactsPage() {
             </FieldTip>
             <FieldTip label="Type" hint="Catégorie du contact — influence les filtres et l'affichage. 'Garage' et 'Assureur' sont des types spécialisés pour le module Véhicules.">
               <select name="kind" className="modal-select" defaultValue="person">
-                <option value="person">👤 Personne</option>
-                <option value="company">🏢 Organisation</option>
-                <option value="supplier">🏭 Fournisseur</option>
-                <option value="garage">🔧 Garage</option>
-                <option value="insurer">🛡️ Assureur</option>
+                <option value="person">Personne</option>
+                <option value="company">Organisation</option>
+                <option value="supplier">Fournisseur</option>
+                <option value="garage">Garage</option>
+                <option value="insurer">Assureur</option>
               </select>
             </FieldTip>
             <FieldTip label="Organisation" hint="Entreprise ou structure à laquelle appartient ce contact. Affiché sous le nom dans les listes.">
@@ -288,9 +289,9 @@ export function ContactsPage() {
                   <KindBadge kind={c.kind} />
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text3)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  {c.email && <span>✉ {c.email}</span>}
-                  {c.phone && <span>📞 {c.phone}</span>}
-                  {c.city && <span>📍 {c.city}</span>}
+                  {c.email && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><Mail size={11} /> {c.email}</span>}
+                  {c.phone && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><Phone size={11} /> {c.phone}</span>}
+                  {c.city && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}><MapPin size={11} /> {c.city}</span>}
                 </div>
                 {(c._count?.interactions ?? 0) > 0 && (
                   <div style={{ marginTop: '8px', fontSize: '10px', color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
@@ -368,11 +369,11 @@ export function ContactsPage() {
                     </FieldTip>
                     <FieldTip label="Type" hint="Catégorie du contact pour le filtrage.">
                       <select name="kind" className="modal-select" defaultValue={selected.kind}>
-                        <option value="person">👤 Personne</option>
-                        <option value="company">🏢 Organisation</option>
-                        <option value="supplier">🏭 Fournisseur</option>
-                        <option value="garage">🔧 Garage</option>
-                        <option value="insurer">🛡️ Assureur</option>
+                        <option value="person">Personne</option>
+                        <option value="company">Organisation</option>
+                        <option value="supplier">Fournisseur</option>
+                        <option value="garage">Garage</option>
+                        <option value="insurer">Assureur</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Organisation" hint="Entreprise ou structure associée.">
@@ -407,7 +408,7 @@ export function ContactsPage() {
                 <Plus size={14} /> Nouvelle interaction
               </button>
 
-              <Modal open={showAddInteraction} onClose={() => setShowAddInteraction(false)} title="Nouvelle interaction" subtitle="Enregistre un échange avec ce contact pour garder un historique complet." icon="🤝">
+              <Modal open={showAddInteraction} onClose={() => setShowAddInteraction(false)} title="Nouvelle interaction" subtitle="Enregistre un échange avec ce contact pour garder un historique complet." icon={<Handshake size={20} />}>
                 <form onSubmit={handleAddInteraction}>
                   <div className="modal-grid">
                     <FieldTip label="Titre" hint="Sujet de l'échange. Ex : 'Appel devis pneus', 'Réunion bilan annuel'." required style={{ gridColumn: '1/-1' }}>
@@ -415,11 +416,11 @@ export function ContactsPage() {
                     </FieldTip>
                     <FieldTip label="Type" hint="Nature de l'échange — filtre et icône dans la liste des interactions.">
                       <select name="type" className="modal-select" defaultValue="note">
-                        <option value="note">📝 Note</option>
-                        <option value="call">📞 Appel</option>
-                        <option value="email">✉️ Email</option>
-                        <option value="meeting">🤝 Réunion</option>
-                        <option value="quote">📋 Devis</option>
+                        <option value="note">Note</option>
+                        <option value="call">Appel</option>
+                        <option value="email">Email</option>
+                        <option value="meeting">Réunion</option>
+                        <option value="quote">Devis</option>
                       </select>
                     </FieldTip>
                     <FieldTip label="Date" hint="Quand cet échange a-t-il eu lieu ? Par défaut : aujourd'hui." required>
@@ -439,7 +440,7 @@ export function ContactsPage() {
               {selected.interactions.length === 0 ? <p className="muted">Aucune interaction enregistrée.</p>
                 : selected.interactions.map(i => (
                   <div key={i.id} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 14px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '20px', flexShrink: 0 }}>{INTERACT_ICONS[i.type] ?? '📝'}</span>
+                    {(() => { const Icon = INTERACT_ICONS[i.type] ?? StickyNote; return <Icon size={18} style={{ flexShrink: 0, color: 'var(--text2)', marginTop: 2 }} /> })()}
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: '13px', fontWeight: 600 }}>{i.title}</div>
                       {i.notes && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '4px', fontStyle: 'italic' }}>{i.notes}</div>}
