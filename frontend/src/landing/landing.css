@@ -819,60 +819,170 @@
 .landing-example-head small {
   color: var(--text3); font-size: 12.5px;
 }
-.landing-example-status {
+/* Badge de statut véhicule (couleurs alignées sur le produit). */
+.lx-status {
   font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  padding: 8px 14px;
-  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.lx-status.restoration {
   background: rgba(251,191,36,0.12);
   color: #fbbf24;
-  border: 1px solid rgba(251,191,36,0.3);
-  text-transform: uppercase;
+  border: 1px solid rgba(251,191,36,0.25);
 }
-.landing-example-grid {
+
+/* Onglets de la fiche (reprend NAV_ITEMS du produit). */
+.lx-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.lx-tabs span {
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 8px 8px 0 0;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.lx-tabs span.active {
+  color: #c4b5fd;
+  background: rgba(124,58,237,0.12);
+  border-bottom: 2px solid #a78bfa;
+}
+
+/* Grille de caractéristiques (detail-grid du produit). */
+.lx-specs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
 }
-.landing-example-block {
+.lx-specs span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 10.5px;
+  color: var(--text3);
+}
+.lx-specs strong { font-size: 13.5px; color: var(--text); font-weight: 700; }
+
+/* Bloc avancement global. */
+.lx-progress {
   padding: 16px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.025);
+  background: rgba(255,255,255,0.02);
   border: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 16px;
 }
-.landing-example-block.accent {
-  background: linear-gradient(135deg, rgba(74,222,128,0.10), rgba(74,222,128,0.02));
-  border-color: rgba(74,222,128,0.3);
-}
-.landing-example-label {
-  display: block;
+.lx-mono {
   font-family: var(--mono);
   font-size: 10.5px;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  margin-bottom: 12px;
   text-transform: uppercase;
-  color: var(--text3);
-  margin-bottom: 8px;
 }
-.landing-example-block p {
-  margin: 0 0 6px;
-  font-size: 14px;
+.lx-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.lx-bar-head strong { color: #fbbf24; }
+.lx-bar {
+  height: 6px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.lx-bar-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: #fbbf24;
+}
+.lx-mini-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 14px;
+}
+.lx-mini-stats > div {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+}
+.lx-mini-stats strong { display: block; font-size: 18px; font-weight: 700; }
+.lx-mini-stats span { font-size: 10px; color: var(--text3); }
+
+/* Listes interventions / pièces. */
+.lx-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.lx-list {
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.lx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 12.5px;
   color: var(--text);
-  font-weight: 600;
-  line-height: 1.4;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
 }
-.landing-example-block small {
-  font-size: 11.5px;
+.lx-row:last-child { border-bottom: none; }
+.lx-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lx-badge.done    { background: rgba(74,222,128,0.12);  color: #4ade80; border: 1px solid rgba(74,222,128,0.3); }
+.lx-badge.todo    { background: rgba(123,130,168,0.15); color: #9aa0c0; border: 1px solid rgba(123,130,168,0.3); }
+.lx-badge.recu    { background: rgba(103,232,249,0.12); color: #67e8f9; border: 1px solid rgba(103,232,249,0.3); }
+.lx-badge.acheter { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+
+/* Ventilation des coûts (detail-grid du produit). */
+.lx-costs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.lx-costs span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.05);
+  font-size: 10.5px;
   color: var(--text3);
 }
-.landing-example-budget {
-  font-size: 24px !important;
-  font-weight: 800 !important;
-  background: linear-gradient(90deg, #4ade80, #67e8f9);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
-}
+.lx-costs strong { font-size: 17px; font-weight: 800; letter-spacing: -0.3px; }
 
 /* ── Pour qui ────────────────────────────────────────────────────────── */
 .landing-audience {
@@ -977,9 +1087,12 @@
     gap: 6px;
   }
   .landing-mockup-side li { font-size: 11.5px; padding: 6px 10px; }
-  .landing-example { padding: 22px; }
+  .landing-example { padding: 20px; }
   .landing-example-head { flex-direction: column; align-items: flex-start; }
   .landing-example-emoji { width: 52px; height: 52px; font-size: 34px; }
+  .lx-lists { grid-template-columns: 1fr; }
+  .lx-costs { grid-template-columns: 1fr; }
+  .lx-tabs { gap: 2px; overflow-x: auto; }
   .landing-footer-grid { grid-template-columns: 1fr 1fr; gap: 28px 20px; }
   .landing-footer-brand { grid-column: 1 / -1; }
 }

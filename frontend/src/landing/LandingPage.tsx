@@ -263,48 +263,92 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── Exemple concret ────────────────────────────────────────── */}
+      {/* ── Exemple concret (réplique fidèle de la fiche véhicule) ──── */}
       <section id="exemple" className="landing-section landing-wrap">
         <span className="landing-section-kicker reveal">Un exemple concret</span>
-        <h2 className="reveal">Voici à quoi ressemble un projet dans CleanVex.</h2>
+        <h2 className="reveal">Voici la vraie fiche véhicule de CleanVex.</h2>
         <p className="landing-section-lead reveal">
-          Une fiche claire, vivante, qui répond à toutes les questions que vous vous posez
-          quand vous reprenez le projet après plusieurs semaines.
+          Exactement ce que vous retrouvez dans l'application : avancement, interventions,
+          pièces et coût réel — pour savoir où vous en êtes en un coup d'œil.
         </p>
 
         <div className="landing-example reveal">
+          {/* En-tête véhicule */}
           <div className="landing-example-head">
             <div>
               <span className="landing-example-emoji">🏎️</span>
               <div>
-                <h3>Projet Golf 3 GTI</h3>
-                <small>Restauration mécanique &amp; châssis</small>
+                <h3>Golf 3 GTI</h3>
+                <small>Volkswagen · 1992 · GH-208-VR</small>
               </div>
             </div>
-            <span className="landing-example-status">🔧 En restauration</span>
+            <span className="lx-status restoration">En restauration</span>
           </div>
 
-          <div className="landing-example-grid">
-            <div className="landing-example-block">
-              <span className="landing-example-label">Dernière intervention</span>
-              <p>Remplacement du train arrière.</p>
-              <small>il y a 4 jours</small>
+          {/* Onglets de la fiche */}
+          <div className="lx-tabs">
+            <span className="active">Résumé</span>
+            <span>Interventions</span>
+            <span>Pièces</span>
+            <span>Alertes</span>
+            <span>Budget</span>
+            <span>Documents</span>
+          </div>
+
+          {/* Caractéristiques */}
+          <div className="lx-specs">
+            <span>Kilométrage<strong>187 400 km</strong></span>
+            <span>Année<strong>1992</strong></span>
+            <span>Carburant<strong>⛽ Essence</strong></span>
+            <span>Puissance<strong>110 CV</strong></span>
+          </div>
+
+          {/* Avancement global */}
+          <div className="lx-progress">
+            <div className="lx-mono">AVANCEMENT GLOBAL</div>
+            <div className="lx-bar-head">
+              <span>6/10 éléments terminés</span>
+              <strong>60 %</strong>
             </div>
-            <div className="landing-example-block">
-              <span className="landing-example-label">À faire</span>
-              <p>Commander les silent-blocs.</p>
-              <small>priorité haute</small>
+            <div className="lx-bar"><div className="lx-bar-fill" style={{ width: '60%' }} /></div>
+            <div className="lx-mini-stats">
+              <div><strong style={{ color: '#4ade80' }}>6/9</strong><span>Interventions faites</span></div>
+              <div><strong style={{ color: 'var(--text3)' }}>0</strong><span>Bloqués</span></div>
+              <div><strong style={{ color: '#fbbf24' }}>1</strong><span>Alerte ouverte</span></div>
             </div>
-            <div className="landing-example-block">
-              <span className="landing-example-label">Stock disponible</span>
-              <p>✓ 4 vis de fixation disponibles</p>
-              <small>rangées : étagère B · bac 3</small>
+          </div>
+
+          {/* Travaux + pièces (statuts réels du produit) */}
+          <div className="lx-lists">
+            <div className="lx-list">
+              <div className="lx-mono">Interventions</div>
+              <div className="lx-row">
+                <span>Remplacement du train arrière</span>
+                <span className="lx-badge done">Terminé</span>
+              </div>
+              <div className="lx-row">
+                <span>Réfection des silent-blocs</span>
+                <span className="lx-badge todo">À faire</span>
+              </div>
             </div>
-            <div className="landing-example-block accent">
-              <span className="landing-example-label">Budget investi</span>
-              <p className="landing-example-budget">3 250 €</p>
-              <small>depuis le début du projet</small>
+            <div className="lx-list">
+              <div className="lx-mono">Pièces</div>
+              <div className="lx-row">
+                <span>4× Vis de fixation train AR</span>
+                <span className="lx-badge recu">Reçu</span>
+              </div>
+              <div className="lx-row">
+                <span>2× Silent-blocs renforcés</span>
+                <span className="lx-badge acheter">À acheter</span>
+              </div>
             </div>
+          </div>
+
+          {/* Coût réel */}
+          <div className="lx-costs">
+            <span>Coût total<strong style={{ color: '#f87171' }}>3 250 €</strong></span>
+            <span>Déjà réalisé<strong style={{ color: '#4ade80' }}>2 480 €</strong></span>
+            <span>Reste à faire<strong style={{ color: '#fbbf24' }}>770 €</strong></span>
           </div>
         </div>
       </section>
