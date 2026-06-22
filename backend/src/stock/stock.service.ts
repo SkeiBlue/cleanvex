@@ -4,7 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ModuleCacheService } from '../core/module-cache.service';
-import { paginate, PaginationDto } from '../core/pagination.helper';
+import { paginate } from '../core/pagination.helper';
+import { MovementsQueryDto } from './dto/movements-query.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConsumeStockDto } from './dto/consume-stock.dto';
 import { CreateStockItemDto } from './dto/create-stock-item.dto';
@@ -36,21 +37,26 @@ export class StockService {
 
   async movements(
     ownerId: string,
-    { page = 1, limit = 20 }: PaginationDto = {},
+    { page = 1, limit = 20, stockItemId }: MovementsQueryDto = {},
   ) {
     await this.ensureStockEnabled();
-    const where = { ownerId };
+    const where = { ownerId, ...(stockItemId ? { stockItemId } : {}) };
+    // Filtré sur un article précis : on renvoie tout son historique (cap haut
+    // par sécurité) au lieu de la fenêtre paginée globale de 20 — sinon les
+    // mouvements anciens d'un article disparaissent de sa fiche.
+    const effLimit = stockItemId ? 1000 : limit;
+    const effPage = stockItemId ? 1 : page;
     const [data, total] = await Promise.all([
       this.prisma.stockMovement.findMany({
         where,
         include: { stockItem: true },
         orderBy: { createdAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit,
+        skip: (effPage - 1) * effLimit,
+        take: effLimit,
       }),
       this.prisma.stockMovement.count({ where }),
     ]);
-    return paginate(data, total, page, limit);
+    return paginate(data, total, effPage, effLimit);
   }
 
   async createItem(ownerId: string, dto: CreateStockItemDto) {
@@ -157,20 +163,10 @@ export class StockService {
         data: { quantity: { decrement: dto.quantity } },
       });
 
-      const movement = await tx.stockMovement.create({
-        data: {
-          ownerId,
-          stockItemId: item.id,
-          type: 'consume',
-          quantity: dto.quantity,
-          valueAmount: dto.valueAmount,
-          targetType: dto.vehicleId ? 'vehicle' : undefined,
-          targetId: dto.vehicleId,
-          note: dto.note,
-        },
-      });
-
-      let intervention: unknown = null;
+      // On crée d'abord l'éventuelle intervention véhicule pour pouvoir
+      // lier le mouvement (interventionId) — sinon la pièce consommée
+      // depuis la page Stock n'apparaît pas dans la fiche du véhicule.
+      let intervention: { id: string } | null = null;
       if (dto.vehicleId && dto.valueAmount && dto.valueAmount > 0) {
         intervention = await tx.vehicleIntervention.create({
           data: {
@@ -183,6 +179,20 @@ export class StockService {
           },
         });
       }
+
+      const movement = await tx.stockMovement.create({
+        data: {
+          ownerId,
+          stockItemId: item.id,
+          type: 'consume',
+          quantity: dto.quantity,
+          valueAmount: dto.valueAmount,
+          targetType: dto.vehicleId ? 'vehicle' : undefined,
+          targetId: dto.vehicleId,
+          interventionId: intervention?.id,
+          note: dto.note,
+        },
+      });
 
       return { item: updatedItem, movement, intervention };
     });

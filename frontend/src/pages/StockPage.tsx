@@ -30,7 +30,11 @@ export function StockPage() {
   const [isLoading, setIsLoading]     = useState(true)
 
   const [view, setView]               = useState<View>('list')
-  const [selected, setSelected]       = useState<StockItem | null>(null)
+  // #F — on stocke l'id sélectionné et on DÉRIVE l'objet depuis stockItems :
+  // plus besoin d'un effet de re-sync, et l'article affiché n'est jamais périmé.
+  const [selectedId, setSelectedId]   = useState<string | null>(null)
+  // #E — verrou anti double-soumission pendant une requête réseau.
+  const [busy, setBusy]               = useState(false)
   const [detailTab, setDetailTab]     = useState<DetailTab>('infos')
   const [editMode, setEditMode]       = useState(false)
 
@@ -48,14 +52,20 @@ export function StockPage() {
 
   /* ── Data ── */
   const reload = useCallback(async () => {
-    const [si, sm, sl] = await Promise.all([
+    const [si, sl] = await Promise.all([
       authedFetch('/stock/items'),
-      authedFetch('/stock/movements'),
       authedFetch('/stock/loans'),
     ])
     if (si.ok) setStockItems(await si.json())
-    if (sm.ok) { const d = await sm.json(); setMovements(d.data ?? d) }
     if (sl.ok) setToolLoans(await sl.json())
+  }, [authedFetch])
+
+  // #A — charge TOUT l'historique de mouvements d'un article (filtre serveur),
+  // au lieu des 20 derniers globaux qui tronquaient/faisaient disparaître
+  // l'historique et faussaient les KPIs de la fiche.
+  const loadItemMovements = useCallback(async (itemId: string) => {
+    const r = await authedFetch(`/stock/movements?stockItemId=${itemId}&limit=1000`)
+    if (r.ok) { const d = await r.json(); setMovements(d.data ?? d) }
   }, [authedFetch])
 
   useEffect(() => {
@@ -76,10 +86,8 @@ export function StockPage() {
     load()
   }, [authedFetch, reload])
 
-  /* sync selected après reload */
-  useEffect(() => {
-    if (selected) setSelected(prev => stockItems.find(i => i.id === prev?.id) ?? prev)
-  }, [stockItems]) // eslint-disable-line
+  // #F — objet sélectionné dérivé de la liste : toujours à jour après reload.
+  const selected = selectedId ? stockItems.find(i => i.id === selectedId) ?? null : null
 
   /* ── Handlers ── */
   async function handleCreate(e: FormEv) {
@@ -104,6 +112,8 @@ export function StockPage() {
     if (!body.name || !body.category || !body.unit) {
       toast.err('Nom, catégorie et unité sont obligatoires.'); return
     }
+    if (busy) return
+    setBusy(true)
     try {
       const r = await authedFetch('/stock/items', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -122,14 +132,17 @@ export function StockPage() {
       const created = await r.json()
       form.reset(); setShowCreate(false); toast.ok('Article créé.')
       await reload()
-      setSelected(created); setView('detail'); setDetailTab('infos')
+      setSelectedId(created.id); setView('detail'); setDetailTab('infos')
     } catch (err) {
       toast.err(`Erreur réseau : ${err instanceof Error ? err.message : 'inconnue'}`)
+    } finally {
+      setBusy(false)
     }
   }
 
   async function handleUpdate(e: FormEv) {
-    e.preventDefault(); if (!selected) return
+    e.preventDefault(); if (!selected || busy) return
+    setBusy(true)
     const d = new FormData(e.currentTarget)
     const r = await authedFetch(`/stock/items/${selected.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -145,21 +158,24 @@ export function StockPage() {
         threshold: d.get('threshold') ? Number(d.get('threshold')) : undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Mise à jour refusée.')); return }
-    setEditMode(false); toast.ok('Article mis à jour.'); await reload()
+    if (!r.ok) { toast.err(await parseApiError(r, 'Mise à jour refusée.')); setBusy(false); return }
+    setEditMode(false); toast.ok('Article mis à jour.'); await reload(); setBusy(false)
   }
 
   async function handleDelete() {
-    if (!selected) return
+    if (!selected || busy) return
+    setBusy(true)
     const r = await authedFetch(`/stock/items/${selected.id}`, { method: 'DELETE' })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); return }
-    toast.ok('Article supprimé.'); setSelected(null); setView('list'); await reload()
+    if (!r.ok) { toast.err(await parseApiError(r, 'Suppression refusée.')); setBusy(false); return }
+    toast.ok('Article supprimé.'); setSelectedId(null); setView('list'); await reload(); setBusy(false)
   }
 
   async function handlePurchase(e: FormEv) {
-    e.preventDefault(); if (!selected) return
-    const d = new FormData(e.currentTarget)
-    const r = await authedFetch(`/stock/items/${selected.id}/purchase`, {
+    e.preventDefault(); if (!selected || busy) return
+    const itemId = selected.id; const form = e.currentTarget
+    setBusy(true)
+    const d = new FormData(form)
+    const r = await authedFetch(`/stock/items/${itemId}/purchase`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         quantity: Number(d.get('quantity')),
@@ -168,19 +184,22 @@ export function StockPage() {
         operationDate: d.get('operationDate') || undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Achat refusé.')); return }
-    e.currentTarget.reset(); setShowPurchase(false); toast.ok('Achat enregistré.')
-    await reload()
-    // Bascule sur l'onglet "Mouvements" pour que le nouveau mouvement
-    // apparaisse immédiatement à l'écran (la quantité change aussi mais
-    // ce n'est pas toujours évident à voir).
-    setDetailTab('mouvements')
+    if (!r.ok) { toast.err(await parseApiError(r, 'Achat refusé.')); setBusy(false); return }
+    // #G — rafraîchissement ciblé : maj locale de la quantité + historique de
+    // l'article (1 requête) au lieu d'un reload complet (flicker/latence).
+    const res = await r.json().catch(() => null)
+    form.reset(); setShowPurchase(false); toast.ok('Achat enregistré.')
+    if (res?.item) setStockItems(prev => prev.map(i => i.id === res.item.id ? { ...i, ...res.item } : i))
+    await loadItemMovements(itemId)
+    setDetailTab('mouvements'); setBusy(false)
   }
 
   async function handleConsume(e: FormEv) {
-    e.preventDefault(); if (!selected) return
-    const d = new FormData(e.currentTarget)
-    const r = await authedFetch(`/stock/items/${selected.id}/consume`, {
+    e.preventDefault(); if (!selected || busy) return
+    const itemId = selected.id; const form = e.currentTarget
+    setBusy(true)
+    const d = new FormData(form)
+    const r = await authedFetch(`/stock/items/${itemId}/consume`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         quantity: Number(d.get('quantity')),
@@ -189,14 +208,17 @@ export function StockPage() {
         note: d.get('note') || undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Sortie refusée.')); return }
-    e.currentTarget.reset(); setShowConsume(false); toast.ok('Sortie enregistrée.')
-    await reload()
-    setDetailTab('mouvements')
+    if (!r.ok) { toast.err(await parseApiError(r, 'Sortie refusée.')); setBusy(false); return }
+    const res = await r.json().catch(() => null)
+    form.reset(); setShowConsume(false); toast.ok('Sortie enregistrée.')
+    if (res?.item) setStockItems(prev => prev.map(i => i.id === res.item.id ? { ...i, ...res.item } : i))
+    await loadItemMovements(itemId)
+    setDetailTab('mouvements'); setBusy(false)
   }
 
   async function handleCreateLoan(e: FormEv) {
-    e.preventDefault(); if (!selected) return
+    e.preventDefault(); if (!selected || busy) return
+    setBusy(true)
     const d = new FormData(e.currentTarget)
     const r = await authedFetch('/stock/loans', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -209,17 +231,22 @@ export function StockPage() {
         notes: d.get('notes') || undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Prêt refusé.')); return }
-    e.currentTarget.reset(); setShowCreateLoan(false); toast.ok('Prêt enregistré.'); await reload()
+    if (!r.ok) { toast.err(await parseApiError(r, 'Prêt refusé.')); setBusy(false); return }
+    e.currentTarget.reset(); setShowCreateLoan(false); toast.ok('Prêt enregistré.'); await reload(); setBusy(false)
   }
 
   async function handleReturn(loanId: string) {
-    await authedFetch(`/stock/loans/${loanId}/return`, { method: 'PATCH' })
-    toast.ok('Retour enregistré.'); await reload()
+    if (busy) return
+    setBusy(true)
+    const r = await authedFetch(`/stock/loans/${loanId}/return`, { method: 'PATCH' })
+    if (!r.ok) { toast.err(await parseApiError(r, 'Retour refusé.')); setBusy(false); return }
+    toast.ok('Retour enregistré.'); await reload(); setBusy(false)
   }
 
   /* ── Dérivés ── */
-  const belowThreshold = stockItems.filter(i => i.thresholdEnabled && Number(i.quantity) <= Number(i.threshold ?? 0))
+  // #H — on n'alerte pas sur les articles « à acheter » (wishlist) : un item
+  // à 0 avec seuil activé n'est pas un vrai stock bas.
+  const belowThreshold = stockItems.filter(i => (i.status ?? 'in-stock') !== 'to-buy' && i.thresholdEnabled && Number(i.quantity) <= Number(i.threshold ?? 0))
   const totalValue     = stockItems.reduce((s, i) => s + Number(i.quantity) * Number(i.valueAmount ?? 0), 0)
 
   const filtered = stockItems.filter(i => {
@@ -338,7 +365,7 @@ export function StockPage() {
           </div>
           <div className="modal-footer">
             <button type="button" className="btn-ghost" onClick={() => setShowCreate(false)}>Annuler</button>
-            <button type="submit" className="primary-action"><Package size={14} /> Créer l'article</button>
+            <button type="submit" className="primary-action" disabled={busy}><Package size={14} /> Créer l'article</button>
           </div>
         </form>
       </Modal>
@@ -409,7 +436,7 @@ export function StockPage() {
             const totalVal  = item.valueAmount ? qty * Number(item.valueAmount) : null
             const accentColor = isToBuy ? '#fbbf24' : color
             return (
-              <div key={item.id} onClick={() => { setSelected(item); setView('detail'); setDetailTab('infos'); setEditMode(false) }}
+              <div key={item.id} onClick={() => { setSelectedId(item.id); setView('detail'); setDetailTab('infos'); setEditMode(false); loadItemMovements(item.id) }}
                 style={{ background: isToBuy ? 'rgba(251,191,36,0.04)' : 'var(--card)', border: `1px solid ${isLow ? 'rgba(248,113,113,0.4)' : isToBuy ? 'rgba(251,191,36,0.3)' : 'var(--border)'}`, borderTop: `3px solid ${accentColor}`, borderRadius: '14px', padding: '18px', cursor: 'pointer', transition: 'transform 0.12s, border-color 0.12s', display: 'flex', flexDirection: 'column', gap: '10px' }}
                 onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'none')}
@@ -588,7 +615,7 @@ export function StockPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setEditMode(false)}>Annuler</button>
-                    <button type="submit" className="primary-action">Sauvegarder</button>
+                    <button type="submit" className="primary-action" disabled={busy}>Sauvegarder</button>
                   </div>
                 </form>
               </Modal>
@@ -641,7 +668,7 @@ export function StockPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setShowPurchase(false)}>Annuler</button>
-                    <button type="submit" className="primary-action" style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>↑ Valider l'achat</button>
+                    <button type="submit" className="primary-action" disabled={busy} style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>↑ Valider l'achat</button>
                   </div>
                 </form>
               </Modal>
@@ -667,7 +694,7 @@ export function StockPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setShowConsume(false)}>Annuler</button>
-                    <button type="submit" className="primary-action" style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}>↓ Valider la sortie</button>
+                    <button type="submit" className="primary-action" disabled={busy} style={{ background: 'rgba(248,113,113,0.15)', color: '#f87171', borderColor: 'rgba(248,113,113,0.3)' }}>↓ Valider la sortie</button>
                   </div>
                 </form>
               </Modal>
@@ -746,7 +773,7 @@ export function StockPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setShowCreateLoan(false)}>Annuler</button>
-                    <button type="submit" className="primary-action"><RotateCcw size={13} /> Enregistrer le prêt</button>
+                    <button type="submit" className="primary-action" disabled={busy}><RotateCcw size={13} /> Enregistrer le prêt</button>
                   </div>
                 </form>
               </Modal>

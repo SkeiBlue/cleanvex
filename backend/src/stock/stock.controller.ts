@@ -19,8 +19,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { toCsv } from '../core/csv.helper';
-import { PaginationDto } from '../core/pagination.helper';
 import { ConsumeStockDto } from './dto/consume-stock.dto';
+import { MovementsQueryDto } from './dto/movements-query.dto';
 import { CreateStockItemDto } from './dto/create-stock-item.dto';
 import { CreateToolLoanDto } from './dto/create-tool-loan.dto';
 import { PurchaseStockDto } from './dto/purchase-stock.dto';
@@ -136,9 +136,9 @@ export class StockController {
   @Get('movements')
   movements(
     @Req() req: AuthenticatedRequest,
-    @Query() pagination: PaginationDto,
+    @Query() query: MovementsQueryDto,
   ) {
-    return this.stock.movements(req.user.id, pagination);
+    return this.stock.movements(req.user.id, query);
   }
 
   @Patch('items/:id')
