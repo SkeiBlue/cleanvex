@@ -161,6 +161,41 @@ export class VehiclesService {
     return { ...vehicle, interventions, documents, stockMovements };
   }
 
+  // LOT 4 — budget véhicule persisté en base (remplace l'ancien localStorage).
+  // Le budget vit sur la fiche véhicule : la vérification de propriété
+  // (ownerId) empêche tout accès croisé entre utilisateurs.
+  async getBudget(ownerId: string, id: string) {
+    await this.ensureVehiclesEnabled();
+    const vehicle = await this.ensureVehicleExists(ownerId, id);
+    return {
+      amount: vehicle.budget !== null ? Number(vehicle.budget) : null,
+      periodType: 'total' as const,
+    };
+  }
+
+  async setBudget(ownerId: string, id: string, amount: number) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, id);
+    const vehicle = await this.prisma.vehicle.update({
+      where: { id },
+      data: { budget: amount },
+    });
+    return {
+      amount: vehicle.budget !== null ? Number(vehicle.budget) : null,
+      periodType: 'total' as const,
+    };
+  }
+
+  async deleteBudget(ownerId: string, id: string) {
+    await this.ensureVehiclesEnabled();
+    await this.ensureVehicleExists(ownerId, id);
+    await this.prisma.vehicle.update({
+      where: { id },
+      data: { budget: null },
+    });
+    return { amount: null, periodType: 'total' as const };
+  }
+
   async update(ownerId: string, id: string, dto: UpdateVehicleDto) {
     await this.ensureVehiclesEnabled();
     await this.ensureVehicleExists(ownerId, id);

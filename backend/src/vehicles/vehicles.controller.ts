@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Req,
   Res,
   UseGuards,
@@ -20,6 +21,7 @@ import { CreateVehicleAlertDto } from './dto/create-vehicle-alert.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { CreateVehiclePartDto } from './dto/create-vehicle-part.dto';
 import { LinkVehicleDocumentDto } from './dto/link-vehicle-document.dto';
+import { SetVehicleBudgetDto } from './dto/set-vehicle-budget.dto';
 import { UpdateInterventionDto } from './dto/update-intervention.dto';
 import { UpdateVehicleAlertDto } from './dto/update-vehicle-alert.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -86,6 +88,27 @@ export class VehiclesController {
   @Get(':id')
   get(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
     return this.vehicles.get(req.user.id, id);
+  }
+
+  // LOT 4 — budget véhicule (persisté en base, plus de localStorage).
+  @Get(':id/budget')
+  getBudget(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.getBudget(req.user.id, id);
+  }
+
+  @Put(':id/budget')
+  setBudget(
+    @Param('id') id: string,
+    @Body() dto: SetVehicleBudgetDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.vehicles.setBudget(req.user.id, id, dto.amount);
+  }
+
+  @Delete(':id/budget')
+  @HttpCode(200)
+  deleteBudget(@Param('id') id: string, @Req() req: AuthenticatedRequest) {
+    return this.vehicles.deleteBudget(req.user.id, id);
   }
 
   @Patch(':id')
