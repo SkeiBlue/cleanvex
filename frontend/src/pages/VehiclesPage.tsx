@@ -178,6 +178,12 @@ export function VehiclesPage() {
   const [validatingIntervention, setValidatingIntervention] = useState<{ id: string; title: string } | null>(null)
   // Lot A — édition d'un travail + option "enregistrer en Finances" (dégradable).
   const [editingIntervention, setEditingIntervention] = useState<VehicleDetail['interventions'][number] | null>(null)
+  // Note rapide en ligne : id de l'intervention dont la note est en cours
+  // d'édition directement sur la carte (sans ouvrir le formulaire complet),
+  // + brouillon du texte en cours de saisie.
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
   const [recordInFinance, setRecordInFinance] = useState(false)
   const [scheduleOnAgenda, setScheduleOnAgenda] = useState(false)
   const [financeAccounts, setFinanceAccounts] = useState<{ id: string; name: string }[]>([])
@@ -467,6 +473,22 @@ export function VehiclesPage() {
       body: JSON.stringify({ status }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Changement de statut refusé.')); return }
+    await loadVehicleDetail(selectedVehicle.id)
+  }
+
+  // Note rapide en ligne — enregistre uniquement le champ notes d'une
+  // intervention via le même endpoint PATCH partiel que le changement de statut.
+  async function handleSaveIntervNote(interventionId: string) {
+    if (!selectedVehicle) return
+    setNoteSaving(true)
+    const r = await authedFetch(`/vehicles/${selectedVehicle.id}/interventions/${interventionId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: noteDraft.trim() }),
+    })
+    setNoteSaving(false)
+    if (!r.ok) { toast.err(await parseApiError(r, 'Enregistrement de la note refusé.')); return }
+    setEditingNoteId(null)
+    setNoteDraft('')
     await loadVehicleDetail(selectedVehicle.id)
   }
 
@@ -1588,7 +1610,45 @@ export function VehiclesPage() {
                             <span style={{ color: '#fbbf24' }} title="Prochaine échéance">Échéance {[i.nextDueMileage ? `${Number(i.nextDueMileage).toLocaleString('fr-FR')} km` : null, i.nextDueDate ? new Date(i.nextDueDate).toLocaleDateString('fr-FR') : null].filter(Boolean).join(' / ')}</span>
                           )}
                         </div>
-                        {i.notes && <div style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px', fontStyle: 'italic' }}>{i.notes}</div>}
+                        {/* Note rapide en ligne : édition directe sur la carte sans ouvrir le formulaire complet */}
+                        {editingNoteId === i.id ? (
+                          <div style={{ marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <textarea
+                              autoFocus
+                              value={noteDraft}
+                              onChange={e => setNoteDraft(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Escape') { setEditingNoteId(null); setNoteDraft('') }
+                                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSaveIntervNote(i.id)
+                              }}
+                              rows={2}
+                              className="modal-input"
+                              placeholder="Note rapide… (Ctrl+Entrée pour enregistrer)"
+                              style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: '11px' }}
+                            />
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button type="button" className="primary-action" style={{ fontSize: '11px', padding: '3px 10px' }} disabled={noteSaving} onClick={() => handleSaveIntervNote(i.id)}>Enregistrer</button>
+                              <button type="button" className="btn-ghost" style={{ fontSize: '11px', padding: '3px 10px' }} onClick={() => { setEditingNoteId(null); setNoteDraft('') }}>Annuler</button>
+                            </div>
+                          </div>
+                        ) : i.notes ? (
+                          <div
+                            onClick={() => { setEditingNoteId(i.id); setNoteDraft(i.notes ?? '') }}
+                            title="Cliquer pour modifier la note"
+                            style={{ fontSize: '11px', color: 'var(--text2)', marginTop: '6px', fontStyle: 'italic', cursor: 'text' }}
+                          >
+                            {i.notes}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => { setEditingNoteId(i.id); setNoteDraft('') }}
+                            style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '6px', padding: '2px 0', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Plus size={11} /> Ajouter une note
+                          </button>
+                        )}
                         {/* Lot C — pièces du stock consommées par CE travail */}
                         {(() => {
                           const parts = sv.stockMovements.filter(m => m.interventionId === i.id)
