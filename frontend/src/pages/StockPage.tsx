@@ -64,7 +64,12 @@ export function StockPage() {
   // au lieu des 20 derniers globaux qui tronquaient/faisaient disparaître
   // l'historique et faussaient les KPIs de la fiche.
   const loadItemMovements = useCallback(async (itemId: string) => {
-    const r = await authedFetch(`/stock/movements?stockItemId=${itemId}&limit=1000`)
+    // Tente le filtre serveur (backend à jour). Si le backend n'a pas encore
+    // la query `stockItemId` (forbidNonWhitelisted => 400), on retombe sur le
+    // fetch global pour ne JAMAIS afficher une liste vide. Le filtre par
+    // article reste fait côté client via `itemMovements`.
+    let r = await authedFetch(`/stock/movements?stockItemId=${itemId}&limit=1000`)
+    if (!r.ok) r = await authedFetch('/stock/movements?limit=100')
     if (r.ok) { const d = await r.json(); setMovements(d.data ?? d) }
   }, [authedFetch])
 
