@@ -64,11 +64,14 @@ export function StockPage() {
   // au lieu des 20 derniers globaux qui tronquaient/faisaient disparaître
   // l'historique et faussaient les KPIs de la fiche.
   const loadItemMovements = useCallback(async (itemId: string) => {
-    // Tente le filtre serveur (backend à jour). Si le backend n'a pas encore
-    // la query `stockItemId` (forbidNonWhitelisted => 400), on retombe sur le
-    // fetch global pour ne JAMAIS afficher une liste vide. Le filtre par
-    // article reste fait côté client via `itemMovements`.
-    let r = await authedFetch(`/stock/movements?stockItemId=${itemId}&limit=1000`)
+    // Filtre serveur en principal : on n'envoie PAS de `limit` (le DTO le
+    // plafonne à 100, donc `limit=1000` serait rejeté en 400). Avec juste
+    // `stockItemId`, le backend renvoie tout l'historique de l'article (cap
+    // interne à 1000). Fallback : si le backend ne connaît pas encore ce
+    // filtre (pas redéployé), on retombe sur le fetch global pour ne JAMAIS
+    // afficher une liste vide — le filtre par article se fait alors côté
+    // client via `itemMovements`.
+    let r = await authedFetch(`/stock/movements?stockItemId=${itemId}`)
     if (!r.ok) r = await authedFetch('/stock/movements?limit=100')
     if (r.ok) { const d = await r.json(); setMovements(d.data ?? d) }
   }, [authedFetch])
