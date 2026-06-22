@@ -76,7 +76,7 @@ export function Sidebar({
       <nav className="nav-section" aria-label="Menu principal">
         <div className="nav-label">Principal</div>
         <NavLink
-          to="/"
+          to="/app"
           end
           className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
           onClick={onClose}
