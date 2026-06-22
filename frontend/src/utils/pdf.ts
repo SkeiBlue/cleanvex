@@ -168,7 +168,7 @@ export function generateFinancePDF(
   doc.save(`rapport_finances_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
-/* ── Rapport Véhicule ──────────────────────────────────────────── */
+/* ── Carnet d'entretien Véhicule ───────────────────────────────── */
 export interface VehicleForPDF {
   name: string
   brand?: string | null
@@ -176,50 +176,239 @@ export interface VehicleForPDF {
   year?: number | null
   mileage: number
   fuelType?: string | null
+  power?: number | null
   status: string
+  // Immatriculation (champ `registration` côté modèle). `licensePlate` est
+  // conservé en alias optionnel pour rétro-compat d'éventuels appels existants.
+  registration?: string | null
   licensePlate?: string | null
+  vin?: string | null
   purchaseDate?: string | null
   purchasePrice?: string | number | null
   notes?: string | null
 }
 
-export function generateVehiclePDF(vehicle: VehicleForPDF) {
+export interface InterventionForPDF {
+  title: string
+  date: string
+  status: string
+  mileage?: number | null
+  costAmount?: string | number | null
+  executor?: 'self' | 'pro' | null
+  professionalName?: string | null
+  professionalContact?: { displayName: string; organization: string | null } | null
+  category?: string | null
+  notes?: string | null
+  nextDueDate?: string | null
+  nextDueMileage?: number | null
+}
+
+export interface PartForPDF {
+  name: string
+  quantity: number
+  status: string
+  reference?: string | null
+  estimatedPrice?: string | number | null
+  realPrice?: string | number | null
+}
+
+export interface MileageLogForPDF {
+  mileage: number
+  date: string
+}
+
+export interface VehiclePDFData {
+  interventions?: InterventionForPDF[]
+  parts?: PartForPDF[]
+  mileageLogs?: MileageLogForPDF[]
+  budget?: number | null
+}
+
+const STATUS_LABELS_FR: Record<string, string> = {
+  in_use: 'En fonction', restoration: 'En restauration', sold: 'Vendu',
+  planned_purchase: 'Achat prévu', donor: 'Donneuse',
+  active: 'En fonction', repair: 'En restauration', parked: 'En fonction',
+}
+const INTERV_STATUS_FR: Record<string, string> = {
+  planned: 'Planifié', todo: 'À faire', in_progress: 'En cours',
+  waiting: 'En attente', done: 'Terminé', cancelled: 'Annulé',
+  'a-faire': 'À faire', 'en-cours': 'En cours', bloque: 'Bloqué', fait: 'Terminé',
+}
+const PART_STATUS_FR: Record<string, string> = {
+  'a-acheter': 'À acheter', commande: 'Commandé', recu: 'Reçu',
+  monte: 'Monté', 'a-verifier': 'À vérifier',
+}
+function isDoneStatus(s: string) { return s === 'done' || s === 'fait' }
+function eur(n: number) { return `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` }
+function shortDate(d: string | null | undefined) {
+  return d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—'
+}
+function intervBy(i: InterventionForPDF) {
+  if (i.executor === 'pro') {
+    return i.professionalContact?.displayName ?? i.professionalName ?? 'Professionnel'
+  }
+  return 'Soi-même'
+}
+
+export function generateVehiclePDF(vehicle: VehicleForPDF, data: VehiclePDFData = {}) {
+  const FOOTER = `Carnet d'entretien · ${vehicle.name}`
+  const interventions = [...(data.interventions ?? [])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  )
+  const parts = data.parts ?? []
+  const mileageLogs = [...(data.mileageLogs ?? [])].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  )
+  const plate = vehicle.registration ?? vehicle.licensePlate ?? null
+
   const doc = new jsPDF({ orientation: 'portrait', format: 'a4' })
   doc.setFillColor(...DARK)
   doc.rect(0, 0, 210, 297, 'F')
 
-  header(doc, vehicle.name, `Fiche véhicule — ${vehicle.licensePlate ?? 'Plaque non renseignée'}`)
+  header(doc, vehicle.name, `Carnet d'entretien — ${plate ?? 'Immatriculation non renseignée'}`)
 
-  let y = 40
+  let y = 38
+
+  /* ── Synthèse ── */
+  y = section(doc, y, 'Synthèse')
+  const totalCost = interventions.reduce((s, i) => s + Number(i.costAmount ?? 0), 0)
+  const doneCount = interventions.filter(i => isDoneStatus(i.status)).length
+  const boxes = [
+    { label: 'Interventions', value: `${interventions.length}`, color: [103, 232, 249] as [number, number, number] },
+    { label: 'Terminées', value: `${doneCount}`, color: [74, 222, 128] as [number, number, number] },
+    { label: 'Coût total', value: eur(totalCost), color: [248, 113, 113] as [number, number, number] },
+    { label: 'Km actuel', value: `${vehicle.mileage.toLocaleString('fr-FR')}`, color: [167, 139, 250] as [number, number, number] },
+  ]
+  boxes.forEach((b, i) => {
+    const bx = 12 + i * 47
+    doc.setFillColor(20, 24, 48)
+    doc.roundedRect(bx, y, 43, 18, 2, 2, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(b.value.length > 9 ? 10 : 13)
+    doc.setTextColor(b.color[0], b.color[1], b.color[2])
+    doc.text(b.value, bx + 21.5, y + 10, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(...MUTED)
+    doc.text(b.label, bx + 21.5, y + 16, { align: 'center' })
+  })
+  y += 26
+
+  /* ── Informations générales ── */
+  y = checkPage(doc, y, FOOTER)
   y = section(doc, y, 'Informations générales')
-
   const infos: [string, string][] = [
-    ['Marque', vehicle.brand ?? '—'],
-    ['Modèle', vehicle.model ?? '—'],
+    ['Marque / Modèle', `${vehicle.brand ?? '—'} ${vehicle.model ?? ''}`.trim()],
     ['Année', vehicle.year?.toString() ?? '—'],
-    ['Kilométrage', `${vehicle.mileage.toLocaleString('fr-FR')} km`],
+    ['Immatriculation', plate ?? '—'],
+    ['VIN', vehicle.vin ?? '—'],
     ['Carburant', vehicle.fuelType ?? '—'],
-    ['Statut', vehicle.status],
-    ['Date achat', vehicle.purchaseDate ? new Date(vehicle.purchaseDate).toLocaleDateString('fr-FR') : '—'],
-    ['Prix achat', vehicle.purchasePrice != null ? `${Number(vehicle.purchasePrice).toLocaleString('fr-FR')} €` : '—'],
+    ['Puissance', vehicle.power != null ? `${vehicle.power} ch` : '—'],
+    ['Statut', STATUS_LABELS_FR[vehicle.status] ?? vehicle.status],
+    ['Date achat', shortDate(vehicle.purchaseDate)],
+    ['Prix achat', vehicle.purchasePrice != null ? eur(Number(vehicle.purchasePrice)) : '—'],
+    ...(data.budget != null && data.budget > 0 ? [['Budget prévu', eur(data.budget)] as [string, string]] : []),
   ]
   infos.forEach(([k, v], i) => {
+    y = checkPage(doc, y, FOOTER)
     y = row(doc, y, [k, v], [60, 126], i % 2 === 0)
   })
+  y += 4
 
-  if (vehicle.notes) {
+  /* ── Historique des interventions ── */
+  y = checkPage(doc, y, FOOTER)
+  y = section(doc, y, `Historique des interventions (${interventions.length})`)
+  if (interventions.length === 0) {
+    doc.setFont('helvetica', 'italic'); doc.setFontSize(8); doc.setTextColor(...MUTED)
+    doc.text('Aucune intervention enregistrée.', 12, y); y += 8
+  } else {
+    const cols = [22, 18, 64, 38, 28, 16]
+    const headers = ['Date', 'Km', 'Travail', 'Par', 'Coût', 'État']
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...MUTED)
+    let hx = 12
+    headers.forEach((h, i) => { doc.text(h, hx, y); hx += cols[i] })
+    y += 3
+    doc.setDrawColor(30, 35, 71); doc.setLineWidth(0.2); doc.line(12, y, 198, y); y += 4
+    interventions.forEach((it, i) => {
+      y = checkPage(doc, y, FOOTER)
+      const title = it.category ? `${it.title} · ${it.category}` : it.title
+      y = row(doc, y, [
+        shortDate(it.date),
+        it.mileage != null ? it.mileage.toLocaleString('fr-FR') : '—',
+        title.slice(0, 42),
+        intervBy(it).slice(0, 22),
+        it.costAmount != null ? eur(Number(it.costAmount)) : '—',
+        INTERV_STATUS_FR[it.status] ?? it.status,
+      ], cols, i % 2 === 1)
+    })
     y += 4
-    y = section(doc, y, 'Notes')
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(...LIGHT)
-    const lines = doc.splitTextToSize(vehicle.notes, 180)
-    doc.text(lines, 12, y)
-    y += lines.length * 5
   }
 
-  doc.setFontSize(7)
-  doc.setTextColor(...MUTED)
-  doc.text('Fiche Véhicule · Plateforme Personnelle', 104, 287, { align: 'center' })
-  doc.save(`vehicule_${vehicle.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
+  /* ── Pièces ── */
+  if (parts.length > 0) {
+    y = checkPage(doc, y, FOOTER)
+    y = section(doc, y, `Pièces (${parts.length})`)
+    const cols = [66, 16, 50, 26, 28]
+    const headers = ['Pièce', 'Qté', 'Référence', 'État', 'Prix']
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor(...MUTED)
+    let hx = 12
+    headers.forEach((h, i) => { doc.text(h, hx, y); hx += cols[i] })
+    y += 3
+    doc.setDrawColor(30, 35, 71); doc.setLineWidth(0.2); doc.line(12, y, 198, y); y += 4
+    parts.forEach((p, i) => {
+      y = checkPage(doc, y, FOOTER)
+      const price = p.realPrice != null ? Number(p.realPrice) : (p.estimatedPrice != null ? Number(p.estimatedPrice) : null)
+      y = row(doc, y, [
+        p.name.slice(0, 44),
+        `${p.quantity}`,
+        (p.reference ?? '—').slice(0, 32),
+        PART_STATUS_FR[p.status] ?? p.status,
+        price != null ? eur(price) : '—',
+      ], cols, i % 2 === 1)
+    })
+    y += 4
+  }
+
+  /* ── Prochaines échéances ── */
+  const upcoming = interventions.filter(i => i.nextDueDate || i.nextDueMileage)
+  if (upcoming.length > 0) {
+    y = checkPage(doc, y, FOOTER)
+    y = section(doc, y, 'Prochaines échéances')
+    upcoming.forEach((it, i) => {
+      y = checkPage(doc, y, FOOTER)
+      const due = [
+        it.nextDueDate ? shortDate(it.nextDueDate) : null,
+        it.nextDueMileage != null ? `${it.nextDueMileage.toLocaleString('fr-FR')} km` : null,
+      ].filter(Boolean).join(' · ')
+      y = row(doc, y, [it.title.slice(0, 60), due], [120, 66], i % 2 === 1)
+    })
+    y += 4
+  }
+
+  /* ── Historique kilométrique (15 derniers relevés) ── */
+  if (mileageLogs.length > 0) {
+    y = checkPage(doc, y, FOOTER)
+    y = section(doc, y, 'Historique kilométrique')
+    mileageLogs.slice(0, 15).forEach((m, i) => {
+      y = checkPage(doc, y, FOOTER)
+      y = row(doc, y, [shortDate(m.date), `${m.mileage.toLocaleString('fr-FR')} km`], [60, 126], i % 2 === 1)
+    })
+    y += 4
+  }
+
+  /* ── Notes ── */
+  if (vehicle.notes) {
+    y = checkPage(doc, y, FOOTER)
+    y = section(doc, y, 'Notes')
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(...LIGHT)
+    const lines = doc.splitTextToSize(vehicle.notes, 186) as string[]
+    lines.forEach((line) => {
+      y = checkPage(doc, y, FOOTER)
+      doc.text(line, 12, y); y += 5
+    })
+  }
+
+  doc.setFontSize(7); doc.setTextColor(...MUTED)
+  doc.text(FOOTER, 104, 287, { align: 'center' })
+  doc.save(`carnet_entretien_${vehicle.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`)
 }
