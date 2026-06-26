@@ -31,6 +31,7 @@ const MODULE_ROUTES: Record<string, string> = {
 type Props = {
   user: User
   modules: ModuleItem[]
+  moduleBadges?: Record<string, number>
   sidebarOpen?: boolean
   collapsed?: boolean
   onClose?: () => void
@@ -39,6 +40,7 @@ type Props = {
 
 export function Sidebar({
   user, modules,
+  moduleBadges = {},
   sidebarOpen = false,
   collapsed = false,
   onClose,
@@ -99,6 +101,7 @@ export function Sidebar({
           .filter(m => m.isVisible !== false)
           .map((module) => {
           const Icon = MODULE_ICONS[module.key] ?? Settings
+          const count = moduleBadges[module.key] ?? 0
           return (
             <NavLink
               to={MODULE_ROUTES[module.key] ?? '/app'}
@@ -106,12 +109,14 @@ export function Sidebar({
               className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
               onClick={onClose}
               data-label={module.title}
-              aria-label={module.title}
+              aria-label={count > 0 ? `${module.title} — ${count} à traiter` : module.title}
             >
               <div className="nav-ico"><Icon size={15} /></div>
               <span className="nav-txt">{module.title}</span>
-              {!module.isEnabled && (
+              {!module.isEnabled ? (
                 <span className="nav-badge badge-purple">Off</span>
+              ) : count > 0 && (
+                <span className="nav-badge nav-badge-count" aria-hidden="true">{count > 99 ? '99+' : count}</span>
               )}
             </NavLink>
           )

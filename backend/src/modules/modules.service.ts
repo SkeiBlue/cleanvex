@@ -60,6 +60,57 @@ export class ModulesService {
     }));
   }
 
+  /**
+   * Compteurs « vivants » affichés en pastille à côté des modules dans la
+   * sidebar. Ne renvoie que les clés ayant une valeur > 0 pour garder le
+   * payload minimal — la sidebar n'affiche un badge que s'il y a quelque chose
+   * à signaler. Extensible : ajouter ici un compteur par module au besoin.
+   */
+  async badgesForUser(userId: string): Promise<Record<string, number>> {
+    const badges: Record<string, number> = {};
+
+    // Fin de journée courante — sert de borne « échu ou dû aujourd'hui ».
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const [lowStock, agendaDue, vehicleAlerts] = await Promise.all([
+      // Stock — articles dont la quantité est passée sous le seuil d'alerte.
+      // La comparaison colonne-à-colonne (quantity <= threshold) n'est pas
+      // exprimable en Prisma standard, d'où la requête brute.
+      this.prisma.$queryRaw<{ count: bigint }[]>`
+        SELECT COUNT(*) AS count FROM stock_items
+        WHERE owner_id = ${userId}
+          AND threshold_enabled = true
+          AND threshold IS NOT NULL
+          AND quantity <= threshold
+      `,
+      // Agenda — tâches non terminées à échéance aujourd'hui ou en retard.
+      this.prisma.task.count({
+        where: {
+          ownerId: userId,
+          status: { not: 'done' },
+          dueDate: { not: null, lte: endOfToday },
+        },
+      }),
+      // Véhicules — alertes ouvertes échues ou dues aujourd'hui (échéances
+      // d'entretien, contrôles…). Ownership via la relation vehicle.
+      this.prisma.vehicleAlert.count({
+        where: {
+          status: 'open',
+          dueDate: { not: null, lte: endOfToday },
+          vehicle: { ownerId: userId },
+        },
+      }),
+    ]);
+
+    const lowStockCount = Number(lowStock[0]?.count ?? 0);
+    if (lowStockCount > 0) badges.stock = lowStockCount;
+    if (agendaDue > 0) badges.agenda = agendaDue;
+    if (vehicleAlerts > 0) badges.vehicles = vehicleAlerts;
+
+    return badges;
+  }
+
   async setUserPreference(userId: string, moduleKey: string, isVisible: boolean) {
     const exists = await this.prisma.module.findUnique({ where: { key: moduleKey } });
     if (!exists) return null;

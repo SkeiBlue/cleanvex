@@ -36,6 +36,13 @@ export class ModulesController {
     return this.modules.listForUser(req.user.id);
   }
 
+  // Compteurs contextuels (pastilles sidebar) : { stock: 2, ... }.
+  // Ne contient que les clés ayant une valeur à signaler.
+  @Get('badges')
+  badges(@Req() req: AuthenticatedRequest) {
+    return this.modules.badgesForUser(req.user.id);
+  }
+
   @Patch('me/:key')
   setMyPreference(
     @Param('key') key: string,

@@ -40,7 +40,7 @@ const TarifsPage          = lazy(() => import('./landing/LegalPage').then(m => (
 type FormEv = { preventDefault(): void }
 
 function AppLayout() {
-  const { user, modules, unreadNotifications, logout } = useAuth()
+  const { user, modules, moduleBadges, unreadNotifications, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('sidebar-collapsed') === 'true'
@@ -89,6 +89,7 @@ function AppLayout() {
       <Sidebar
         user={user}
         modules={modules}
+        moduleBadges={moduleBadges}
         sidebarOpen={sidebarOpen}
         collapsed={sidebarCollapsed}
         onClose={() => setSidebarOpen(false)}

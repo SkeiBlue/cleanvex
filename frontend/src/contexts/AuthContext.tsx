@@ -10,6 +10,7 @@ type AuthCtx = {
   user: User | null
   accessToken: string | null
   modules: ModuleItem[]
+  moduleBadges: Record<string, number>
   unreadNotifications: number
   isLoading: boolean
   verifyMessage: string | null
@@ -28,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser]               = useState<User | null>(null)
   const [modules, setModules]         = useState<ModuleItem[]>([])
+  const [moduleBadges, setModuleBadges] = useState<Record<string, number>>({})
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [isLoading, setIsLoading]     = useState(true)
   const [verifyMessage, setVerifyMessage] = useState<string | null>(null)
@@ -73,8 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [accessToken, refreshAccessToken])
 
   const refreshModules = useCallback(async () => {
-    const r = await authedFetch('/modules/me')
+    const [r, b] = await Promise.all([
+      authedFetch('/modules/me'),
+      authedFetch('/modules/badges'),
+    ])
     if (r.ok) setModules(await r.json())
+    if (b.ok) setModuleBadges(await b.json())
   }, [authedFetch])
 
   useEffect(() => {
@@ -106,6 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!accessToken) return
     authedFetch('/modules/me').then(async r => { if (r.ok) setModules(await r.json()) })
+    authedFetch('/modules/badges').then(async r => { if (r.ok) setModuleBadges(await r.json()) })
     authedFetch('/agenda/dashboard').then(async r => {
       if (r.ok) { const d = await r.json(); setUnreadNotifications(d.unreadNotifications ?? 0) }
     })
@@ -167,12 +174,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null)
     setUser(null)
     setModules([])
+    setModuleBadges({})
     setUnreadNotifications(0)
   }
 
   return (
     <Ctx.Provider value={{
-      user, accessToken, modules, unreadNotifications, isLoading, verifyMessage,
+      user, accessToken, modules, moduleBadges, unreadNotifications, isLoading, verifyMessage,
       authedFetch, login, register, verifyEmail, logout, refreshModules, setUnreadNotifications,
     }}>
       {children}
