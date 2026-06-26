@@ -192,11 +192,11 @@ export function StockPage() {
         operationDate: d.get('operationDate') || undefined,
       }),
     })
-    if (!r.ok) { toast.err(await parseApiError(r, 'Achat refusé.')); setBusy(false); return }
+    if (!r.ok) { toast.err(await parseApiError(r, 'Entrée refusée.')); setBusy(false); return }
     // #G — rafraîchissement ciblé : maj locale de la quantité + historique de
     // l'article (1 requête) au lieu d'un reload complet (flicker/latence).
     const res = await r.json().catch(() => null)
-    form.reset(); setShowPurchase(false); toast.ok('Achat enregistré.')
+    form.reset(); setShowPurchase(false); toast.ok('Entrée enregistrée.')
     if (res?.item) setStockItems(prev => prev.map(i => i.id === res.item.id ? { ...i, ...res.item } : i))
     await loadItemMovements(itemId)
     setDetailTab('mouvements'); setBusy(false)
@@ -645,29 +645,29 @@ export function StockPage() {
                 </div>
               )}
 
-              {/* Achat + Sortie */}
+              {/* Entrée + Sortie */}
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button onClick={() => setShowPurchase(true)} style={{ flex: 1, minWidth: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(74,222,128,0.3)', background: 'rgba(74,222,128,0.07)', color: '#4ade80', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                  ↑ Enregistrer un achat
+                  ↑ Entrée de stock
                 </button>
                 <button onClick={() => setShowConsume(true)} style={{ flex: 1, minWidth: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px 16px', borderRadius: '10px', border: '1px solid rgba(248,113,113,0.3)', background: 'rgba(248,113,113,0.07)', color: '#f87171', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)' }}>
-                  ↓ Enregistrer une sortie
+                  ↓ Sortie de stock
                 </button>
               </div>
 
-              <Modal open={showPurchase} onClose={() => setShowPurchase(false)} title="Enregistrer un achat" subtitle={sv.name} icon={<Package size={20} />} maxWidth={460}>
+              <Modal open={showPurchase} onClose={() => setShowPurchase(false)} title="Entrée de stock" subtitle={sv.name} icon={<Package size={20} />} maxWidth={460}>
                 <form onSubmit={handlePurchase}>
                   <div className="modal-grid">
-                    <FieldTip label="Quantité" hint="Le nombre d'unités achetées. La valeur sera ajoutée à votre stock actuel." required style={{ gridColumn: '1/-1' }}>
+                    <FieldTip label="Quantité" hint="Le nombre d'unités qui entrent en stock (achat, retour, don, inventaire…). La valeur sera ajoutée à votre stock actuel." required style={{ gridColumn: '1/-1' }}>
                       <input name="quantity" type="number" step="0.01" required className="modal-input" placeholder={`Quantité en ${sv.unit}`} style={{ width: '100%', boxSizing: 'border-box' }} />
                     </FieldTip>
-                    <FieldTip label="Coût total (€)" hint="Le montant total payé pour cet achat (pas le prix unitaire). Sera imputé au compte financier sélectionné si vous en renseignez un.">
+                    <FieldTip label="Coût total (€) · optionnel" hint="À renseigner s'il s'agit d'un achat : le montant total payé (pas le prix unitaire). Laissez vide pour une entrée sans coût (retour, don, ajustement). Sera imputé au compte financier sélectionné si vous en renseignez un.">
                       <input name="valueAmount" type="number" step="0.01" className="modal-input" placeholder="Ex : 45.00" />
                     </FieldTip>
-                    <FieldTip label="Date d'achat" hint="La date à laquelle vous avez effectué cet achat. Apparaîtra dans l'historique des mouvements.">
+                    <FieldTip label="Date" hint="La date de l'entrée en stock. Apparaîtra dans l'historique des mouvements.">
                       <input name="operationDate" type="date" defaultValue={new Date().toISOString().slice(0,10)} className="modal-input" />
                     </FieldTip>
-                    <FieldTip label="Compte financier" hint="Optionnel. Si renseigné, la dépense sera automatiquement enregistrée dans vos finances et débitée du compte choisi." style={{ gridColumn: '1/-1' }}>
+                    <FieldTip label="Compte financier · optionnel" hint="À renseigner uniquement pour un achat. Si renseigné, la dépense sera automatiquement enregistrée dans vos finances et débitée du compte choisi." style={{ gridColumn: '1/-1' }}>
                       <select name="accountId" defaultValue="" className="modal-select" style={{ width: '100%' }}>
                         <option value="">Sans compte (sans imputation financière)</option>
                         {accounts.map(a => <option value={a.id} key={a.id}>{a.name}</option>)}
@@ -676,12 +676,12 @@ export function StockPage() {
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setShowPurchase(false)}>Annuler</button>
-                    <button type="submit" className="primary-action" disabled={busy} style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>↑ Valider l'achat</button>
+                    <button type="submit" className="primary-action" disabled={busy} style={{ background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderColor: 'rgba(74,222,128,0.3)' }}>↑ Valider l'entrée</button>
                   </div>
                 </form>
               </Modal>
 
-              <Modal open={showConsume} onClose={() => setShowConsume(false)} title="Enregistrer une sortie" subtitle={sv.name} icon={<Package size={20} />} maxWidth={460}>
+              <Modal open={showConsume} onClose={() => setShowConsume(false)} title="Sortie de stock" subtitle={sv.name} icon={<Package size={20} />} maxWidth={460}>
                 <form onSubmit={handleConsume}>
                   <div className="modal-grid">
                     <FieldTip label="Quantité sortie" hint="Le nombre d'unités consommées ou utilisées. La valeur sera déduite de votre stock actuel." required style={{ gridColumn: '1/-1' }}>
@@ -718,7 +718,7 @@ export function StockPage() {
                 <>
                   {/* mini KPIs */}
                   <div className="detail-grid">
-                    <span>Total achats<strong style={{ color: '#4ade80' }}>{itemMovements.filter(m => m.type === 'purchase').reduce((s, m) => s + Number(m.quantity), 0).toLocaleString('fr-FR')} {sv.unit}</strong></span>
+                    <span>Total entrées<strong style={{ color: '#4ade80' }}>{itemMovements.filter(m => m.type === 'purchase').reduce((s, m) => s + Number(m.quantity), 0).toLocaleString('fr-FR')} {sv.unit}</strong></span>
                     <span>Total sorties<strong style={{ color: '#f87171' }}>{itemMovements.filter(m => m.type === 'consume').reduce((s, m) => s + Number(m.quantity), 0).toLocaleString('fr-FR')} {sv.unit}</strong></span>
                     <span>Coût total<strong style={{ color: '#fbbf24' }}>{itemMovements.reduce((s, m) => s + Number(m.valueAmount ?? 0), 0).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} €</strong></span>
                   </div>
@@ -728,7 +728,7 @@ export function StockPage() {
                         <span style={{ fontSize: '18px' }}>{m.type === 'purchase' ? '↑' : '↓'}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '13px', fontWeight: 500, color: m.type === 'purchase' ? '#4ade80' : '#f87171' }}>
-                            {m.type === 'purchase' ? 'Achat' : 'Sortie'} · {Number(m.quantity).toLocaleString('fr-FR')} {sv.unit}
+                            {m.type === 'purchase' ? 'Entrée' : 'Sortie'} · {Number(m.quantity).toLocaleString('fr-FR')} {sv.unit}
                           </div>
                           <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>
                             {new Date(m.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
