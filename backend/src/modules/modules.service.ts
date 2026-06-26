@@ -73,7 +73,13 @@ export class ModulesService {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
 
-    const [lowStock, agendaDue, vehicleAlerts] = await Promise.all([
+    // Borne « expire prochainement » pour les documents : 30 jours.
+    const in30Days = new Date();
+    in30Days.setDate(in30Days.getDate() + 30);
+    in30Days.setHours(23, 59, 59, 999);
+
+    const [lowStock, agendaDue, vehicleAlerts, uncategorizedTx, expiringDocs] =
+      await Promise.all([
       // Stock — articles dont la quantité est passée sous le seuil d'alerte.
       // La comparaison colonne-à-colonne (quantity <= threshold) n'est pas
       // exprimable en Prisma standard, d'où la requête brute.
@@ -101,12 +107,22 @@ export class ModulesService {
           vehicle: { ownerId: userId },
         },
       }),
+      // Finances — transactions sans catégorie (« à catégoriser »).
+      this.prisma.financialTransaction.count({
+        where: { ownerId: userId, categoryId: null },
+      }),
+      // Documents — pièces qui expirent dans les 30 jours ou déjà expirées.
+      this.prisma.document.count({
+        where: { ownerId: userId, expiresAt: { not: null, lte: in30Days } },
+      }),
     ]);
 
     const lowStockCount = Number(lowStock[0]?.count ?? 0);
     if (lowStockCount > 0) badges.stock = lowStockCount;
     if (agendaDue > 0) badges.agenda = agendaDue;
     if (vehicleAlerts > 0) badges.vehicles = vehicleAlerts;
+    if (uncategorizedTx > 0) badges.finances = uncategorizedTx;
+    if (expiringDocs > 0) badges.documents = expiringDocs;
 
     return badges;
   }
