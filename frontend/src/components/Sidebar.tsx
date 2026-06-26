@@ -102,6 +102,8 @@ export function Sidebar({
           .map((module) => {
           const Icon = MODULE_ICONS[module.key] ?? Settings
           const count = moduleBadges[module.key] ?? 0
+          // Stock sous seuil = alerte (rouge) ; les autres = « à traiter » (ambre).
+          const alertClass = module.key === 'stock' ? ' is-alert' : ''
           return (
             <NavLink
               to={MODULE_ROUTES[module.key] ?? '/app'}
@@ -116,7 +118,12 @@ export function Sidebar({
               {!module.isEnabled ? (
                 <span className="nav-badge badge-purple">Off</span>
               ) : count > 0 && (
-                <span className="nav-badge nav-badge-count" aria-hidden="true">{count > 99 ? '99+' : count}</span>
+                <>
+                  {/* Compteur visible en mode déplié */}
+                  <span className={`nav-badge nav-badge-count${alertClass}`} aria-hidden="true">{count > 99 ? '99+' : count}</span>
+                  {/* Pastille-point sur l'icône, visible en mode réduit (collapsed) */}
+                  <span className={`nav-badge-dot${alertClass}`} aria-hidden="true" />
+                </>
               )}
             </NavLink>
           )

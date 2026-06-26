@@ -354,13 +354,34 @@ body::after {
 .badge-cyan   { background: rgba(6,182,212,0.2);  color: #67e8f9; }
 
 /* Pastille de compteur « à traiter » à côté d'un module (sidebar). Ton ambre
-   pour attirer l'œil sans alarmer comme du rouge. */
+   pour attirer l'œil sans alarmer comme du rouge ; rouge pour une vraie
+   alerte (variante .is-alert, ex. stock sous seuil). */
 .nav-badge-count {
   min-width: 18px;
   text-align: center;
   background: rgba(245,158,11,0.18);
   color: #fbbf24;
 }
+.nav-badge-count.is-alert {
+  background: rgba(244,63,94,0.18);
+  color: #fb7185;
+}
+
+/* Point indicateur affiché sur l'icône uniquement quand la sidebar est
+   réduite (le compteur texte est alors masqué). Reprend la sévérité. */
+.nav-badge-dot { display: none; }
+.app-shell.sidebar-collapsed .nav-badge-dot {
+  display: block;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fbbf24;
+  border: 2px solid #0c1029;
+}
+.app-shell.sidebar-collapsed .nav-badge-dot.is-alert { background: #fb7185; }
 
 .sidebar-footer {
   padding: 16px;

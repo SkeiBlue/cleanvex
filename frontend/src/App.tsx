@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { Sidebar } from './components/Sidebar'
@@ -40,7 +40,8 @@ const TarifsPage          = lazy(() => import('./landing/LegalPage').then(m => (
 type FormEv = { preventDefault(): void }
 
 function AppLayout() {
-  const { user, modules, moduleBadges, unreadNotifications, logout } = useAuth()
+  const { user, modules, moduleBadges, unreadNotifications, logout, refreshBadges } = useAuth()
+  const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
     localStorage.getItem('sidebar-collapsed') === 'true'
@@ -66,6 +67,16 @@ function AppLayout() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  /* Rafraîchit les pastilles de la sidebar à chaque navigation (après une
+     action sur une page, l'utilisateur change de vue → compteurs à jour) et
+     au retour de focus sur l'onglet. */
+  useEffect(() => { refreshBadges() }, [location.pathname, refreshBadges])
+  useEffect(() => {
+    const onFocus = () => refreshBadges()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [refreshBadges])
 
   const dateLabel = new Date().toLocaleDateString('fr-FR', {
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',

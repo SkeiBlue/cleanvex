@@ -20,6 +20,7 @@ type AuthCtx = {
   verifyEmail: (token: string) => Promise<string>
   logout: () => Promise<void>
   refreshModules: () => Promise<void>
+  refreshBadges: () => Promise<void>
   setUnreadNotifications: (n: number) => void
 }
 
@@ -80,6 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       authedFetch('/modules/badges'),
     ])
     if (r.ok) setModules(await r.json())
+    if (b.ok) setModuleBadges(await b.json())
+  }, [authedFetch])
+
+  // Recharge uniquement les compteurs de pastilles (plus léger que
+  // refreshModules) : appelé à la navigation et au retour de focus pour
+  // garder la sidebar à jour après une action (mouvement de stock, tâche…).
+  const refreshBadges = useCallback(async () => {
+    const b = await authedFetch('/modules/badges')
     if (b.ok) setModuleBadges(await b.json())
   }, [authedFetch])
 
@@ -181,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={{
       user, accessToken, modules, moduleBadges, unreadNotifications, isLoading, verifyMessage,
-      authedFetch, login, register, verifyEmail, logout, refreshModules, setUnreadNotifications,
+      authedFetch, login, register, verifyEmail, logout, refreshModules, refreshBadges, setUnreadNotifications,
     }}>
       {children}
     </Ctx.Provider>
