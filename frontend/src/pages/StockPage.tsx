@@ -190,6 +190,7 @@ export function StockPage() {
         valueAmount: d.get('valueAmount') ? Number(d.get('valueAmount')) : undefined,
         accountId: d.get('accountId') || undefined,
         operationDate: d.get('operationDate') || undefined,
+        note: d.get('note') || undefined,
       }),
     })
     if (!r.ok) { toast.err(await parseApiError(r, 'Entrée refusée.')); setBusy(false); return }
@@ -673,6 +674,9 @@ export function StockPage() {
                         {accounts.map(a => <option value={a.id} key={a.id}>{a.name}</option>)}
                       </select>
                     </FieldTip>
+                    <FieldTip label="Note · optionnel" hint="Une précision courte sur l'origine de l'entrée : 'Réassort fournisseur', 'Retour chantier', 'Don'… Apparaîtra dans l'historique des mouvements." style={{ gridColumn: '1/-1' }}>
+                      <input name="note" className="modal-input" placeholder="Ex : Réassort fournisseur, Retour chantier…" style={{ width: '100%', boxSizing: 'border-box' }} />
+                    </FieldTip>
                   </div>
                   <div className="modal-footer">
                     <button type="button" className="btn-ghost" onClick={() => setShowPurchase(false)}>Annuler</button>
@@ -696,7 +700,7 @@ export function StockPage() {
                         {vehicles.map(v => <option value={v.id} key={v.id}>{v.name}</option>)}
                       </select>
                     </FieldTip>
-                    <FieldTip label="Note" hint="Une description courte de l'utilisation : 'Vidange moteur', 'Montage plaquettes'… Apparaîtra dans l'historique.">
+                    <FieldTip label="Note · optionnel" hint="Une description courte de l'utilisation : 'Vidange moteur', 'Montage plaquettes'… Apparaîtra dans l'historique.">
                       <input name="note" className="modal-input" placeholder="Ex : Vidange moteur, Montage plaquettes…" />
                     </FieldTip>
                   </div>
